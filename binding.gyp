@@ -8,6 +8,7 @@
 		"enable_logging%": "false",
 		"enable_asan%": "false",
 		"enable_coverage%": "false",
+		"use_vcpkg%": "false",
 		"sources_node_gdal": [
 				"src/utils/typed_array.cpp",
 				"src/utils/string_list.cpp",
@@ -129,7 +130,20 @@
 						"ENABLE_LOGGING=1"
 					]
 				}],
-				["shared_gdal == 'false'", {
+				["use_vcpkg == 'true'", {
+					"defines": [
+						"USE_VCPKG=1"
+					],
+					"include_dirs": [
+						"vcpkg_installed/<(target_arch)-<(OS)/include",
+						"include"
+					],
+					"libraries": [
+						"-lgdal",
+						"-lproj"
+					]
+				}, {
+				"shared_gdal == 'false'", {
 					"defines": [
 						"BUNDLED_GDAL=1"
 					],

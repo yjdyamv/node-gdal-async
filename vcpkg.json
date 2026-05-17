@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "gdal-async",
+  "version": "3.12.3",
+  "description": "Bindings to GDAL (Geospatial Data Abstraction Library) with full async support",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "gdal",
+      "default-features": true,
+      "features": [
+        "curl",
+        "expat",
+        "geos",
+        "hdf5",
+        "jpeg",
+        "netcdf",
+        "png",
+        "sqlite3"
+      ]
+    },
+    {
+      "name": "proj",
+      "default-features": true
+    },
+    {
+      "name": "geos",
+      "default-features": false
+    },
+    {
+      "name": "muparser",
+      "default-features": true
+    },
+    {
+      "name": "libaec",
+      "default-features": true
+    }
+  ],
+  "builtin-baseline": "5e4b2e7935f0e35607cd61c09225dda54aff0664"
+}

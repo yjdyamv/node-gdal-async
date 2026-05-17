@@ -38,6 +38,8 @@ doc
 /coverage
 yarn.lock
 Attic
+vcpkg_installed/
+vcpkg-manifest/
 
 
 deps/libgdal/gdal/wince
