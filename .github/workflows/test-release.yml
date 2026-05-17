@@ -62,7 +62,6 @@ jobs:
       with:
         python-version: "3.11"
     - run: npm install --ignore-scripts
-    - run: npm install node-gyp
     - run: npx @mapbox/node-pre-gyp install
     - run: npx yatag
     - run: npm test

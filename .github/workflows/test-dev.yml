@@ -33,16 +33,28 @@ jobs:
       with:
         max-size: 1000M
         key: coverage
+    - name: Restore vcpkg cache
+      uses: actions/cache@v4
+      with:
+        path: vcpkg_installed
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: vcpkg-${{ runner.os }}-
+    - name: Setup vcpkg
+      run: |
+        if [ ! -d vcpkg ]; then
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.sh
+        fi
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+    - name: Install vcpkg dependencies
+      run: ./vcpkg/vcpkg install
     - run: npm install --ignore-scripts
-    - run: npx @mapbox/node-pre-gyp configure --debug --enable_coverage
-      env:
-        CXX: ccache g++
-        CC: ccache gcc
     - name: Build from sources
-      run: npx @mapbox/node-pre-gyp build -j max --debug --enable_coverage
+      run: npx cmake-js compile --debug --CDENABLE_COVERAGE=ON -j max
       env:
         CXX: ccache g++
         CC: ccache gcc
+        CMAKE_TOOLCHAIN_FILE: ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
     - name: Run unit tests
       run: npx c8 npm test
       env:
@@ -209,18 +221,29 @@ jobs:
       with:
         max-size: 1000M
         key: mac-${{ matrix.node-version }}
+    - name: Restore vcpkg cache
+      uses: actions/cache@v4
+      with:
+        path: vcpkg_installed
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: vcpkg-${{ runner.os }}-
+    - name: Setup vcpkg
+      run: |
+        if [ ! -d vcpkg ]; then
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.sh
+        fi
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+    - name: Install vcpkg dependencies
+      run: ./vcpkg/vcpkg install
     - run: npm install --ignore-scripts
-    - run: npx @mapbox/node-pre-gyp configure
-      env:
-        CXX: ccache g++
-        CC: ccache gcc
-        CXXFLAGS: -DDEBUG_MACOS_FREEZE
     - name: Build from sources
-      run: npx @mapbox/node-pre-gyp build -j max
+      run: npx cmake-js compile -j max
       env:
         CXX: ccache g++
         CC: ccache gcc
         CXXFLAGS: -DDEBUG_MACOS_FREEZE
+        CMAKE_TOOLCHAIN_FILE: ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
     - name: Run unit tests
       run: npm test
       env:
@@ -244,18 +267,23 @@ jobs:
       with:
         max-size: 1000M
         key: mac-debug
+    - name: Setup vcpkg
+      run: |
+        if [ ! -d vcpkg ]; then
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.sh
+        fi
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+    - name: Install vcpkg dependencies
+      run: ./vcpkg/vcpkg install
     - run: npm install --ignore-scripts
-    - run: npx @mapbox/node-pre-gyp configure --debug
-      env:
-        CXX: ccache g++
-        CC: ccache gcc
-        CXXFLAGS: -DDEBUG_MACOS_FREEZE
     - name: Build from sources
-      run: npx @mapbox/node-pre-gyp build -j max
+      run: npx cmake-js compile --debug -j max
       env:
         CXX: ccache g++
         CC: ccache gcc
         CXXFLAGS: -DDEBUG_MACOS_FREEZE
+        CMAKE_TOOLCHAIN_FILE: ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
     - name: Run unit tests
       run: npm test
       env:
@@ -276,11 +304,24 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: ${{ matrix.node-version }}
+    - name: Restore vcpkg cache
+      uses: actions/cache@v4
+      with:
+        path: vcpkg_installed
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: vcpkg-${{ runner.os }}-
+    - name: Setup vcpkg
+      run: |
+        if (-not (Test-Path vcpkg)) {
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          .\vcpkg\bootstrap-vcpkg.bat
+        }
+        echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
+    - name: Install vcpkg dependencies
+      run: .\vcpkg\vcpkg install
     - run: npm install --ignore-scripts
-    - run: npm install node-gyp
-    - run: npx @mapbox/node-pre-gyp configure
     - name: Build from sources
-      run: npx @mapbox/node-pre-gyp build -j max
+      run: npx cmake-js compile -j max
     - name: Run unit tests
       run: npm test
       env:
@@ -296,10 +337,18 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 20.x
+    - name: Setup vcpkg
+      run: |
+        if (-not (Test-Path vcpkg)) {
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          .\vcpkg\bootstrap-vcpkg.bat
+        }
+        echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
+    - name: Install vcpkg dependencies
+      run: .\vcpkg\vcpkg install
     - run: npm install --ignore-scripts
-    - run: npx @mapbox/node-pre-gyp configure --debug
     - name: Build from sources
-      run: npx @mapbox/node-pre-gyp build -j max
+      run: npx cmake-js compile --debug -j max
     - name: Run unit tests
       run: npm test
       env:

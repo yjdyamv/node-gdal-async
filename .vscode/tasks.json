@@ -6,7 +6,7 @@
     {
       "label": "Build",
       "type": "shell",
-      "command": "npx node-pre-gyp build -j max",
+      "command": "npx cmake-js build -j max",
       "problemMatcher": {
         "base": "$gcc",
         "fileLocation": [
@@ -22,35 +22,35 @@
     {
       "label": "Configure Release",
       "type": "shell",
-      "command": "npx node-pre-gyp configure",
+      "command": "npx cmake-js configure",
       "problemMatcher": [],
       "group": "build"
     },
     {
       "label": "Configure Debug",
       "type": "shell",
-      "command": "npx node-pre-gyp configure --debug",
+      "command": "npx cmake-js configure --debug",
       "problemMatcher": [],
       "group": "build"
     },
     {
       "label": "Configure Logging",
       "type": "shell",
-      "command": "npx node-pre-gyp configure --debug --enable_logging",
+      "command": "npx cmake-js configure --debug -DENABLE_LOGGING=ON",
       "problemMatcher": [],
       "group": "build"
     },
     {
       "label": "Configure ASAN",
       "type": "shell",
-      "command": "npx node-pre-gyp configure --debug --enable_asan",
+      "command": "npx cmake-js configure --debug -DENABLE_ASAN=ON",
       "problemMatcher": [],
       "group": "build"
     },
     {
       "label": "Configure coverage",
       "type": "shell",
-      "command": "npx node-pre-gyp configure --debug --enable_coverage",
+      "command": "npx cmake-js configure --debug -DENABLE_COVERAGE=ON",
       "problemMatcher": [],
       "group": "build"
     },

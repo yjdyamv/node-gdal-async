@@ -21,16 +21,11 @@ clean-test:
 	@rm -rf ./test/**/*.tmp*
 	@rm -rf ./test/data/**/*.tmp*
 
-./node_modules/.bin/node-pre-gyp:
-	npm install @mapbox/node-pre-gyp
+build:
+	npx cmake-js compile -j max
 
-build: ./node_modules/.bin/node-pre-gyp
-	./node_modules/.bin/node-pre-gyp configure --silent
-	./node_modules/.bin/node-pre-gyp build -j max
-
-build-shared: ./node_modules/.bin/node-pre-gyp
-	./node_modules/.bin/node-pre-gyp configure --shared_gdal=true --silent
-	./node_modules/.bin/node-pre-gyp build -j max
+build-shared:
+	npx cmake-js compile -j max
 
 rebuild:
 	@make clean
