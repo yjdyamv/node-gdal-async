@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(gdal-async LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
@@ -11,7 +11,7 @@ option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 
 # --- cmake-js ---
-include(${CMAKE_JS_INC})
+include_directories(${CMAKE_JS_INC})
 
 # --- node-addon-api ---
 execute_process(
@@ -20,8 +20,15 @@ execute_process(
   OUTPUT_VARIABLE NODE_ADDON_API_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-include_directories(${CMAKE_JS_INC})
+# --- nan (still needed until Item 3 N-API migration) ---
+execute_process(
+  COMMAND node -p "require('nan')"
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE NAN_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 include_directories(${NODE_ADDON_API_DIR})
+include_directories(${NAN_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # --- Platform settings ---
@@ -30,7 +37,8 @@ if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32 -DPLATFORM="win")
   add_definitions(-D_HAS_EXCEPTIONS=1)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+  # Force dynamic CRT (/MD) to match vcpkg DLLs; cmake-js defaults to static CRT (/MT)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
 elseif(APPLE)
   set(PLATFORM "mac")
   add_definitions(-DPLATFORM="mac" -DDARWIN)
@@ -52,13 +60,13 @@ endif()
 # --- vcpkg dependencies ---
 find_package(GDAL CONFIG REQUIRED)
 find_package(PROJ CONFIG REQUIRED)
-find_package(geos CONFIG REQUIRED)
-find_package(CURL CONFIG REQUIRED)
-find_package(expat CONFIG REQUIRED)
-find_package(SQLite3 CONFIG REQUIRED)
-find_package(hdf5 CONFIG REQUIRED)
-find_package(netcdf-c CONFIG REQUIRED)
-find_package(openjpeg CONFIG REQUIRED)
+find_package(GEOS CONFIG REQUIRED)
+find_package(CURL REQUIRED)
+find_package(EXPAT REQUIRED)
+find_package(SQLite3 REQUIRED)
+find_package(HDF5 REQUIRED)
+find_package(netCDF CONFIG REQUIRED)
+find_package(OpenJPEG REQUIRED)
 find_package(libaec CONFIG REQUIRED)
 find_package(muparser CONFIG REQUIRED)
 
@@ -133,7 +141,7 @@ add_library(gdal SHARED ${SOURCES})
 set_target_properties(gdal PROPERTIES
   PREFIX ""
   SUFFIX ".node"
-  CXX_STANDARD 17
+  CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS ON
 )
@@ -141,14 +149,14 @@ set_target_properties(gdal PROPERTIES
 target_link_libraries(gdal PRIVATE
   GDAL::GDAL
   PROJ::proj
-  geos::geos_c
+  GEOS::geos_c
   CURL::libcurl
-  expat::expat
+  EXPAT::EXPAT
   SQLite::SQLite3
-  hdf5::hdf5
-  netcdf-c::netcdf-c
-  openjpeg::openjpeg
-  libaec::libaec
+  hdf5::hdf5-shared
+  netCDF::netcdf
+  openjp2
+  libaec::aec
   muparser::muparser
 )
 
@@ -180,12 +188,16 @@ if(ENABLE_COVERAGE)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  target_compile_options(gdal PRIVATE /MP /GR /EHsc /permissive-)
+  target_compile_options(gdal PRIVATE /MP /GR /EHsc /permissive- /Zc:__cplusplus /utf-8 /GS /guard:cf /W4 -WX-)
+  # Security hardening
+  target_link_options(gdal PRIVATE /NXCOMPAT /DYNAMICBASE /GUARD:CF)
+  # Export all symbols for DLL
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 else()
-  target_compile_options(gdal PRIVATE -Wno-cast-function-type-mismatch)
+  target_compile_options(gdal PRIVATE -Wall -Wextra -Wpedantic -Wno-cast-function-type-mismatch)
 endif()
 
-# --- Post-build: yatag + copy to lib/binding ---
+# --- Post-build: copy to lib/binding ---
 # Determine the node ABI and platform for the binding directory
 execute_process(
   COMMAND node -p "process.versions.modules"
@@ -207,13 +219,36 @@ execute_process(
 )
 set(BINDING_DIR "lib/binding/node-v${NODE_ABI}-${NODE_PLATFORM}-${NODE_ARCH}")
 
+# Gather shared libraries that need to be alongside gdal.node
+set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/bin")
+if(WIN32)
+  file(GLOB VCPKG_DLLS "${VCPKG_BIN_DIR}/*.dll")
+  # Do not filter DLLs at configure time; all needed DLLs are copied
+  # Debug DLLs (e.g. gdald.dll) won't be loaded at runtime in Release builds
+endif()
+
 add_custom_command(TARGET gdal POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/${BINDING_DIR}"
   COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:gdal>" "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/gdal.node"
-  COMMAND npx yatag
+  COMMAND ${CMAKE_COMMAND} -E copy ${VCPKG_DLLS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  COMMENT "Copying gdal.node to ${BINDING_DIR} and generating TypeScript declarations"
+  COMMENT "Copying gdal.node and dependencies to ${BINDING_DIR}"
 )
 
-# --- cmake-js final configuration ---
-cmake_js_configure_target(gdal)
+# RPATH settings so .node finds .so/.dylib relative to itself (Linux/macOS)
+if(NOT WIN32)
+  if(APPLE)
+    set_target_properties(gdal PROPERTIES
+      INSTALL_RPATH "@loader_path"
+      BUILD_RPATH "${VCPKG_BIN_DIR}"
+    )
+  else()
+    set_target_properties(gdal PROPERTIES
+      INSTALL_RPATH "$ORIGIN"
+      BUILD_RPATH "${VCPKG_BIN_DIR}"
+    )
+  endif()
+endif()
+
+# --- cmake-js Node.js integration ---
+target_link_libraries(gdal PRIVATE ${CMAKE_JS_LIB})
