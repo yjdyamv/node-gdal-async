@@ -14,6 +14,7 @@
         "geos",
         "hdf5",
         "jpeg",
+        "muparser",
         "netcdf",
         "png",
         "sqlite3"
@@ -36,5 +37,5 @@
       "default-features": true
     }
   ],
-  "builtin-baseline": "5e4b2e7935f0e35607cd61c09225dda54aff0664"
+  "builtin-baseline": "2b65c20fc66eda893aa15a15a453c3cf09500b19"
 }
