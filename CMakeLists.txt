@@ -91,6 +91,7 @@ set(SOURCES
   src/gdal_majorobject.cpp
   src/gdal_feature.cpp
   src/gdal_feature_defn.cpp
+  src/gdal_feature_defn_napi.cpp
   src/gdal_field_defn.cpp
   src/gdal_field_defn_napi.cpp
   src/geometry/gdal_geometry.cpp
@@ -136,6 +137,7 @@ set(SOURCES
   src/collections/rasterband_pixels.cpp
   src/collections/gdal_drivers.cpp
   src/collections/colortable.cpp
+  src/collections/colortable_napi.cpp
 )
 
 # --- Build the addon ---

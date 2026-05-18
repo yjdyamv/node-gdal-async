@@ -28,6 +28,7 @@
 #include "gdal_coordinate_transformation_napi.hpp"
 #include "gdal_feature.hpp"
 #include "gdal_feature_defn.hpp"
+#include "gdal_feature_defn_napi.hpp"
 #include "gdal_field_defn.hpp"
 #include "gdal_field_defn_napi.hpp"
 #include "geometry/gdal_geometry.hpp"
@@ -71,6 +72,7 @@
 #include "collections/rasterband_overviews.hpp"
 #include "collections/rasterband_pixels.hpp"
 #include "collections/colortable.hpp"
+#include "collections/colortable_napi.hpp"
 
 // std
 #include <sstream>
