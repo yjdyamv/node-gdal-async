@@ -45,6 +45,7 @@
 #include "geometry/gdal_multipoint.hpp"
 #include "geometry/gdal_multipolygon.hpp"
 #include "geometry/gdal_point.hpp"
+#include "geometry/gdal_point_napi.hpp"
 #include "geometry/gdal_polygon.hpp"
 #include "gdal_spatial_reference.hpp"
 #include "gdal_memfile.hpp"

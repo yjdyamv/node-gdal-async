@@ -97,6 +97,7 @@ set(SOURCES
   src/gdal_field_defn_napi.cpp
   src/geometry/gdal_geometry.cpp
   src/geometry/gdal_point.cpp
+  src/geometry/gdal_point_napi.cpp
   src/geometry/gdal_simplecurve.cpp
   src/geometry/gdal_compoundcurve.cpp
   src/geometry/gdal_linestring.cpp
