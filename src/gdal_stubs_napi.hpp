@@ -76,6 +76,40 @@ class GeometryCollectionChildrenNapi : public Napi::ObjectWrap<GeometryCollectio
     private: OGRGeometryCollection *geom_;
 };
 
+class PolygonRingsNapi : public Napi::ObjectWrap<PolygonRingsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  PolygonRingsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value add(const Napi::CallbackInfo &i);
+    private: OGRPolygon *geom_;
+};
+
+class LineStringPointsNapi : public Napi::ObjectWrap<LineStringPointsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  LineStringPointsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value add(const Napi::CallbackInfo &i);
+  Napi::Value setPi(const Napi::CallbackInfo &i);
+    private: OGRLineString *geom_;
+};
+
+class CompoundCurveCurvesNapi : public Napi::ObjectWrap<CompoundCurveCurvesNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  CompoundCurveCurvesNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+    private: OGRCompoundCurve *geom_;
+};
+
+// Multi-dimensional collection stubs with toString
 #define DECLARE_STUB_NAPI(klass) \
   class klass : public Napi::ObjectWrap<klass> { \
     public: \
@@ -84,9 +118,6 @@ class GeometryCollectionChildrenNapi : public Napi::ObjectWrap<GeometryCollectio
     klass(const Napi::CallbackInfo &i) : Napi::ObjectWrap<klass>(i) {} \
   }
 
-DECLARE_STUB_NAPI(PolygonRingsNapi);
-DECLARE_STUB_NAPI(LineStringPointsNapi);
-DECLARE_STUB_NAPI(CompoundCurveCurvesNapi);
 DECLARE_STUB_NAPI(GroupGroupsNapi);
 DECLARE_STUB_NAPI(GroupArraysNapi);
 DECLARE_STUB_NAPI(GroupAttributesNapi);

@@ -1,6 +1,8 @@
 #include "gdal_stubs_napi.hpp"
 #include "gdal_rasterband_napi.hpp"
 #include "geometry/gdal_geometry_napi.hpp"
+#include "geometry/gdal_linearring_napi.hpp"
+#include "geometry/gdal_point_napi.hpp"
 
 namespace node_gdal {
 
@@ -273,6 +275,105 @@ Napi::Value GeometryCollectionChildrenNapi::add(const Napi::CallbackInfo &info) 
   return info.Env().Undefined();
 }
 
+// ===================== PolygonRingsNapi =====================
+Napi::FunctionReference PolygonRingsNapi::constructor;
+Napi::Object PolygonRingsNapi::Init(Napi::Env env, Napi::Object exports) {
+  Napi::Function f = DefineClass(env, "PolygonRingsNapi", {
+    InstanceMethod("get", &PolygonRingsNapi::get),
+    InstanceMethod("count", &PolygonRingsNapi::count),
+    InstanceMethod("add", &PolygonRingsNapi::add),
+  });
+  constructor = Napi::Persistent(f); constructor.SuppressDestruct();
+  exports.Set("PolygonRingsNapi", f); return exports;
+}
+PolygonRingsNapi::PolygonRingsNapi(const Napi::CallbackInfo &info)
+  : Napi::ObjectWrap<PolygonRingsNapi>(info), geom_(nullptr) {
+  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRPolygon>>().Data();
+}
+Napi::Value PolygonRingsNapi::get(const Napi::CallbackInfo &info) {
+  if (!geom_) return info.Env().Null();
+  int i; NAPI_ARG_INT(0, "index", i);
+  OGRLinearRing *r = (i == 0) ? geom_->getExteriorRing() : geom_->getInteriorRing(i - 1);
+  if (!r) NAPI_THROW_LAST_CPLERR;
+  return LinearRingNapi::New(info.Env(), r, false);
+}
+Napi::Value PolygonRingsNapi::count(const Napi::CallbackInfo &info) {
+  if (!geom_) return Napi::Number::New(info.Env(), 0);
+  int n = geom_->getExteriorRing() ? 1 : 0;
+  n += geom_->getNumInteriorRings();
+  return Napi::Number::New(info.Env(), n);
+}
+Napi::Value PolygonRingsNapi::add(const Napi::CallbackInfo &info) {
+  if (!geom_) return info.Env().Null();
+  LinearRingNapi *ring; NAPI_ARG_WRAPPED(0, "ring", LinearRingNapi, ring);
+  OGRErr err = geom_->addRing(ring->get());
+  if (err) NAPI_THROW_OGRERR(err);
+  return info.Env().Undefined();
+}
+
+// ===================== LineStringPointsNapi =====================
+Napi::FunctionReference LineStringPointsNapi::constructor;
+Napi::Object LineStringPointsNapi::Init(Napi::Env env, Napi::Object exports) {
+  Napi::Function f = DefineClass(env, "LineStringPointsNapi", {
+    InstanceMethod("get", &LineStringPointsNapi::get),
+    InstanceMethod("count", &LineStringPointsNapi::count),
+    InstanceMethod("add", &LineStringPointsNapi::add),
+    InstanceMethod("set", &LineStringPointsNapi::setPi),
+  });
+  constructor = Napi::Persistent(f); constructor.SuppressDestruct();
+  exports.Set("LineStringPointsNapi", f); return exports;
+}
+LineStringPointsNapi::LineStringPointsNapi(const Napi::CallbackInfo &info)
+  : Napi::ObjectWrap<LineStringPointsNapi>(info), geom_(nullptr) {
+  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRLineString>>().Data();
+}
+Napi::Value LineStringPointsNapi::get(const Napi::CallbackInfo &info) {
+  if (!geom_) return info.Env().Null();
+  int i; NAPI_ARG_INT(0, "index", i);
+  OGRPoint pt; geom_->getPoint(i, &pt);
+  return PointNapi::New(info.Env(), new OGRPoint(pt));
+}
+Napi::Value LineStringPointsNapi::count(const Napi::CallbackInfo &info) {
+  return geom_ ? Napi::Number::New(info.Env(), geom_->getNumPoints()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value LineStringPointsNapi::add(const Napi::CallbackInfo &info) {
+  if (!geom_) return info.Env().Null();
+  PointNapi *pt; NAPI_ARG_WRAPPED(0, "point", PointNapi, pt);
+  geom_->addPoint(pt->get());
+  return info.Env().Undefined();
+}
+Napi::Value LineStringPointsNapi::setPi(const Napi::CallbackInfo &info) {
+  if (!geom_) return info.Env().Null();
+  int i; NAPI_ARG_INT(0, "index", i);
+  PointNapi *pt; NAPI_ARG_WRAPPED(1, "point", PointNapi, pt);
+  geom_->setPoint(i, pt->get());
+  return info.Env().Undefined();
+}
+
+// ===================== CompoundCurveCurvesNapi =====================
+Napi::FunctionReference CompoundCurveCurvesNapi::constructor;
+Napi::Object CompoundCurveCurvesNapi::Init(Napi::Env env, Napi::Object exports) {
+  Napi::Function f = DefineClass(env, "CompoundCurveCurvesNapi", {
+    InstanceMethod("get", &CompoundCurveCurvesNapi::get),
+    InstanceMethod("count", &CompoundCurveCurvesNapi::count),
+  });
+  constructor = Napi::Persistent(f); constructor.SuppressDestruct();
+  exports.Set("CompoundCurveCurvesNapi", f); return exports;
+}
+CompoundCurveCurvesNapi::CompoundCurveCurvesNapi(const Napi::CallbackInfo &info)
+  : Napi::ObjectWrap<CompoundCurveCurvesNapi>(info), geom_(nullptr) {
+  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRCompoundCurve>>().Data();
+}
+Napi::Value CompoundCurveCurvesNapi::get(const Napi::CallbackInfo &info) {
+  if (!geom_) return info.Env().Null();
+  int i; NAPI_ARG_INT(0, "index", i);
+  if (i < 0 || i >= geom_->getNumCurves()) { NAPI_THROW_LAST_CPLERR; }
+  return GeometryNapi::New(info.Env(), geom_->getCurve(i), false);
+}
+Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
+  return geom_ ? Napi::Number::New(info.Env(), geom_->getNumCurves()) : Napi::Number::New(info.Env(), 0);
+}
+
 // ===================== Remaining stubs =====================
 #define IMPL_STUB(klass) \
   Napi::FunctionReference klass::constructor; \
@@ -282,9 +383,6 @@ Napi::Value GeometryCollectionChildrenNapi::add(const Napi::CallbackInfo &info) 
     exports.Set(#klass, f); return exports; \
   }
 
-IMPL_STUB(PolygonRingsNapi)
-IMPL_STUB(LineStringPointsNapi)
-IMPL_STUB(CompoundCurveCurvesNapi)
 IMPL_STUB(GroupGroupsNapi)
 IMPL_STUB(GroupArraysNapi)
 IMPL_STUB(GroupAttributesNapi)
