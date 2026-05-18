@@ -102,14 +102,17 @@ set(SOURCES
   src/geometry/gdal_simplecurve.cpp
   src/geometry/gdal_simplecurve_napi.cpp
   src/geometry/gdal_compoundcurve.cpp
+  src/geometry/gdal_compoundcurve_napi.cpp
   src/geometry/gdal_linestring.cpp
   src/geometry/gdal_linestring_napi.cpp
   src/geometry/gdal_circularstring.cpp
+  src/geometry/gdal_circularstring_napi.cpp
   src/geometry/gdal_linearring.cpp
   src/geometry/gdal_linearring_napi.cpp
   src/geometry/gdal_polygon.cpp
   src/geometry/gdal_polygon_napi.cpp
   src/geometry/gdal_geometrycollection.cpp
+  src/geometry/gdal_geometrycollection_napi.cpp
   src/geometry/gdal_multipoint.cpp
   src/geometry/gdal_multilinestring.cpp
   src/geometry/gdal_multicurve.cpp
