@@ -27,6 +27,7 @@
 #include "gdal_coordinate_transformation.hpp"
 #include "gdal_coordinate_transformation_napi.hpp"
 #include "gdal_feature.hpp"
+#include "gdal_feature_napi.hpp"
 #include "gdal_feature_defn.hpp"
 #include "gdal_feature_defn_napi.hpp"
 #include "gdal_field_defn.hpp"

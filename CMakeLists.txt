@@ -90,6 +90,7 @@ set(SOURCES
   src/gdal_attribute.cpp
   src/gdal_majorobject.cpp
   src/gdal_feature.cpp
+  src/gdal_feature_napi.cpp
   src/gdal_feature_defn.cpp
   src/gdal_feature_defn_napi.cpp
   src/gdal_field_defn.cpp

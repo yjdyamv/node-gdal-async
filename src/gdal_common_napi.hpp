@@ -397,7 +397,22 @@ inline Napi::Value SafeStringNapi(Napi::Env env, const char *data) {
 
 #define NAPI_THROW_OGRERR(err_code)                                                          \
   do {                                                                                         \
-    Napi::Error::New(info.Env(), getOGRErrMsg(err_code)).ThrowAsJavaScriptException();         \
+    const char *_msg;                                                                          \
+    if ((err_code) == 6) {                                                                     \
+      _msg = CPLGetLastErrorMsg();                                                              \
+    } else {                                                                                   \
+      switch (err_code) {                                                                       \
+        case 0: _msg = "No error"; break;                                                       \
+        case 1: _msg = "Not enough data"; break;                                                \
+        case 2: _msg = "Not enough memory"; break;                                              \
+        case 3: _msg = "Unsupported geometry type"; break;                                      \
+        case 4: _msg = "Unsupported operation"; break;                                          \
+        case 5: _msg = "Corrupt Data"; break;                                                   \
+        case 7: _msg = "Unsupported SRS"; break;                                                \
+        default: _msg = "Invalid Error"; break;                                                  \
+      }                                                                                         \
+    }                                                                                           \
+    Napi::Error::New(info.Env(), _msg).ThrowAsJavaScriptException();                            \
     return info.Env().Undefined();                                                              \
   } while (0)
 
