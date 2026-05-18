@@ -14,6 +14,7 @@
 #include "gdal_common.hpp"
 #include "gdal_dataset.hpp"
 #include "gdal_driver.hpp"
+#include "gdal_driver_napi.hpp" // Phase 0 N-API prototype
 #include "gdal_rasterband.hpp"
 #include "gdal_group.hpp"
 #include "gdal_mdarray.hpp"
@@ -24,9 +25,11 @@
 #include "gdal_algebra.hpp"
 
 #include "gdal_coordinate_transformation.hpp"
+#include "gdal_coordinate_transformation_napi.hpp"
 #include "gdal_feature.hpp"
 #include "gdal_feature_defn.hpp"
 #include "gdal_field_defn.hpp"
+#include "gdal_field_defn_napi.hpp"
 #include "geometry/gdal_geometry.hpp"
 #include "geometry/gdal_geometrycollection.hpp"
 #include "gdal_layer.hpp"
@@ -368,6 +371,8 @@ static void Init(Local<Object> target, Local<v8::Value>, void *) {
 #endif
 
   Driver::Initialize(target);
+  // TODO Phase 7: DriverNapi::Init(env, target) replaces Driver::Initialize
+  // N-API bridge will be activated when module switches to NODE_API_MODULE
   Dataset::Initialize(target);
   RasterBand::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)

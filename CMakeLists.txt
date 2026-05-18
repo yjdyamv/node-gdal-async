@@ -82,6 +82,7 @@ set(SOURCES
   src/gdal_common.cpp
   src/gdal_dataset.cpp
   src/gdal_driver.cpp
+  src/gdal_driver_napi.cpp
   src/gdal_rasterband.cpp
   src/gdal_group.cpp
   src/gdal_mdarray.cpp
@@ -91,6 +92,7 @@ set(SOURCES
   src/gdal_feature.cpp
   src/gdal_feature_defn.cpp
   src/gdal_field_defn.cpp
+  src/gdal_field_defn_napi.cpp
   src/geometry/gdal_geometry.cpp
   src/geometry/gdal_point.cpp
   src/geometry/gdal_simplecurve.cpp
@@ -106,6 +108,7 @@ set(SOURCES
   src/geometry/gdal_multipolygon.cpp
   src/gdal_layer.cpp
   src/gdal_coordinate_transformation.cpp
+  src/gdal_coordinate_transformation_napi.cpp
   src/gdal_spatial_reference.cpp
   src/gdal_warper.cpp
   src/gdal_algorithms.cpp
@@ -137,6 +140,11 @@ set(SOURCES
 
 # --- Build the addon ---
 add_library(gdal SHARED ${SOURCES})
+
+target_include_directories(gdal PRIVATE ${NODE_ADDON_API_DIR})
+if(MSVC)
+  target_compile_options(gdal PRIVATE "/I${NODE_ADDON_API_DIR}")
+endif()
 
 set_target_properties(gdal PROPERTIES
   PREFIX ""
