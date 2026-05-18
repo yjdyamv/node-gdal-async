@@ -1884,6 +1884,52 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   v8::Local<v8::Object> target;
   memcpy(&target, &nv, sizeof(nv));
 
+  // N-API top-level module functions
+  exports.Set("open", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string path, mode = "r";
+    NAPI_ARG_STR(0, "path", path);
+    NAPI_ARG_OPT_STR(1, "mode", mode);
+    unsigned int flags = GDAL_OF_VERBOSE_ERROR;
+    for (size_t i = 0; i < mode.length(); i++) {
+      if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
+      else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    }
+    GDALDataset *ds = (GDALDataset *)GDALOpenEx(path.c_str(), flags, nullptr, nullptr, nullptr);
+    if (!ds) NAPI_THROW_LAST_CPLERR;
+    return DatasetNapi::New(info.Env(), ds);
+  }, "open"));
+  exports.Set("setConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string name; NAPI_ARG_STR(0, "name", name);
+    if (info.Length() < 2) { Napi::Error::New(info.Env(), "value required").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    if (info[1].IsString()) CPLSetConfigOption(name.c_str(), info[1].As<Napi::String>().Utf8Value().c_str());
+    else if (info[1].IsNull() || info[1].IsUndefined()) CPLSetConfigOption(name.c_str(), nullptr);
+    else { Napi::Error::New(info.Env(), "value must be string or null").ThrowAsJavaScriptException(); }
+    return info.Env().Undefined();
+  }, "setConfigOption"));
+  exports.Set("getConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string name; NAPI_ARG_STR(0, "name", name);
+    return SafeStringNapi(info.Env(), CPLGetConfigOption(name.c_str(), nullptr));
+  }, "getConfigOption"));
+  exports.Set("decToDMS", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    double angle; std::string axis; int precision = 2;
+    NAPI_ARG_DOUBLE(0, "angle", angle); NAPI_ARG_STR(1, "axis", axis);
+    NAPI_ARG_INT_OPT(2, "precision", precision);
+    if (!axis.empty()) axis[0] = (char)toupper(axis[0]);
+    if (axis != "Lat" && axis != "Long") { Napi::Error::New(info.Env(), "Axis must be 'lat' or 'long'").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    return SafeStringNapi(info.Env(), GDALDecToDMS(angle, axis.c_str(), precision));
+  }, "decToDMS"));
+  exports.Set("setPROJSearchPath", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string path; NAPI_ARG_STR(0, "path", path);
+    const char *paths[] = {path.c_str(), nullptr};
+    OSRSetPROJSearchPaths(paths);
+    return info.Env().Undefined();
+  }, "setPROJSearchPath"));
+  exports.Set("_triggerCPLError", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    CPLError(CE_Failure, CPLE_AppDefined, "Mock error");
+    return info.Env().Undefined();
+  }, "_triggerCPLError"));
+
   InitNan(target, v8::Local<v8::Value>(), nullptr);
 
   node_gdal::DriverNapi::Init(napiEnv, exports);
