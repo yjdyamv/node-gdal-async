@@ -1,5 +1,6 @@
 #include "gdal_stubs_napi.hpp"
 #include "gdal_rasterband_napi.hpp"
+#include "gdal_multi_napi.hpp"
 #include "geometry/gdal_geometry_napi.hpp"
 #include "geometry/gdal_linearring_napi.hpp"
 #include "geometry/gdal_point_napi.hpp"
@@ -374,21 +375,145 @@ Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
   return geom_ ? Napi::Number::New(info.Env(), geom_->getNumCurves()) : Napi::Number::New(info.Env(), 0);
 }
 
-// ===================== Remaining stubs =====================
-#define IMPL_STUB(klass) \
+// ===================== Multi-dimensional collections =====================
+#define MD_COLL_INIT(klass) \
   Napi::FunctionReference klass::constructor; \
   Napi::Object klass::Init(Napi::Env env, Napi::Object exports) { \
-    Napi::Function f = DefineClass(env, #klass, {}); \
+    Napi::Function f = DefineClass(env, #klass, { \
+      InstanceMethod("get", &klass::get), \
+      InstanceMethod("count", &klass::count), \
+      InstanceMethod("getNames", &klass::getNames), \
+    }); \
     constructor = Napi::Persistent(f); constructor.SuppressDestruct(); \
     exports.Set(#klass, f); return exports; \
   }
 
-IMPL_STUB(GroupGroupsNapi)
-IMPL_STUB(GroupArraysNapi)
-IMPL_STUB(GroupAttributesNapi)
-IMPL_STUB(GroupDimensionsNapi)
-IMPL_STUB(ArrayDimensionsNapi)
-IMPL_STUB(ArrayAttributesNapi)
+#define MD_GROUP_CTOR(klass) \
+  klass::klass(const Napi::CallbackInfo &info) : Napi::ObjectWrap<klass>(info), group_(nullptr) { \
+    if (info.Length() > 0 && info[0].IsExternal()) group_ = info[0].As<Napi::External<GDALGroup>>().Data(); \
+  }
+
+#define MD_ARRAY_CTOR(klass) \
+  klass::klass(const Napi::CallbackInfo &info) : Napi::ObjectWrap<klass>(info), array_(nullptr) { \
+    if (info.Length() > 0 && info[0].IsExternal()) array_ = info[0].As<Napi::External<GDALMDArray>>().Data(); \
+  }
+
+// --- GroupGroups ---
+MD_COLL_INIT(GroupGroupsNapi) MD_GROUP_CTOR(GroupGroupsNapi)
+Napi::Value GroupGroupsNapi::get(const Napi::CallbackInfo &info) {
+  if (!group_) return info.Env().Null();
+  std::shared_ptr<GDALGroup> r;
+  if (info[0].IsString()) r = group_->OpenGroup(info[0].As<Napi::String>().Utf8Value());
+  else if (info[0].IsNumber()) { auto names = group_->GetGroupNames(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0 && i<(int)names.size()) r = group_->OpenGroup(names[i]); }
+  return r ? GroupNapi::New(info.Env(), r.get()) : info.Env().Null();
+}
+Napi::Value GroupGroupsNapi::count(const Napi::CallbackInfo &info) {
+  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetGroupNames().size()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value GroupGroupsNapi::getNames(const Napi::CallbackInfo &info) {
+  if (!group_) return Napi::Array::New(info.Env(), 0);
+  auto names = group_->GetGroupNames(); Napi::Array r = Napi::Array::New(info.Env(), names.size());
+  for (size_t i = 0; i < names.size(); i++) r.Set(i, Napi::String::New(info.Env(), names[i]));
+  return r;
+}
+
+// --- GroupArrays ---
+MD_COLL_INIT(GroupArraysNapi) MD_GROUP_CTOR(GroupArraysNapi)
+Napi::Value GroupArraysNapi::get(const Napi::CallbackInfo &info) {
+  if (!group_) return info.Env().Null();
+  std::shared_ptr<GDALMDArray> r;
+  if (info[0].IsString()) r = group_->OpenMDArray(info[0].As<Napi::String>().Utf8Value());
+  else if (info[0].IsNumber()) { auto ns = group_->GetMDArrayNames(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)ns.size()) r = group_->OpenMDArray(ns[i]); }
+  return r ? MDArrayNapi::New(info.Env(), r.get()) : info.Env().Null();
+}
+Napi::Value GroupArraysNapi::count(const Napi::CallbackInfo &info) {
+  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetMDArrayNames().size()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value GroupArraysNapi::getNames(const Napi::CallbackInfo &info) {
+  if (!group_) return Napi::Array::New(info.Env(), 0);
+  auto ns = group_->GetMDArrayNames(); Napi::Array r = Napi::Array::New(info.Env(), ns.size());
+  for (size_t i = 0; i < ns.size(); i++) r.Set(i, Napi::String::New(info.Env(), ns[i]));
+  return r;
+}
+
+// --- GroupAttributes ---
+MD_COLL_INIT(GroupAttributesNapi) MD_GROUP_CTOR(GroupAttributesNapi)
+Napi::Value GroupAttributesNapi::get(const Napi::CallbackInfo &info) {
+  if (!group_) return info.Env().Null();
+  std::shared_ptr<GDALAttribute> r;
+  if (info[0].IsString()) r = group_->GetAttribute(info[0].As<Napi::String>().Utf8Value());
+  else if (info[0].IsNumber()) { auto attrs = group_->GetAttributes(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)attrs.size()) r = attrs[i]; }
+  return r ? AttributeNapi::New(info.Env(), r.get()) : info.Env().Null();
+}
+Napi::Value GroupAttributesNapi::count(const Napi::CallbackInfo &info) {
+  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetAttributes().size()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value GroupAttributesNapi::getNames(const Napi::CallbackInfo &info) {
+  if (!group_) return Napi::Array::New(info.Env(), 0);
+  auto attrs = group_->GetAttributes(); Napi::Array r = Napi::Array::New(info.Env(), attrs.size());
+  for (size_t i = 0; i < attrs.size(); i++) r.Set(i, Napi::String::New(info.Env(), attrs[i]->GetName()));
+  return r;
+}
+
+// --- GroupDimensions ---
+MD_COLL_INIT(GroupDimensionsNapi) MD_GROUP_CTOR(GroupDimensionsNapi)
+Napi::Value GroupDimensionsNapi::get(const Napi::CallbackInfo &info) {
+  if (!group_) return info.Env().Null();
+  auto dims = group_->GetDimensions();
+  if (info[0].IsString()) {
+    for (auto &d : dims) if (d->GetName() == info[0].As<Napi::String>().Utf8Value())
+      return DimensionNapi::New(info.Env(), d.get());
+  } else if (info[0].IsNumber()) {
+    int i = info[0].As<Napi::Number>().Int32Value();
+    if (i>=0 && i<(int)dims.size()) return DimensionNapi::New(info.Env(), dims[i].get());
+  }
+  return info.Env().Null();
+}
+Napi::Value GroupDimensionsNapi::count(const Napi::CallbackInfo &info) {
+  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetDimensions().size()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value GroupDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
+  if (!group_) return Napi::Array::New(info.Env(), 0);
+  auto dims = group_->GetDimensions(); Napi::Array r = Napi::Array::New(info.Env(), dims.size());
+  for (size_t i = 0; i < dims.size(); i++) r.Set(i, Napi::String::New(info.Env(), dims[i]->GetName()));
+  return r;
+}
+
+// --- ArrayDimensions ---
+MD_COLL_INIT(ArrayDimensionsNapi) MD_ARRAY_CTOR(ArrayDimensionsNapi)
+Napi::Value ArrayDimensionsNapi::get(const Napi::CallbackInfo &info) {
+  if (!array_) return info.Env().Null();
+  if (info[0].IsNumber()) { auto dims = array_->GetDimensions(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)dims.size()) return DimensionNapi::New(info.Env(), dims[i].get()); }
+  return info.Env().Null();
+}
+Napi::Value ArrayDimensionsNapi::count(const Napi::CallbackInfo &info) {
+  return array_ ? Napi::Number::New(info.Env(), (int)array_->GetDimensions().size()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value ArrayDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
+  if (!array_) return Napi::Array::New(info.Env(), 0);
+  auto dims = array_->GetDimensions(); Napi::Array r = Napi::Array::New(info.Env(), dims.size());
+  for (size_t i = 0; i < dims.size(); i++) r.Set(i, Napi::String::New(info.Env(), dims[i]->GetName()));
+  return r;
+}
+
+// --- ArrayAttributes ---
+MD_COLL_INIT(ArrayAttributesNapi) MD_ARRAY_CTOR(ArrayAttributesNapi)
+Napi::Value ArrayAttributesNapi::get(const Napi::CallbackInfo &info) {
+  if (!array_) return info.Env().Null();
+  std::shared_ptr<GDALAttribute> r;
+  if (info[0].IsString()) r = array_->GetAttribute(info[0].As<Napi::String>().Utf8Value());
+  else if (info[0].IsNumber()) { auto attrs = array_->GetAttributes(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)attrs.size()) r = attrs[i]; }
+  return r ? AttributeNapi::New(info.Env(), r.get()) : info.Env().Null();
+}
+Napi::Value ArrayAttributesNapi::count(const Napi::CallbackInfo &info) {
+  return array_ ? Napi::Number::New(info.Env(), (int)array_->GetAttributes().size()) : Napi::Number::New(info.Env(), 0);
+}
+Napi::Value ArrayAttributesNapi::getNames(const Napi::CallbackInfo &info) {
+  if (!array_) return Napi::Array::New(info.Env(), 0);
+  auto attrs = array_->GetAttributes(); Napi::Array r = Napi::Array::New(info.Env(), attrs.size());
+  for (size_t i = 0; i < attrs.size(); i++) r.Set(i, Napi::String::New(info.Env(), attrs[i]->GetName()));
+  return r;
+}
 
 namespace VsiNapi {
 Napi::Object Init(Napi::Env env, Napi::Object exports) {

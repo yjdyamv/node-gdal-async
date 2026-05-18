@@ -11,6 +11,7 @@ class GroupNapi : public Napi::ObjectWrap<GroupNapi> {
     public:
   static Napi::FunctionReference constructor;
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
+  static Napi::Value New(Napi::Env env, GDALGroup *group);
   GroupNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value descriptionGetter(const Napi::CallbackInfo &info);
@@ -24,6 +25,7 @@ class MDArrayNapi : public Napi::ObjectWrap<MDArrayNapi> {
     public:
   static Napi::FunctionReference constructor;
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
+  static Napi::Value New(Napi::Env env, GDALMDArray *array);
   MDArrayNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value dataTypeGetter(const Napi::CallbackInfo &info);
@@ -38,6 +40,7 @@ class DimensionNapi : public Napi::ObjectWrap<DimensionNapi> {
     public:
   static Napi::FunctionReference constructor;
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
+  static Napi::Value New(Napi::Env env, GDALDimension *dim);
   DimensionNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value nameGetter(const Napi::CallbackInfo &info);
@@ -53,6 +56,7 @@ class AttributeNapi : public Napi::ObjectWrap<AttributeNapi> {
     public:
   static Napi::FunctionReference constructor;
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
+  static Napi::Value New(Napi::Env env, GDALAttribute *attr);
   AttributeNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value nameGetter(const Napi::CallbackInfo &info);

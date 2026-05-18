@@ -26,6 +26,13 @@ GroupNapi::GroupNapi(const Napi::CallbackInfo &info)
     this_ = info[0].As<Napi::External<GDALGroup>>().Data();
   }
 }
+
+Napi::Value GroupNapi::New(Napi::Env env, GDALGroup *group) {
+  Napi::EscapableHandleScope scope(env);
+  if (!group) return scope.Escape(env.Null());
+  return scope.Escape(constructor.New({Napi::External<GDALGroup>::New(env, group)}));
+}
+
 Napi::Value GroupNapi::toString(const Napi::CallbackInfo &info) {
   return Napi::String::New(info.Env(), "Group");
 }
@@ -151,6 +158,23 @@ Napi::Value AttributeNapi::valueGetter(const Napi::CallbackInfo &info) {
   if (type == GEDTC_NUMERIC) return Napi::Number::New(info.Env(), self->this_->ReadAsDouble());
   if (type == GEDTC_STRING) return SafeStringNapi(info.Env(), self->this_->ReadAsString());
   return info.Env().Null();
+}
+
+// Factory helpers
+Napi::Value MDArrayNapi::New(Napi::Env env, GDALMDArray *array) {
+  Napi::EscapableHandleScope scope(env);
+  if (!array) return scope.Escape(env.Null());
+  return scope.Escape(constructor.New({Napi::External<GDALMDArray>::New(env, array)}));
+}
+Napi::Value DimensionNapi::New(Napi::Env env, GDALDimension *dim) {
+  Napi::EscapableHandleScope scope(env);
+  if (!dim) return scope.Escape(env.Null());
+  return scope.Escape(constructor.New({Napi::External<GDALDimension>::New(env, dim)}));
+}
+Napi::Value AttributeNapi::New(Napi::Env env, GDALAttribute *attr) {
+  Napi::EscapableHandleScope scope(env);
+  if (!attr) return scope.Escape(env.Null());
+  return scope.Escape(constructor.New({Napi::External<GDALAttribute>::New(env, attr)}));
 }
 
 } // namespace node_gdal

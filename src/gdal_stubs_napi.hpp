@@ -109,21 +109,67 @@ class CompoundCurveCurvesNapi : public Napi::ObjectWrap<CompoundCurveCurvesNapi>
     private: OGRCompoundCurve *geom_;
 };
 
-// Multi-dimensional collection stubs with toString
-#define DECLARE_STUB_NAPI(klass) \
-  class klass : public Napi::ObjectWrap<klass> { \
-    public: \
-    static Napi::FunctionReference constructor; \
-    static Napi::Object Init(Napi::Env e, Napi::Object o); \
-    klass(const Napi::CallbackInfo &i) : Napi::ObjectWrap<klass>(i) {} \
-  }
-
-DECLARE_STUB_NAPI(GroupGroupsNapi);
-DECLARE_STUB_NAPI(GroupArraysNapi);
-DECLARE_STUB_NAPI(GroupAttributesNapi);
-DECLARE_STUB_NAPI(GroupDimensionsNapi);
-DECLARE_STUB_NAPI(ArrayDimensionsNapi);
-DECLARE_STUB_NAPI(ArrayAttributesNapi);
+// Multi-dimensional collection stubs with real get/count/getNames
+class GroupGroupsNapi : public Napi::ObjectWrap<GroupGroupsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  GroupGroupsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private: GDALGroup *group_;
+};
+class GroupArraysNapi : public Napi::ObjectWrap<GroupArraysNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  GroupArraysNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private: GDALGroup *group_;
+};
+class GroupAttributesNapi : public Napi::ObjectWrap<GroupAttributesNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  GroupAttributesNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private: GDALGroup *group_;
+};
+class GroupDimensionsNapi : public Napi::ObjectWrap<GroupDimensionsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  GroupDimensionsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private: GDALGroup *group_;
+};
+class ArrayDimensionsNapi : public Napi::ObjectWrap<ArrayDimensionsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  ArrayDimensionsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private: GDALMDArray *array_;
+};
+class ArrayAttributesNapi : public Napi::ObjectWrap<ArrayAttributesNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  ArrayAttributesNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private: GDALMDArray *array_;
+};
 
 namespace VsiNapi { Napi::Object Init(Napi::Env, Napi::Object); }
 } // namespace node_gdal
