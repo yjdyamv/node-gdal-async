@@ -75,6 +75,14 @@ Napi::Object GeometryNapi::Init(Napi::Env env, Napi::Object exports) {
     });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
+
+  // Static factory methods
+  func.Set("fromWKT", Napi::Function::New(env, createFromWkt, "fromWKT"));
+  func.Set("fromWKB", Napi::Function::New(env, createFromWkb, "fromWKB"));
+  func.Set("fromGeoJson", Napi::Function::New(env, createFromGeoJson, "fromGeoJson"));
+  func.Set("getName", Napi::Function::New(env, getName, "getName"));
+  func.Set("getConstructor", Napi::Function::New(env, getConstructor, "getConstructor"));
+
   exports.Set("GeometryNapi", func);
   return exports;
 }
@@ -490,60 +498,33 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToGML) {
 // ---------------------------------------------------------------------------
 // Static constructors
 // ---------------------------------------------------------------------------
-GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, create) {
-  return info.Env().Undefined(); // stub - not used from JS
-}
-GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, createFromWkt) {
+Napi::Value GeometryNapi::createFromWkt(const Napi::CallbackInfo &info) {
   std::string wkt;
   NAPI_ARG_STR(0, "wkt", wkt);
-  GDALAsyncableJobNapi<OGRGeometry *> job;
-  job.main = [wkt]() -> OGRGeometry * {
-    OGRGeometry *geom;
-    OGRErr err = OGRGeometryFactory::createFromWkt(wkt.c_str(), nullptr, &geom);
-    if (err != OGRERR_NONE) throw "Failed to create geometry from WKT";
-    return geom;
-  };
-  job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
-    return GeometryNapi::New(env, g);
-  };
-  return job.run(info, async, 1);
+  OGRGeometry *geom = nullptr;
+  OGRErr err = OGRGeometryFactory::createFromWkt(wkt.c_str(), nullptr, &geom);
+  if (err != OGRERR_NONE) { NAPI_THROW_OGRERR(err); }
+  return GeometryNapi::New(info.Env(), geom);
 }
-GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, createFromWkb) {
+Napi::Value GeometryNapi::createFromWkb(const Napi::CallbackInfo &info) {
   if (info.Length() < 1 || !info[0].IsBuffer()) {
     Napi::TypeError::New(info.Env(), "buffer must be provided").ThrowAsJavaScriptException();
     return info.Env().Undefined();
   }
   Napi::Buffer<unsigned char> buf = info[0].As<Napi::Buffer<unsigned char>>();
-  GDALAsyncableJobNapi<OGRGeometry *> job;
-  job.main = [buf_data = buf.Data(), buf_len = buf.Length()]() -> OGRGeometry * {
-    OGRGeometry *geom;
-    OGRErr err = OGRGeometryFactory::createFromWkb(buf_data, nullptr, &geom, buf_len);
-    if (err != OGRERR_NONE) throw "Failed to create geometry from WKB";
-    return geom;
-  };
-  job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
-    return GeometryNapi::New(env, g);
-  };
-  return job.run(info, async, 1);
+  OGRGeometry *geom = nullptr;
+  OGRErr err = OGRGeometryFactory::createFromWkb(buf.Data(), nullptr, &geom, (int)buf.Length());
+  if (err != OGRERR_NONE) { NAPI_THROW_OGRERR(err); }
+  return GeometryNapi::New(info.Env(), geom);
 }
-GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, createFromGeoJson) {
+Napi::Value GeometryNapi::createFromGeoJson(const Napi::CallbackInfo &info) {
   std::string json;
   NAPI_ARG_STR(0, "geojson", json);
-  GDALAsyncableJobNapi<OGRGeometry *> job;
-  job.main = [json]() -> OGRGeometry * {
-    OGRGeometry *geom = OGRGeometryFactory::createFromGeoJson(json.c_str());
-    if (!geom) throw CPLGetLastErrorMsg();
-    return geom;
-  };
-  job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
-    return GeometryNapi::New(env, g);
-  };
-  return job.run(info, async, 1);
+  OGRGeometry *geom = OGRGeometryFactory::createFromGeoJson(json.c_str());
+  if (!geom) NAPI_THROW_LAST_CPLERR;
+  return GeometryNapi::New(info.Env(), geom);
 }
 
-// ---------------------------------------------------------------------------
-// Static helpers
-// ---------------------------------------------------------------------------
 Napi::Value GeometryNapi::getName(const Napi::CallbackInfo &info) {
   std::string wkb_type = "Unknown";
   if (info.Length() > 0 && info[0].IsNumber()) {
@@ -557,8 +538,7 @@ Napi::Value GeometryNapi::getName(const Napi::CallbackInfo &info) {
   return Napi::String::New(info.Env(), wkb_type);
 }
 Napi::Value GeometryNapi::getConstructor(const Napi::CallbackInfo &info) {
-  // TODO: return type-specific constructor functions
-  return info.Env().Null();
+  return info.Env().Null(); // TODO: return type-specific constructors
 }
 
 // ---------------------------------------------------------------------------

@@ -47,8 +47,8 @@ class SpatialReferenceNapi : public Napi::ObjectWrap<SpatialReferenceNapi> {
   Napi::Value getAttrValue(const Napi::CallbackInfo &info);
   Napi::Value validate(const Napi::CallbackInfo &info);
 
-  // Async
-  GDAL_ASYNCABLE_DECLARE_NAPI(fromUserInput);
+  // Async static
+  static Napi::Value fromUserInput(const Napi::CallbackInfo &info);
 
   // Static factories
   static Napi::Value fromWKT(const Napi::CallbackInfo &info);

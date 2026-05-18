@@ -59,13 +59,12 @@ class GeometryNapi : public Napi::ObjectWrap<GeometryNapi>,
   GDAL_ASYNCABLE_DECLARE_NAPI(flattenTo2D);
 
   // Static async constructors
-  GDAL_ASYNCABLE_DECLARE_NAPI(create);
-  GDAL_ASYNCABLE_DECLARE_NAPI(createFromWkt);
-  GDAL_ASYNCABLE_DECLARE_NAPI(createFromWkb);
-  GDAL_ASYNCABLE_DECLARE_NAPI(createFromGeoJson);
+  static Napi::Value createFromWkt(const Napi::CallbackInfo &info);
+  static Napi::Value createFromWkb(const Napi::CallbackInfo &info);
+  static Napi::Value createFromGeoJson(const Napi::CallbackInfo &info);
 
-  Napi::Value getName(const Napi::CallbackInfo &info);
-  Napi::Value getConstructor(const Napi::CallbackInfo &info);
+  static Napi::Value getName(const Napi::CallbackInfo &info);
+  static Napi::Value getConstructor(const Napi::CallbackInfo &info);
 
   // Getters
   Napi::Value srsGetter(const Napi::CallbackInfo &info);

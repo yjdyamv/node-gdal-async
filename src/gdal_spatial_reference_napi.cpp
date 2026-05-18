@@ -110,6 +110,19 @@ Napi::Object SpatialReferenceNapi::Init(Napi::Env env, Napi::Object exports) {
     });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
+
+  // Static factory methods
+  func.Set("fromWKT", Napi::Function::New(env, fromWKT, "fromWKT"));
+  func.Set("fromProj4", Napi::Function::New(env, fromProj4, "fromProj4"));
+  func.Set("fromEPSG", Napi::Function::New(env, fromEPSG, "fromEPSG"));
+  func.Set("fromEPSGA", Napi::Function::New(env, fromEPSGA, "fromEPSGA"));
+  func.Set("fromESRI", Napi::Function::New(env, fromESRI, "fromESRI"));
+  func.Set("fromWMSAUTO", Napi::Function::New(env, fromWMSAUTO, "fromWMSAUTO"));
+  func.Set("fromXML", Napi::Function::New(env, fromXML, "fromXML"));
+  func.Set("fromURN", Napi::Function::New(env, fromURN, "fromURN"));
+  func.Set("fromMICoordSys", Napi::Function::New(env, fromMICoordSys, "fromMICoordSys"));
+  func.Set("fromUserInput", Napi::Function::New(env, fromUserInput, "fromUserInput"));
+
   exports.Set("SpatialReferenceNapi", func);
   return exports;
 }
@@ -340,9 +353,8 @@ Napi::Value SpatialReferenceNapi::fromMICoordSys(const Napi::CallbackInfo &info)
 }
 
 // ---------------------------------------------------------------------------
-// fromUserInput (async)
-// ---------------------------------------------------------------------------
-GDAL_ASYNCABLE_DEFINE_NAPI(SpatialReferenceNapi, fromUserInput) {
+// fromUserInput (async, static)
+Napi::Value SpatialReferenceNapi::fromUserInput(const Napi::CallbackInfo &info) {
   std::string input;
   NAPI_ARG_STR(0, "input", input);
 
@@ -356,7 +368,13 @@ GDAL_ASYNCABLE_DEFINE_NAPI(SpatialReferenceNapi, fromUserInput) {
   job.rval = [](Napi::Env env, OGRSpatialReference *srs) -> Napi::Value {
     return SpatialReferenceNapi::New(env, srs, true);
   };
-  return job.run(info, async, 1);
+  // Sync only for now; callback-based async via GDALAsyncableJobNapi
+  try {
+    OGRSpatialReference *srs = job.main();
+    return job.rval(info.Env(), srs);
+  } catch (const char *e) { Napi::Error::New(info.Env(), e).ThrowAsJavaScriptException(); }
+  catch (const std::exception &e) { Napi::Error::New(info.Env(), e.what()).ThrowAsJavaScriptException(); }
+  return info.Env().Undefined();
 }
 
 } // namespace node_gdal
