@@ -91,8 +91,6 @@
     "@mapbox/node-pre-gyp": "^2.0.0",
     "@petamoriken/float16": "^3.9.2",
     "cmake-js": "^7.3.0",
-    "nan": "^2.23.0",
-    "node-addon-api": "^8.3.0",
     "xmlbuilder2": "^4.0.0",
     "yatag": "^1.2.0"
   },
@@ -128,6 +126,8 @@
     "gh-pages": "^6.1.1",
     "globals": "^17.0.0",
     "mocha": "^11.0.1",
+    "nan": "^2.23.0",
+    "node-addon-api": "^8.3.0",
     "semver": "^7.3.5",
     "tsconfig-paths": "^4.0.0",
     "tsx": "^4.20.5",

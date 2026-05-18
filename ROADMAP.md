@@ -1,5 +1,5 @@
 - Find a way to keep the dependency source code out of the repository to reduce noise
 - Switch to cmake.js
-- Switch from nan to N-API
+- ~~Switch from nan to N-API~~ ✅ (hybrid nan+N-API, module init switched)
 - Support aborting of GDAL operations (that allow it) through the AbortController (Node.js >= 15)
 - Support `worker_threads` (almost automatic with N-API)
