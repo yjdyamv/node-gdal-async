@@ -118,6 +118,7 @@ set(SOURCES
   src/geometry/gdal_multicurve.cpp
   src/geometry/gdal_multipolygon.cpp
   src/gdal_layer.cpp
+  src/gdal_layer_napi.cpp
   src/gdal_coordinate_transformation.cpp
   src/gdal_coordinate_transformation_napi.cpp
   src/gdal_spatial_reference.cpp

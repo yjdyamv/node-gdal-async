@@ -37,6 +37,7 @@
 #include "geometry/gdal_geometrycollection.hpp"
 #include "geometry/gdal_geometrycollection_napi.hpp"
 #include "gdal_layer.hpp"
+#include "gdal_layer_napi.hpp"
 #include "geometry/gdal_simplecurve.hpp"
 #include "geometry/gdal_simplecurve_napi.hpp"
 #include "geometry/gdal_linearring.hpp"
