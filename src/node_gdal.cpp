@@ -22,6 +22,7 @@
 #include "gdal_mdarray.hpp"
 #include "gdal_dimension.hpp"
 #include "gdal_attribute.hpp"
+#include "gdal_multi_napi.hpp"
 #include "gdal_warper.hpp"
 #include "gdal_utils.hpp"
 #include "gdal_algebra.hpp"

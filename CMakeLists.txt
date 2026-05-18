@@ -90,6 +90,7 @@ set(SOURCES
   src/gdal_mdarray.cpp
   src/gdal_dimension.cpp
   src/gdal_attribute.cpp
+  src/gdal_multi_napi.cpp
   src/gdal_majorobject.cpp
   src/gdal_feature.cpp
   src/gdal_feature_napi.cpp
