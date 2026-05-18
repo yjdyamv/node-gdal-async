@@ -85,6 +85,7 @@ set(SOURCES
   src/gdal_driver.cpp
   src/gdal_driver_napi.cpp
   src/gdal_rasterband.cpp
+  src/gdal_rasterband_napi.cpp
   src/gdal_group.cpp
   src/gdal_mdarray.cpp
   src/gdal_dimension.cpp

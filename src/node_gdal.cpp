@@ -17,6 +17,7 @@
 #include "gdal_driver.hpp"
 #include "gdal_driver_napi.hpp" // Phase 0 N-API prototype
 #include "gdal_rasterband.hpp"
+#include "gdal_rasterband_napi.hpp"
 #include "gdal_group.hpp"
 #include "gdal_mdarray.hpp"
 #include "gdal_dimension.hpp"
