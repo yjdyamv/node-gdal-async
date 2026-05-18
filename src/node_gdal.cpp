@@ -13,6 +13,7 @@
 #include "gdal_algorithms.hpp"
 #include "gdal_common.hpp"
 #include "gdal_dataset.hpp"
+#include "gdal_dataset_napi.hpp"
 #include "gdal_driver.hpp"
 #include "gdal_driver_napi.hpp" // Phase 0 N-API prototype
 #include "gdal_rasterband.hpp"

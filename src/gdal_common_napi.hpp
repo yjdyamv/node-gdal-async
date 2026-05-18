@@ -273,6 +273,40 @@ inline Napi::Value SafeStringNapi(Napi::Env env, const char *data) {
     }                                                                                           \
   } while (0)
 
+#define NAPI_UNWRAP_CHECK(type, obj, var)                                                     \
+  do {                                                                                         \
+    if (!obj.IsObject() || obj.IsNull() ||                                                     \
+        !obj.As<Napi::Object>().InstanceOf(type::constructor.Value())) {                       \
+      Napi::TypeError::New(obj.Env(), "Object must be a " #type " object")                     \
+        .ThrowAsJavaScriptException();                                                         \
+      return info.Env().Undefined();                                                            \
+    }                                                                                           \
+    type *var = type::Unwrap(obj.As<Napi::Object>());                                           \
+    if (!var || !var->isAlive()) {                                                              \
+      Napi::Error::New(obj.Env(), #type " object has already been destroyed")                  \
+        .ThrowAsJavaScriptException();                                                         \
+      return info.Env().Undefined();                                                            \
+    }                                                                                           \
+  } while (0)
+
+// Shorthand: unwrap this from info, check alive (returns value)
+#define NAPI_UNWRAP_THIS(type, var)                                                            \
+  type *var = type::Unwrap(info.This().As<Napi::Object>());                                    \
+  if (!var || !var->isAlive()) {                                                               \
+    Napi::Error::New(info.Env(), #type " object has already been destroyed")                    \
+      .ThrowAsJavaScriptException();                                                           \
+    return info.Env().Undefined();                                                             \
+  }
+
+// Shorthand: unwrap this from info, check alive (void return, for setters)
+#define NAPI_UNWRAP_THIS_VOID(type, var)                                                       \
+  type *var = type::Unwrap(info.This().As<Napi::Object>());                                    \
+  if (!var || !var->isAlive()) {                                                               \
+    Napi::Error::New(info.Env(), #type " object has already been destroyed")                    \
+      .ThrowAsJavaScriptException();                                                           \
+    return;                                                                                    \
+  }
+
 // ---------------------------------------------------------------------------
 // Object property extraction
 // ---------------------------------------------------------------------------

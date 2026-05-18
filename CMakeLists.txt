@@ -81,6 +81,7 @@ set(SOURCES
   src/async.cpp
   src/gdal_common.cpp
   src/gdal_dataset.cpp
+  src/gdal_dataset_napi.cpp
   src/gdal_driver.cpp
   src/gdal_driver_napi.cpp
   src/gdal_rasterband.cpp
