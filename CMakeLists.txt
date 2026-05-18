@@ -121,6 +121,7 @@ set(SOURCES
   src/gdal_coordinate_transformation.cpp
   src/gdal_coordinate_transformation_napi.cpp
   src/gdal_spatial_reference.cpp
+  src/gdal_spatial_reference_napi.cpp
   src/gdal_warper.cpp
   src/gdal_algorithms.cpp
   src/gdal_algebra.cpp

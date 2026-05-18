@@ -56,6 +56,7 @@
 #include "geometry/gdal_polygon.hpp"
 #include "geometry/gdal_polygon_napi.hpp"
 #include "gdal_spatial_reference.hpp"
+#include "gdal_spatial_reference_napi.hpp"
 #include "gdal_memfile.hpp"
 #include "gdal_fs.hpp"
 
