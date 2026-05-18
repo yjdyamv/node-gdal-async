@@ -149,6 +149,7 @@ set(SOURCES
   src/collections/rasterband_overviews.cpp
   src/collections/rasterband_pixels.cpp
   src/collections/gdal_drivers.cpp
+  src/collections/gdal_drivers_napi.cpp
   src/collections/colortable.cpp
   src/collections/colortable_napi.cpp
 )

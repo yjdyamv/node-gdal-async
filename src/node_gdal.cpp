@@ -76,6 +76,7 @@
 #include "collections/feature_defn_fields.hpp"
 #include "collections/feature_fields.hpp"
 #include "collections/gdal_drivers.hpp"
+#include "collections/gdal_drivers_napi.hpp"
 #include "collections/geometry_collection_children.hpp"
 #include "collections/layer_features.hpp"
 #include "collections/layer_fields.hpp"
