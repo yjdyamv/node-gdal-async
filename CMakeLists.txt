@@ -132,6 +132,7 @@ set(SOURCES
   src/gdal_warper.cpp
   src/gdal_algorithms.cpp
   src/gdal_algebra.cpp
+  src/gdal_algebra_napi.cpp
   src/gdal_memfile.cpp
   src/gdal_utils.cpp
   src/gdal_fs.cpp

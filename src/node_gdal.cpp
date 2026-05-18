@@ -29,6 +29,7 @@
 #include "gdal_warper.hpp"
 #include "gdal_utils.hpp"
 #include "gdal_algebra.hpp"
+#include "gdal_algebra_napi.hpp"
 
 #include "gdal_coordinate_transformation.hpp"
 #include "gdal_coordinate_transformation_napi.hpp"
@@ -1934,6 +1935,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::ArrayDimensionsNapi::Init(napiEnv, exports);
   node_gdal::ArrayAttributesNapi::Init(napiEnv, exports);
   node_gdal::VsiNapi::Init(napiEnv, exports);
+  node_gdal::AlgebraNapi::Init(napiEnv, exports);
 
   return exports;
 }
