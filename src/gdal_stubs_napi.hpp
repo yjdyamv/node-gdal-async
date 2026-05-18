@@ -3,11 +3,54 @@
 
 #include <napi.h>
 #include <gdal_priv.h>
+#include <ogrsf_frmts.h>
 #include "gdal_common_napi.hpp"
+#include "async_napi.hpp"
 
 namespace node_gdal {
 
-// Remaining collection/utility stubs for module init registration chain
+// ---- RasterBandPixelsNapi ----
+class RasterBandPixelsNapi : public Napi::ObjectWrap<RasterBandPixelsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  RasterBandPixelsNapi(const Napi::CallbackInfo &i);
+  Napi::Value getPixel(const Napi::CallbackInfo &i);
+  Napi::Value setPixel(const Napi::CallbackInfo &i);
+  GDAL_ASYNCABLE_DECLARE_NAPI(read);
+  GDAL_ASYNCABLE_DECLARE_NAPI(write);
+    private:
+  GDALRasterBand *band_;
+};
+
+// ---- FeatureFieldsNapi ----
+class FeatureFieldsNapi : public Napi::ObjectWrap<FeatureFieldsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  FeatureFieldsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value set(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private:
+  OGRFeature *feat_;
+};
+
+// ---- LayerFieldsNapi ----
+class LayerFieldsNapi : public Napi::ObjectWrap<LayerFieldsNapi> {
+    public:
+  static Napi::FunctionReference constructor;
+  static Napi::Object Init(Napi::Env e, Napi::Object o);
+  LayerFieldsNapi(const Napi::CallbackInfo &i);
+  Napi::Value get(const Napi::CallbackInfo &i);
+  Napi::Value count(const Napi::CallbackInfo &i);
+  Napi::Value getNames(const Napi::CallbackInfo &i);
+    private:
+  OGRLayer *layer_;
+};
+
+// ---- Remaining lightweight stubs ----
 #define DECLARE_STUB_NAPI(klass)                     \
   class klass : public Napi::ObjectWrap<klass> {     \
     public:                                          \
@@ -16,10 +59,7 @@ namespace node_gdal {
     klass(const Napi::CallbackInfo &i) : Napi::ObjectWrap<klass>(i) {} \
   }
 
-DECLARE_STUB_NAPI(RasterBandPixelsNapi);
 DECLARE_STUB_NAPI(RasterBandOverviewsNapi);
-DECLARE_STUB_NAPI(LayerFieldsNapi);
-DECLARE_STUB_NAPI(FeatureFieldsNapi);
 DECLARE_STUB_NAPI(FeatureDefnFieldsNapi);
 DECLARE_STUB_NAPI(GeometryCollectionChildrenNapi);
 DECLARE_STUB_NAPI(PolygonRingsNapi);
