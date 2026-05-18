@@ -88,6 +88,7 @@
 #include "collections/rasterband_pixels.hpp"
 #include "collections/colortable.hpp"
 #include "collections/colortable_napi.hpp"
+#include "collections/collections_napi.hpp"
 
 // std
 #include <sstream>
