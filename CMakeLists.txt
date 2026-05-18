@@ -135,6 +135,8 @@ set(SOURCES
   src/collections/dataset_layers.cpp
   src/collections/layer_features.cpp
   src/collections/collections_napi.cpp
+  src/gdal_utils_napi.cpp
+  src/gdal_stubs_napi.cpp
   src/collections/layer_fields.cpp
   src/collections/group_groups.cpp
   src/collections/group_arrays.cpp
