@@ -134,6 +134,7 @@ set(SOURCES
   src/gdal_algebra.cpp
   src/gdal_algebra_napi.cpp
   src/gdal_memfile.cpp
+  src/gdal_memfile_napi.cpp
   src/gdal_utils.cpp
   src/gdal_fs.cpp
   src/collections/dataset_bands.cpp

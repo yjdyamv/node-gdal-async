@@ -66,6 +66,7 @@
 #include "gdal_spatial_reference.hpp"
 #include "gdal_spatial_reference_napi.hpp"
 #include "gdal_memfile.hpp"
+#include "gdal_memfile_napi.hpp"
 #include "gdal_fs.hpp"
 
 #include "utils/field_types.hpp"
@@ -1936,6 +1937,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::ArrayAttributesNapi::Init(napiEnv, exports);
   node_gdal::VsiNapi::Init(napiEnv, exports);
   node_gdal::AlgebraNapi::Init(napiEnv, exports);
+  node_gdal::MemfileNapi::Init(napiEnv, exports);
 
   return exports;
 }
