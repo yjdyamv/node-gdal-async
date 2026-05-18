@@ -19,16 +19,6 @@ Napi::Object GeometryNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "GeometryNapi",
     {
-      // Static methods
-      StaticMethod("fromWKT", &GeometryNapi::createFromWkt),
-      StaticMethod("fromWKTAsync", &GeometryNapi::createFromWktAsync),
-      StaticMethod("fromWKB", &GeometryNapi::createFromWkb),
-      StaticMethod("fromWKBAsync", &GeometryNapi::createFromWkbAsync),
-      StaticMethod("fromGeoJson", &GeometryNapi::createFromGeoJson),
-      StaticMethod("fromGeoJsonAsync", &GeometryNapi::createFromGeoJsonAsync),
-      StaticMethod("getName", &GeometryNapi::getName),
-      StaticMethod("getConstructor", &GeometryNapi::getConstructor),
-      // Instance methods
       InstanceMethod("toString", &GeometryNapi::toString),
       InstanceMethod("isEmpty", &GeometryNapi::isEmpty),
       InstanceMethod("isEmptyAsync", &GeometryNapi::isEmptyAsync),
@@ -73,8 +63,6 @@ Napi::Object GeometryNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("differenceAsync", &GeometryNapi::differenceAsync),
       InstanceMethod("symDifference", &GeometryNapi::symDifference),
       InstanceMethod("symDifferenceAsync", &GeometryNapi::symDifferenceAsync),
-      InstanceMethod("centroid", &GeometryNapi::centroid),
-      InstanceMethod("centroidAsync", &GeometryNapi::centroidAsync),
       InstanceMethod("simplify", &GeometryNapi::simplify),
       InstanceMethod("simplifyAsync", &GeometryNapi::simplifyAsync),
       InstanceAccessor<&GeometryNapi::srsGetter, &GeometryNapi::srsSetter>("srs"),
@@ -155,7 +143,7 @@ Napi::Value GeometryNapi::New(Napi::Env env, OGRGeometry *geom, bool owned) {
 static auto GeoBoolPred(Napi::Env, GeometryNapi *self, GeometryNapi *other,
                         OGRBoolean (OGRGeometry::*fn)(const OGRGeometry *) const) {
   GDALAsyncableJobNapi<int> job;
-  job.main = [self, other, fn]() { return (self->this_->*fn)(other->this_); };
+  job.main = [self, other, fn]() { return (self->get()->*fn)(other->get()); };
   job.rval = [](Napi::Env env, int r) -> Napi::Value { return Napi::Boolean::New(env, r); };
   return job;
 }
@@ -285,7 +273,7 @@ GEO_BOOL_PRED(overlaps, Overlaps)
 
 GEO_UNARY(boundary, Boundary)
 GEO_UNARY(convexHull, ConvexHull)
-GEO_UNARY(centroid, Centroid)
+// centroid has different signature (OGRErr Centroid(OGRPoint*)), implemented below
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, getEnvelope) {
   NAPI_UNWRAP_THIS(GeometryNapi, self);
   GDALAsyncableJobNapi<OGREnvelope *> job;
@@ -474,7 +462,7 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToKML) {
   NAPI_UNWRAP_THIS(GeometryNapi, self);
   GDALAsyncableJobNapi<char *> job;
   job.main = [self]() {
-    return self->this_->exportToKML(nullptr);
+    return self->this_->exportToKML();
   };
   job.rval = [](Napi::Env env, char *kml) -> Napi::Value {
     if (!kml) return env.Null();
@@ -488,7 +476,7 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToGML) {
   NAPI_UNWRAP_THIS(GeometryNapi, self);
   GDALAsyncableJobNapi<char *> job;
   job.main = [self]() {
-    return self->this_->exportToGML(nullptr);
+    return self->this_->exportToGML();
   };
   job.rval = [](Napi::Env env, char *gml) -> Napi::Value {
     if (!gml) return env.Null();
@@ -578,7 +566,7 @@ Napi::Value GeometryNapi::getConstructor(const Napi::CallbackInfo &info) {
 // ---------------------------------------------------------------------------
 Napi::Value GeometryNapi::srsGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(GeometryNapi, self);
-  OGRSpatialReference *srs = self->this_->getSpatialReference();
+  const OGRSpatialReference *srs = self->this_->getSpatialReference();
   if (!srs) return info.Env().Null();
   // TODO: return SpatialReferenceNapi when ported
   return info.Env().Null();

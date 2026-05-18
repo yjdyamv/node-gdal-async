@@ -51,7 +51,6 @@ class GeometryNapi : public Napi::ObjectWrap<GeometryNapi>,
   GDAL_ASYNCABLE_DECLARE_NAPI(unionGeometry);
   GDAL_ASYNCABLE_DECLARE_NAPI(difference);
   GDAL_ASYNCABLE_DECLARE_NAPI(symDifference);
-  GDAL_ASYNCABLE_DECLARE_NAPI(centroid);
   GDAL_ASYNCABLE_DECLARE_NAPI(simplify);
   GDAL_ASYNCABLE_DECLARE_NAPI(simplifyPreserveTopology);
   GDAL_ASYNCABLE_DECLARE_NAPI(swapXY);

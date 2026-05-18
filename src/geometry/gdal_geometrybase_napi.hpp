@@ -23,14 +23,15 @@ class GeometryBaseNapi {
     return this_ != nullptr;
   }
 
-    protected:
-  GeometryBaseNapi();
-  ~GeometryBaseNapi();
-
+  // Geometry state – public so free functions can access
   OGRT *this_;
   bool owned_;
   int size_;
   uv_sem_t *async_lock;
+
+    protected:
+  GeometryBaseNapi();
+  ~GeometryBaseNapi();
 };
 
 // ---------------------------------------------------------------------------

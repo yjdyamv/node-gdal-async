@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 project(gdal-async LANGUAGES CXX)
 
+# Enable N-API module support
+set(CMAKE_JS_NODE_API ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
@@ -99,6 +102,7 @@ set(SOURCES
   src/gdal_field_defn.cpp
   src/gdal_field_defn_napi.cpp
   src/geometry/gdal_geometry.cpp
+  src/geometry/gdal_geometry_napi.cpp
   src/geometry/gdal_point.cpp
   src/geometry/gdal_point_napi.cpp
   src/geometry/gdal_simplecurve.cpp
