@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 project(gdal-async LANGUAGES CXX)
 
+# Enable N-API module support
+set(CMAKE_JS_NODE_API ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
@@ -20,7 +23,7 @@ execute_process(
   OUTPUT_VARIABLE NODE_ADDON_API_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-# --- nan (still needed until Item 3 N-API migration) ---
+# --- nan (still needed during transition from N-API migration) ---
 execute_process(
   COMMAND node -p "require('nan')"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -81,41 +84,65 @@ set(SOURCES
   src/async.cpp
   src/gdal_common.cpp
   src/gdal_dataset.cpp
+  src/gdal_dataset_napi.cpp
   src/gdal_driver.cpp
+  src/gdal_driver_napi.cpp
   src/gdal_rasterband.cpp
+  src/gdal_rasterband_napi.cpp
   src/gdal_group.cpp
   src/gdal_mdarray.cpp
   src/gdal_dimension.cpp
   src/gdal_attribute.cpp
+  src/gdal_multi_napi.cpp
   src/gdal_majorobject.cpp
   src/gdal_feature.cpp
+  src/gdal_feature_napi.cpp
   src/gdal_feature_defn.cpp
+  src/gdal_feature_defn_napi.cpp
   src/gdal_field_defn.cpp
+  src/gdal_field_defn_napi.cpp
   src/geometry/gdal_geometry.cpp
+  src/geometry/gdal_geometry_napi.cpp
   src/geometry/gdal_point.cpp
+  src/geometry/gdal_point_napi.cpp
   src/geometry/gdal_simplecurve.cpp
+  src/geometry/gdal_simplecurve_napi.cpp
   src/geometry/gdal_compoundcurve.cpp
+  src/geometry/gdal_compoundcurve_napi.cpp
   src/geometry/gdal_linestring.cpp
+  src/geometry/gdal_linestring_napi.cpp
   src/geometry/gdal_circularstring.cpp
+  src/geometry/gdal_circularstring_napi.cpp
   src/geometry/gdal_linearring.cpp
+  src/geometry/gdal_linearring_napi.cpp
   src/geometry/gdal_polygon.cpp
+  src/geometry/gdal_polygon_napi.cpp
   src/geometry/gdal_geometrycollection.cpp
+  src/geometry/gdal_geometrycollection_napi.cpp
   src/geometry/gdal_multipoint.cpp
   src/geometry/gdal_multilinestring.cpp
   src/geometry/gdal_multicurve.cpp
   src/geometry/gdal_multipolygon.cpp
   src/gdal_layer.cpp
+  src/gdal_layer_napi.cpp
   src/gdal_coordinate_transformation.cpp
+  src/gdal_coordinate_transformation_napi.cpp
   src/gdal_spatial_reference.cpp
+  src/gdal_spatial_reference_napi.cpp
   src/gdal_warper.cpp
   src/gdal_algorithms.cpp
   src/gdal_algebra.cpp
+  src/gdal_algebra_napi.cpp
   src/gdal_memfile.cpp
+  src/gdal_memfile_napi.cpp
   src/gdal_utils.cpp
   src/gdal_fs.cpp
   src/collections/dataset_bands.cpp
   src/collections/dataset_layers.cpp
   src/collections/layer_features.cpp
+  src/collections/collections_napi.cpp
+  src/gdal_utils_napi.cpp
+  src/gdal_stubs_napi.cpp
   src/collections/layer_fields.cpp
   src/collections/group_groups.cpp
   src/collections/group_arrays.cpp
@@ -132,11 +159,18 @@ set(SOURCES
   src/collections/rasterband_overviews.cpp
   src/collections/rasterband_pixels.cpp
   src/collections/gdal_drivers.cpp
+  src/collections/gdal_drivers_napi.cpp
   src/collections/colortable.cpp
+  src/collections/colortable_napi.cpp
 )
 
 # --- Build the addon ---
 add_library(gdal SHARED ${SOURCES})
+
+target_include_directories(gdal PRIVATE ${NODE_ADDON_API_DIR})
+if(MSVC)
+  target_compile_options(gdal PRIVATE "/I${NODE_ADDON_API_DIR}")
+endif()
 
 set_target_properties(gdal PROPERTIES
   PREFIX ""

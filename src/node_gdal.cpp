@@ -6,6 +6,9 @@
 // nan
 #include "nan-wrapper.h"
 
+// napi (for module init switch)
+#include <napi.h>
+
 // gdal
 #include <gdal.h>
 
@@ -13,36 +16,57 @@
 #include "gdal_algorithms.hpp"
 #include "gdal_common.hpp"
 #include "gdal_dataset.hpp"
+#include "gdal_dataset_napi.hpp"
 #include "gdal_driver.hpp"
+#include "gdal_driver_napi.hpp" // Phase 0 N-API prototype
 #include "gdal_rasterband.hpp"
+#include "gdal_rasterband_napi.hpp"
 #include "gdal_group.hpp"
 #include "gdal_mdarray.hpp"
 #include "gdal_dimension.hpp"
 #include "gdal_attribute.hpp"
+#include "gdal_multi_napi.hpp"
 #include "gdal_warper.hpp"
 #include "gdal_utils.hpp"
 #include "gdal_algebra.hpp"
+#include "gdal_algebra_napi.hpp"
 
 #include "gdal_coordinate_transformation.hpp"
+#include "gdal_coordinate_transformation_napi.hpp"
 #include "gdal_feature.hpp"
+#include "gdal_feature_napi.hpp"
 #include "gdal_feature_defn.hpp"
+#include "gdal_feature_defn_napi.hpp"
 #include "gdal_field_defn.hpp"
+#include "gdal_field_defn_napi.hpp"
 #include "geometry/gdal_geometry.hpp"
 #include "geometry/gdal_geometrycollection.hpp"
+#include "geometry/gdal_geometrycollection_napi.hpp"
+#include "geometry/gdal_geometry_napi.hpp"
 #include "gdal_layer.hpp"
+#include "gdal_layer_napi.hpp"
 #include "geometry/gdal_simplecurve.hpp"
+#include "geometry/gdal_simplecurve_napi.hpp"
 #include "geometry/gdal_linearring.hpp"
+#include "geometry/gdal_linearring_napi.hpp"
 #include "geometry/gdal_linestring.hpp"
+#include "geometry/gdal_linestring_napi.hpp"
 #include "geometry/gdal_circularstring.hpp"
+#include "geometry/gdal_circularstring_napi.hpp"
 #include "geometry/gdal_compoundcurve.hpp"
+#include "geometry/gdal_compoundcurve_napi.hpp"
 #include "geometry/gdal_multilinestring.hpp"
 #include "geometry/gdal_multicurve.hpp"
 #include "geometry/gdal_multipoint.hpp"
 #include "geometry/gdal_multipolygon.hpp"
 #include "geometry/gdal_point.hpp"
+#include "geometry/gdal_point_napi.hpp"
 #include "geometry/gdal_polygon.hpp"
+#include "geometry/gdal_polygon_napi.hpp"
 #include "gdal_spatial_reference.hpp"
+#include "gdal_spatial_reference_napi.hpp"
 #include "gdal_memfile.hpp"
+#include "gdal_memfile_napi.hpp"
 #include "gdal_fs.hpp"
 
 #include "utils/field_types.hpp"
@@ -59,6 +83,7 @@
 #include "collections/feature_defn_fields.hpp"
 #include "collections/feature_fields.hpp"
 #include "collections/gdal_drivers.hpp"
+#include "collections/gdal_drivers_napi.hpp"
 #include "collections/geometry_collection_children.hpp"
 #include "collections/layer_features.hpp"
 #include "collections/layer_fields.hpp"
@@ -68,6 +93,10 @@
 #include "collections/rasterband_overviews.hpp"
 #include "collections/rasterband_pixels.hpp"
 #include "collections/colortable.hpp"
+#include "collections/colortable_napi.hpp"
+#include "collections/collections_napi.hpp"
+#include "gdal_utils_napi.hpp"
+#include "gdal_stubs_napi.hpp"
 
 // std
 #include <sstream>
@@ -344,7 +373,7 @@ void Cleanup(void *) {
   object_store.cleanup();
 }
 
-static void Init(Local<Object> target, Local<v8::Value>, void *) {
+static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   static bool initialized = false;
   if (initialized) {
     Nan::ThrowError("gdal-async does not yet support multiple instances per V8 isolate");
@@ -368,6 +397,8 @@ static void Init(Local<Object> target, Local<v8::Value>, void *) {
 #endif
 
   Driver::Initialize(target);
+  // TODO Phase 7: DriverNapi::Init(env, target) replaces Driver::Initialize
+  // N-API bridge will be activated when module switches to NODE_API_MODULE
   Dataset::Initialize(target);
   RasterBand::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
@@ -1847,6 +1878,121 @@ static void Init(Local<Object> target, Local<v8::Value>, void *) {
 }
 }
 
+// N-API public init – bridges nan registrations + registers N-API classes
+Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
+  napi_value nv = static_cast<napi_value>(exports);
+  v8::Local<v8::Object> target;
+  memcpy(&target, &nv, sizeof(nv));
+
+  // N-API top-level module functions
+  exports.Set("open", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string path, mode = "r";
+    NAPI_ARG_STR(0, "path", path);
+    NAPI_ARG_OPT_STR(1, "mode", mode);
+    unsigned int flags = GDAL_OF_VERBOSE_ERROR;
+    for (size_t i = 0; i < mode.length(); i++) {
+      if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
+      else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    }
+    GDALDataset *ds = (GDALDataset *)GDALOpenEx(path.c_str(), flags, nullptr, nullptr, nullptr);
+    if (!ds) NAPI_THROW_LAST_CPLERR;
+    return DatasetNapi::New(info.Env(), ds);
+  }, "open"));
+  exports.Set("setConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string name; NAPI_ARG_STR(0, "name", name);
+    if (info.Length() < 2) { Napi::Error::New(info.Env(), "value required").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    if (info[1].IsString()) CPLSetConfigOption(name.c_str(), info[1].As<Napi::String>().Utf8Value().c_str());
+    else if (info[1].IsNull() || info[1].IsUndefined()) CPLSetConfigOption(name.c_str(), nullptr);
+    else { Napi::Error::New(info.Env(), "value must be string or null").ThrowAsJavaScriptException(); }
+    return info.Env().Undefined();
+  }, "setConfigOption"));
+  exports.Set("getConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string name; NAPI_ARG_STR(0, "name", name);
+    return SafeStringNapi(info.Env(), CPLGetConfigOption(name.c_str(), nullptr));
+  }, "getConfigOption"));
+  exports.Set("decToDMS", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    double angle; std::string axis; int precision = 2;
+    NAPI_ARG_DOUBLE(0, "angle", angle); NAPI_ARG_STR(1, "axis", axis);
+    NAPI_ARG_INT_OPT(2, "precision", precision);
+    if (!axis.empty()) axis[0] = (char)toupper(axis[0]);
+    if (axis != "Lat" && axis != "Long") { Napi::Error::New(info.Env(), "Axis must be 'lat' or 'long'").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    return SafeStringNapi(info.Env(), GDALDecToDMS(angle, axis.c_str(), precision));
+  }, "decToDMS"));
+  exports.Set("setPROJSearchPath", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string path; NAPI_ARG_STR(0, "path", path);
+    const char *paths[] = {path.c_str(), nullptr};
+    OSRSetPROJSearchPaths(paths);
+    return info.Env().Undefined();
+  }, "setPROJSearchPath"));
+  exports.Set("_triggerCPLError", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    CPLError(CE_Failure, CPLE_AppDefined, "Mock error");
+    return info.Env().Undefined();
+  }, "_triggerCPLError"));
+
+  InitNan(target, v8::Local<v8::Value>(), nullptr);
+
+  node_gdal::DriverNapi::Init(napiEnv, exports);
+  node_gdal::DatasetNapi::Init(napiEnv, exports);
+  node_gdal::RasterBandNapi::Init(napiEnv, exports);
+  node_gdal::LayerNapi::Init(napiEnv, exports);
+  node_gdal::FeatureNapi::Init(napiEnv, exports);
+  node_gdal::FeatureDefnNapi::Init(napiEnv, exports);
+  node_gdal::FieldDefnNapi::Init(napiEnv, exports);
+  node_gdal::SpatialReferenceNapi::Init(napiEnv, exports);
+  node_gdal::CoordinateTransformationNapi::Init(napiEnv, exports);
+  node_gdal::ColorTableNapi::Init(napiEnv, exports);
+  node_gdal::GDALDriversNapi::Init(napiEnv, exports);
+  node_gdal::PointNapi::Init(napiEnv, exports);
+  node_gdal::SimpleCurveNapi::Init(napiEnv, exports);
+  node_gdal::LineStringNapi::Init(napiEnv, exports);
+  node_gdal::LinearRingNapi::Init(napiEnv, exports);
+  node_gdal::PolygonNapi::Init(napiEnv, exports);
+  node_gdal::CircularStringNapi::Init(napiEnv, exports);
+  node_gdal::CompoundCurveNapi::Init(napiEnv, exports);
+  node_gdal::GeometryCollectionNapi::Init(napiEnv, exports);
+  node_gdal::MultiPointNapi::Init(napiEnv, exports);
+  node_gdal::MultiLineStringNapi::Init(napiEnv, exports);
+  node_gdal::MultiPolygonNapi::Init(napiEnv, exports);
+  node_gdal::MultiCurveNapi::Init(napiEnv, exports);
+  node_gdal::GeometryNapi::Init(napiEnv, exports);
+  node_gdal::GroupNapi::Init(napiEnv, exports);
+  node_gdal::MDArrayNapi::Init(napiEnv, exports);
+  node_gdal::DimensionNapi::Init(napiEnv, exports);
+  node_gdal::AttributeNapi::Init(napiEnv, exports);
+  node_gdal::DatasetBandsNapi::Init(napiEnv, exports);
+  node_gdal::DatasetLayersNapi::Init(napiEnv, exports);
+  node_gdal::LayerFeaturesNapi::Init(napiEnv, exports);
+  node_gdal::WarperNapi::Init(napiEnv, exports);
+  node_gdal::AlgorithmsNapi::Init(napiEnv, exports);
+  node_gdal::UtilsNapi::Init(napiEnv, exports);
+  node_gdal::RasterBandPixelsNapi::Init(napiEnv, exports);
+  node_gdal::RasterBandOverviewsNapi::Init(napiEnv, exports);
+  node_gdal::LayerFieldsNapi::Init(napiEnv, exports);
+  node_gdal::FeatureFieldsNapi::Init(napiEnv, exports);
+  node_gdal::FeatureDefnFieldsNapi::Init(napiEnv, exports);
+  node_gdal::GeometryCollectionChildrenNapi::Init(napiEnv, exports);
+  node_gdal::PolygonRingsNapi::Init(napiEnv, exports);
+  node_gdal::LineStringPointsNapi::Init(napiEnv, exports);
+  node_gdal::CompoundCurveCurvesNapi::Init(napiEnv, exports);
+  node_gdal::GroupGroupsNapi::Init(napiEnv, exports);
+  node_gdal::GroupArraysNapi::Init(napiEnv, exports);
+  node_gdal::GroupAttributesNapi::Init(napiEnv, exports);
+  node_gdal::GroupDimensionsNapi::Init(napiEnv, exports);
+  node_gdal::ArrayDimensionsNapi::Init(napiEnv, exports);
+  node_gdal::ArrayAttributesNapi::Init(napiEnv, exports);
+  node_gdal::VsiNapi::Init(napiEnv, exports);
+  node_gdal::AlgebraNapi::Init(napiEnv, exports);
+  node_gdal::MemfileNapi::Init(napiEnv, exports);
+
+  return exports;
+}
+
 } // namespace node_gdal
 
-NODE_MODULE(NODE_GYP_MODULE_NAME, node_gdal::Init);
+// N-API registration wrapper
+static Napi::Object InitNapiWrapper(Napi::Env env, Napi::Object exports) {
+  return node_gdal::InitNapi(env, exports);
+}
+
+NODE_API_MODULE(gdal, InitNapiWrapper);
