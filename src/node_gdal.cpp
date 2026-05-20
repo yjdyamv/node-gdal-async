@@ -1932,7 +1932,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     return info.Env().Undefined();
   }, "_triggerCPLError"));
 
-  InitNan(target, v8::Local<v8::Value>(), nullptr);
+  // InitNan(target, v8::Local<v8::Value>(), nullptr); // replaced by N-API code below
 
   // --- N-API overrides for InitNan() functionality ---
   // These override NAN registrations with N-API equivalents.
