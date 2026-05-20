@@ -1,3 +1,4 @@
+#include "../gdal_stubs_napi.hpp"
 #include "gdal_feature_napi.hpp"
 #include "gdal_feature_defn_napi.hpp"
 
@@ -18,6 +19,7 @@ Napi::Object FeatureNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("setStyleString", &FeatureNapi::setStyleString),
       InstanceAccessor<&FeatureNapi::fidGetter, &FeatureNapi::fidSetter>("fid"),
       InstanceAccessor<&FeatureNapi::defnGetter>("defn"),
+      InstanceAccessor<&FeatureNapi::fieldsGetter>("fields"),
     });
 
   constructor = Napi::Persistent(func);
@@ -244,3 +246,11 @@ void FeatureNapi::fidSetter(const Napi::CallbackInfo &info, const Napi::Value &v
 }
 
 } // namespace node_gdal
+
+Napi::Value FeatureNapi::fieldsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(FeatureNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__fields")) { Napi::Value c = thiz.Get("__fields"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object f = FeatureFieldsNapi::constructor.New({Napi::External<OGRFeature>::New(info.Env(), self->this_)});
+  thiz.Set("__fields", f); return f;
+}

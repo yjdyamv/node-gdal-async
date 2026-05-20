@@ -1,3 +1,4 @@
+#include "../gdal_stubs_napi.hpp"
 #include "gdal_feature_defn_napi.hpp"
 
 namespace node_gdal {
@@ -16,6 +17,7 @@ Napi::Object FeatureDefnNapi::Init(Napi::Env env, Napi::Object exports) {
                         &FeatureDefnNapi::geomTypeSetter>("geomType"),
       InstanceAccessor<&FeatureDefnNapi::geomIgnoredGetter,
                         &FeatureDefnNapi::geomIgnoredSetter>("geomIgnored"),
+      InstanceAccessor<&FeatureDefnNapi::fieldsGetter>("fields"),
       InstanceAccessor<&FeatureDefnNapi::styleIgnoredGetter,
                         &FeatureDefnNapi::styleIgnoredSetter>("styleIgnored"),
     });
@@ -170,3 +172,11 @@ void FeatureDefnNapi::styleIgnoredSetter(const Napi::CallbackInfo &info, const N
 }
 
 } // namespace node_gdal
+
+Napi::Value FeatureDefnNapi::fieldsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(FeatureDefnNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__fields")) { Napi::Value c = thiz.Get("__fields"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object f = FeatureDefnFieldsNapi::constructor.New({Napi::External<OGRFeatureDefn>::New(info.Env(), self->this_)});
+  thiz.Set("__fields", f); return f;
+}
