@@ -1,4 +1,5 @@
 #include "gdal_spatial_reference_napi.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -180,8 +181,13 @@ Napi::Value SpatialReferenceNapi::New(Napi::Env env, OGRSpatialReference *srs, b
   Napi::EscapableHandleScope scope(env);
   if (!srs) return scope.Escape(env.Null());
   if (!owned) { srs = srs->Clone(); }
-  return scope.Escape(
-    constructor.New({Napi::External<OGRSpatialReference>::New(env, srs)}));
+  if (napi_obj_store_has<OGRSpatialReference *>(srs)) {
+    Napi::Object existing = napi_obj_store_get<OGRSpatialReference *>(env, srs);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<OGRSpatialReference>::New(env, srs)});
+  napi_obj_store_add<OGRSpatialReference *>(srs, obj);
+  return scope.Escape(obj);
 }
 
 // ---------------------------------------------------------------------------
