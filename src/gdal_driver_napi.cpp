@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include "gdal_driver_napi.hpp"
+#include "gdal_dataset_napi.hpp"
 #include "gdal_common.hpp"
 
 namespace node_gdal {
@@ -224,9 +225,8 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, open) {
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };
-  job.rval = [](Napi::Env env, GDALDataset *) -> Napi::Value {
-    // TODO: return Dataset object once ported to N-API
-    return env.Null();
+  job.rval = [](Napi::Env env, GDALDataset *ds) -> Napi::Value {
+    return DatasetNapi::New(env, ds);
   };
 
   return job.run(info, async, 3);
@@ -282,8 +282,8 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, create) {
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };
-  job.rval = [](Napi::Env env, GDALDataset *) -> Napi::Value {
-    return env.Null(); // TODO: return Dataset
+  job.rval = [](Napi::Env env, GDALDataset *ds) -> Napi::Value {
+    return DatasetNapi::New(env, ds);
   };
 
   return job.run(info, async, 6);
@@ -330,8 +330,8 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, createCopy) {
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };
-  job.rval = [](Napi::Env env, GDALDataset *) -> Napi::Value {
-    return env.Null(); // TODO: return Dataset
+  job.rval = [](Napi::Env env, GDALDataset *ds) -> Napi::Value {
+    return DatasetNapi::New(env, ds);
   };
 
   return job.run(info, async, 5);

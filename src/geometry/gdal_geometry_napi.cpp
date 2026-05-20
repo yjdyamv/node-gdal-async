@@ -3,6 +3,7 @@
 #include "gdal_linestring_napi.hpp"
 #include "gdal_linearring_napi.hpp"
 #include "gdal_polygon_napi.hpp"
+#include "../gdal_spatial_reference_napi.hpp"
 #include "gdal_circularstring_napi.hpp"
 #include "gdal_compoundcurve_napi.hpp"
 #include "gdal_geometrycollection_napi.hpp"
@@ -548,8 +549,7 @@ Napi::Value GeometryNapi::srsGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(GeometryNapi, self);
   const OGRSpatialReference *srs = self->this_->getSpatialReference();
   if (!srs) return info.Env().Null();
-  // TODO: return SpatialReferenceNapi when ported
-  return info.Env().Null();
+  return SpatialReferenceNapi::New(info.Env(), srs);
 }
 void GeometryNapi::srsSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
   NAPI_UNWRAP_THIS_VOID(GeometryNapi, self);
@@ -557,8 +557,17 @@ void GeometryNapi::srsSetter(const Napi::CallbackInfo &info, const Napi::Value &
     self->this_->assignSpatialReference(nullptr);
     return;
   }
-  // TODO: accept SpatialReferenceNapi
-  Napi::Error::New(info.Env(), "srs setter requires SpatialReferenceNapi (not yet ported)")
+  if (value.IsObject() && value.As<Napi::Object>().InstanceOf(SpatialReferenceNapi::constructor.Value())) {
+    SpatialReferenceNapi *srs = SpatialReferenceNapi::Unwrap(value.As<Napi::Object>());
+    if (!srs || !srs->isAlive()) {
+      Napi::Error::New(info.Env(), "SpatialReferenceNapi object has already been destroyed")
+        .ThrowAsJavaScriptException();
+      return;
+    }
+    self->this_->assignSpatialReference(srs->get());
+    return;
+  }
+  Napi::Error::New(info.Env(), "srs must be a SpatialReferenceNapi object")
     .ThrowAsJavaScriptException();
 }
 

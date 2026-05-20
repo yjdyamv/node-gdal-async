@@ -1,6 +1,8 @@
 #include <memory>
 #include "gdal_dataset_napi.hpp"
 #include "gdal_driver_napi.hpp"
+#include "gdal_spatial_reference_napi.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -61,8 +63,14 @@ DatasetNapi::~DatasetNapi() {
 Napi::Value DatasetNapi::New(Napi::Env env, GDALDataset *ds) {
   Napi::EscapableHandleScope scope(env);
   if (!ds) return scope.Escape(env.Null());
-  return scope.Escape(
-    constructor.New({Napi::External<GDALDataset>::New(env, ds)}));
+  // Return existing wrapper if already registered
+  if (napi_obj_store_has<GDALDataset *>(ds)) {
+    Napi::Object existing = napi_obj_store_get<GDALDataset *>(env, ds);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<GDALDataset>::New(env, ds)});
+  napi_obj_store_add<GDALDataset *>(ds, obj);
+  return scope.Escape(obj);
 }
 
 // ---------------------------------------------------------------------------
@@ -222,9 +230,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE_NAPI(DatasetNapi, srsGetter) {
   };
   job.rval = [](Napi::Env env, OGRSpatialReference *srs) -> Napi::Value {
     if (!srs) return env.Null();
-    // TODO: return SpatialReferenceNapi once ported
-    delete srs;
-    return env.Null();
+    return SpatialReferenceNapi::New(env, srs, true);
   };
 
   return job.run(info, async, 0);
@@ -271,8 +277,23 @@ void DatasetNapi::srsSetter(const Napi::CallbackInfo &info, const Napi::Value &v
     ds->this_dataset->SetProjection("");
     return;
   }
-  // TODO: accept SpatialReferenceNapi once ported
-  Napi::Error::New(info.Env(), "srs setter requires SpatialReferenceNapi (not yet ported)")
+  if (value.IsObject() && value.As<Napi::Object>().InstanceOf(SpatialReferenceNapi::constructor.Value())) {
+    SpatialReferenceNapi *srs = SpatialReferenceNapi::Unwrap(value.As<Napi::Object>());
+    if (!srs || !srs->isAlive()) {
+      Napi::Error::New(info.Env(), "SpatialReferenceNapi object has already been destroyed")
+        .ThrowAsJavaScriptException();
+      return;
+    }
+    char *wkt;
+    if (srs->get()->exportToWkt(&wkt) != OGRERR_NONE) {
+      Napi::Error::New(info.Env(), "Failed to export SRS to WKT").ThrowAsJavaScriptException();
+      return;
+    }
+    ds->this_dataset->SetProjection(wkt);
+    CPLFree(wkt);
+    return;
+  }
+  Napi::Error::New(info.Env(), "srs must be a SpatialReferenceNapi object")
     .ThrowAsJavaScriptException();
 }
 

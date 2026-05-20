@@ -1,5 +1,7 @@
 #include "gdal_layer_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
+#include "geometry/gdal_geometry_napi.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -51,7 +53,13 @@ LayerNapi::~LayerNapi() {
 Napi::Value LayerNapi::New(Napi::Env env, OGRLayer *layer) {
   Napi::EscapableHandleScope scope(env);
   if (!layer) return scope.Escape(env.Null());
-  return scope.Escape(constructor.New({Napi::External<OGRLayer>::New(env, layer)}));
+  if (napi_obj_store_has<OGRLayer *>(layer)) {
+    Napi::Object existing = napi_obj_store_get<OGRLayer *>(env, layer);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<OGRLayer>::New(env, layer)});
+  napi_obj_store_add<OGRLayer *>(layer, obj);
+  return scope.Escape(obj);
 }
 
 Napi::Value LayerNapi::toString(const Napi::CallbackInfo &info) {
@@ -104,9 +112,15 @@ Napi::Value LayerNapi::setSpatialFilter(const Napi::CallbackInfo &info) {
     layer->this_->SetSpatialFilterRect(minX, minY, maxX, maxY);
   } else if (info.Length() == 0 || (info.Length() == 1 && info[0].IsNull())) {
     layer->this_->SetSpatialFilter(nullptr);
-  } else if (info.Length() >= 1 && info[0].IsObject()) {
-    // Accept GeometryNapi (placeholder - GeometryNapi not yet fully wired)
-    layer->this_->SetSpatialFilter(nullptr);
+  } else if (info.Length() >= 1 && info[0].IsObject() &&
+             info[0].As<Napi::Object>().InstanceOf(GeometryNapi::constructor.Value())) {
+    GeometryNapi *geom = GeometryNapi::Unwrap(info[0].As<Napi::Object>());
+    if (!geom || !geom->isAlive()) {
+      Napi::Error::New(info.Env(), "GeometryNapi object has been destroyed")
+        .ThrowAsJavaScriptException();
+      return info.Env().Undefined();
+    }
+    layer->this_->SetSpatialFilter(geom->this_);
   } else {
     Napi::Error::New(info.Env(), "Invalid number of arguments").ThrowAsJavaScriptException();
   }
@@ -117,8 +131,7 @@ Napi::Value LayerNapi::getSpatialFilter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(LayerNapi, layer);
   OGRGeometry *filter = layer->this_->GetSpatialFilter();
   if (!filter) return info.Env().Null();
-  // TODO: return GeometryNapi when fully wired
-  return info.Env().Null();
+  return GeometryNapi::New(info.Env(), filter, false);
 }
 
 Napi::Value LayerNapi::testCapability(const Napi::CallbackInfo &info) {
