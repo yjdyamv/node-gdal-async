@@ -3,6 +3,7 @@
 #include "gdal_driver_napi.hpp"
 #include "gdal_dataset_napi.hpp"
 #include "gdal_common.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -77,8 +78,13 @@ Napi::Value DriverNapi::New(Napi::Env env, GDALDriver *driver) {
   Napi::EscapableHandleScope scope(env);
 
   if (!driver) { return scope.Escape(env.Null()); }
+  if (napi_obj_store_has<GDALDriver *>(driver)) {
+    Napi::Object existing = napi_obj_store_get<GDALDriver *>(env, driver);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
 
   Napi::Object obj = constructor.New({Napi::External<GDALDriver>::New(env, driver)});
+  napi_obj_store_add<GDALDriver *>(driver, obj);
 
   DriverNapi *wrapped = DriverNapi::Unwrap(obj);
   if (wrapped) { wrapped->uid = 0; }
