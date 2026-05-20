@@ -171,6 +171,5 @@ class ArrayAttributesNapi : public Napi::ObjectWrap<ArrayAttributesNapi> {
     private: GDALMDArray *array_;
 };
 
-namespace VsiNapi { Napi::Object Init(Napi::Env, Napi::Object); }
 } // namespace node_gdal
 #endif
