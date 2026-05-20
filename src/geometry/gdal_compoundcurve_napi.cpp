@@ -1,4 +1,5 @@
 #include "gdal_compoundcurve_napi.hpp"
+#include "../gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -7,7 +8,10 @@ Napi::FunctionReference CompoundCurveNapi::constructor;
 Napi::Object CompoundCurveNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "CompoundCurve",
-    {InstanceMethod("toString", &CompoundCurveNapi::toString)});
+    {
+      InstanceMethod("toString", &CompoundCurveNapi::toString),
+      InstanceAccessor<&CompoundCurveNapi::pointsGetter>("points"),
+    });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
   exports.Set("CompoundCurve", func);
@@ -39,6 +43,16 @@ CompoundCurveNapi::CompoundCurveNapi(const Napi::CallbackInfo &info)
 
 Napi::Value CompoundCurveNapi::toString(const Napi::CallbackInfo &info) {
   return Napi::String::New(info.Env(), "CompoundCurve");
+}
+
+Napi::Value CompoundCurveNapi::pointsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(CompoundCurveNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__points")) { Napi::Value c = thiz.Get("__points"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object pts = LineStringPointsNapi::constructor.New({
+    Napi::External<OGRLineString>::New(info.Env(), reinterpret_cast<OGRLineString *>(self->this_))
+  });
+  thiz.Set("__points", pts); return pts;
 }
 
 } // namespace node_gdal

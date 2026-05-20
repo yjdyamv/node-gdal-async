@@ -1,4 +1,5 @@
 #include "gdal_circularstring_napi.hpp"
+#include "../gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -7,7 +8,10 @@ Napi::FunctionReference CircularStringNapi::constructor;
 Napi::Object CircularStringNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "CircularString",
-    {InstanceMethod("toString", &CircularStringNapi::toString)});
+    {
+      InstanceMethod("toString", &CircularStringNapi::toString),
+      InstanceAccessor<&CircularStringNapi::pointsGetter>("points"),
+    });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
   exports.Set("CircularString", func);
@@ -39,6 +43,16 @@ CircularStringNapi::CircularStringNapi(const Napi::CallbackInfo &info)
 
 Napi::Value CircularStringNapi::toString(const Napi::CallbackInfo &info) {
   return Napi::String::New(info.Env(), "CircularString");
+}
+
+Napi::Value CircularStringNapi::pointsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(CircularStringNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__points")) { Napi::Value c = thiz.Get("__points"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object pts = LineStringPointsNapi::constructor.New({
+    Napi::External<OGRLineString>::New(info.Env(), reinterpret_cast<OGRLineString *>(self->this_))
+  });
+  thiz.Set("__points", pts); return pts;
 }
 
 } // namespace node_gdal
