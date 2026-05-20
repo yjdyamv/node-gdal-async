@@ -383,13 +383,14 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   initialized = true;
   mainV8ThreadId = std::this_thread::get_id();
 
-  Nan__SetAsyncableMethod(target, "open", gdal_open);
-  Nan::SetMethod(target, "setConfigOption", setConfigOption);
-  Nan::SetMethod(target, "getConfigOption", getConfigOption);
-  Nan::SetMethod(target, "decToDMS", decToDMS);
-  Nan::SetMethod(target, "setPROJSearchPath", setPROJSearchPath);
-  Nan::SetMethod(target, "_triggerCPLError", ThrowDummyCPLError); // for tests
-  Nan::SetMethod(target, "_isAlive", isAlive);                    // for tests
+  // Top-level functions now in N-API (registered before InitNan call)
+  // Nan__SetAsyncableMethod(target, "open", gdal_open);
+  // Nan::SetMethod(target, "setConfigOption", setConfigOption);
+  // Nan::SetMethod(target, "getConfigOption", getConfigOption);
+  // Nan::SetMethod(target, "decToDMS", decToDMS);
+  // Nan::SetMethod(target, "setPROJSearchPath", setPROJSearchPath);
+  // Nan::SetMethod(target, "_triggerCPLError", ThrowDummyCPLError);
+  // Nan::SetMethod(target, "_isAlive", isAlive);
 
 //   Warper::Initialize(target);
 //   Algorithms::Initialize(target);
@@ -2104,6 +2105,24 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   exports.Set("VSISTDOUT", Napi::String::New(napiEnv, "/vsistdout/"));
   exports.Set("GEDTC_String", Napi::String::New(napiEnv, "String"));
   exports.Set("GEDTC_Compound", Napi::String::New(napiEnv, "Compound"));
+  exports.Set("DIR_PAST", Napi::String::New(napiEnv, "PAST"));
+  exports.Set("version", Napi::String::New(napiEnv, GDAL_RELEASE_NAME));
+#ifdef BUNDLED_GDAL
+  exports.Set("bundled", Napi::Boolean::New(napiEnv, true));
+#else
+  exports.Set("bundled", Napi::Boolean::New(napiEnv, false));
+#endif
+  exports.Set("log", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string msg; NAPI_ARG_STR(0, "message", msg);
+    msg = msg + "\n";
+#ifdef ENABLE_LOGGING
+    if (log_file) { fputs(msg.c_str(), log_file); fflush(log_file); }
+#endif
+    return info.Env().Undefined();
+  }, "log"));
+  exports.Set("supports", Napi::Object::New(napiEnv));
+
+  exports.Set("eventLoopWarning", Napi::Boolean::New(napiEnv, true));
 
   node_gdal::DriverNapi::Init(napiEnv, exports);
   node_gdal::DatasetNapi::Init(napiEnv, exports);
