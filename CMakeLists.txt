@@ -143,6 +143,7 @@ set(SOURCES
   src/collections/layer_features.cpp
   src/collections/collections_napi.cpp
   src/gdal_utils_napi.cpp
+  src/gdal_algorithms_napi.cpp
   src/gdal_stubs_napi.cpp
   src/collections/layer_fields.cpp
   src/collections/group_groups.cpp
