@@ -1933,6 +1933,37 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
 
   InitNan(target, v8::Local<v8::Value>(), nullptr);
 
+  // --- N-API overrides for InitNan() functionality ---
+  // These override NAN registrations with N-API equivalents.
+  // Once all overrides are complete, InitNan() can be removed.
+
+  exports.Set("quiet", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    CPLSetErrorHandler(CPLQuietErrorHandler);
+    return info.Env().Undefined();
+  }, "quiet"));
+  exports.Set("verbose", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    CPLSetErrorHandler(CPLDefaultErrorHandler);
+    return info.Env().Undefined();
+  }, "verbose"));
+  exports.Set("startLogging", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+#ifdef ENABLE_LOGGING
+    std::string filename; NAPI_ARG_STR(0, "filename", filename);
+    if (filename.empty()) { Napi::Error::New(info.Env(), "Invalid filename").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    if (log_file) fclose(log_file);
+    log_file = fopen(filename.c_str(), "w");
+    if (!log_file) { Napi::Error::New(info.Env(), "Error creating log file").ThrowAsJavaScriptException(); }
+#else
+    Napi::Error::New(info.Env(), "Logging requires node-gdal be compiled with --enable_logging=true").ThrowAsJavaScriptException();
+#endif
+    return info.Env().Undefined();
+  }, "startLogging"));
+  exports.Set("stopLogging", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+#ifdef ENABLE_LOGGING
+    if (log_file) { fclose(log_file); log_file = NULL; }
+#endif
+    return info.Env().Undefined();
+  }, "stopLogging"));
+
   node_gdal::DriverNapi::Init(napiEnv, exports);
   node_gdal::DatasetNapi::Init(napiEnv, exports);
   node_gdal::RasterBandNapi::Init(napiEnv, exports);
