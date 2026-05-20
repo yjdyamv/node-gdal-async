@@ -11,7 +11,7 @@ Napi::FunctionReference DatasetNapi::constructor;
 Napi::Object DatasetNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "DatasetNapi",
+    "Dataset",
     {
       InstanceMethod("toString", &DatasetNapi::toString),
       InstanceMethod("close", &DatasetNapi::close),
@@ -35,7 +35,7 @@ Napi::Object DatasetNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("DatasetNapi", func);
+  exports.Set("Dataset", func);
   return exports;
 }
 

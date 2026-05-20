@@ -391,69 +391,69 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   Nan::SetMethod(target, "_triggerCPLError", ThrowDummyCPLError); // for tests
   Nan::SetMethod(target, "_isAlive", isAlive);                    // for tests
 
-  Warper::Initialize(target);
-  Algorithms::Initialize(target);
+//   Warper::Initialize(target);
+//   Algorithms::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 12)
-  Algebra::Initialize(target);
+//   Algebra::Initialize(target);
 #endif
 
-  Driver::Initialize(target);
+//   Driver::Initialize(target);
   // TODO Phase 7: DriverNapi::Init(env, target) replaces Driver::Initialize
   // N-API bridge will be activated when module switches to NODE_API_MODULE
-  Dataset::Initialize(target);
-  RasterBand::Initialize(target);
+//   Dataset::Initialize(target);
+//   RasterBand::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-  Group::Initialize(target);
-  MDArray::Initialize(target);
-  Dimension::Initialize(target);
-  Attribute::Initialize(target);
+//   Group::Initialize(target);
+//   MDArray::Initialize(target);
+//   Dimension::Initialize(target);
+//   Attribute::Initialize(target);
 #endif
 
-  Layer::Initialize(target);
-  Feature::Initialize(target);
-  FeatureDefn::Initialize(target);
-  FieldDefn::Initialize(target);
-  Geometry::Initialize(target);
-  Point::Initialize(target);
-  SimpleCurve::Initialize(target);
-  LineString::Initialize(target);
-  LinearRing::Initialize(target);
-  Polygon::Initialize(target);
-  GeometryCollection::Initialize(target);
-  MultiPoint::Initialize(target);
-  MultiLineString::Initialize(target);
-  MultiPolygon::Initialize(target);
-  CircularString::Initialize(target);
-  CompoundCurve::Initialize(target);
-  MultiCurve::Initialize(target);
+//   Layer::Initialize(target);
+//   Feature::Initialize(target);
+//   FeatureDefn::Initialize(target);
+//   FieldDefn::Initialize(target);
+//   Geometry::Initialize(target);
+//   Point::Initialize(target);
+//   SimpleCurve::Initialize(target);
+//   LineString::Initialize(target);
+//   LinearRing::Initialize(target);
+//   Polygon::Initialize(target);
+//   GeometryCollection::Initialize(target);
+//   MultiPoint::Initialize(target);
+//   MultiLineString::Initialize(target);
+//   MultiPolygon::Initialize(target);
+//   CircularString::Initialize(target);
+//   CompoundCurve::Initialize(target);
+//   MultiCurve::Initialize(target);
 
-  SpatialReference::Initialize(target);
-  CoordinateTransformation::Initialize(target);
-  ColorTable::Initialize(target);
+//   SpatialReference::Initialize(target);
+//   CoordinateTransformation::Initialize(target);
+//   ColorTable::Initialize(target);
 
-  DatasetBands::Initialize(target);
-  DatasetLayers::Initialize(target);
+//   DatasetBands::Initialize(target);
+//   DatasetLayers::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-  GroupGroups::Initialize(target);
-  GroupArrays::Initialize(target);
-  GroupDimensions::Initialize(target);
-  GroupAttributes::Initialize(target);
-  ArrayDimensions::Initialize(target);
-  ArrayAttributes::Initialize(target);
+//   GroupGroups::Initialize(target);
+//   GroupArrays::Initialize(target);
+//   GroupDimensions::Initialize(target);
+//   GroupAttributes::Initialize(target);
+//   ArrayDimensions::Initialize(target);
+//   ArrayAttributes::Initialize(target);
 #endif
-  LayerFeatures::Initialize(target);
-  FeatureFields::Initialize(target);
-  LayerFields::Initialize(target);
-  FeatureDefnFields::Initialize(target);
-  GeometryCollectionChildren::Initialize(target);
-  PolygonRings::Initialize(target);
-  LineStringPoints::Initialize(target);
-  CompoundCurveCurves::Initialize(target);
-  RasterBandOverviews::Initialize(target);
-  RasterBandPixels::Initialize(target);
-  Memfile::Initialize(target);
-  Utils::Initialize(target);
-  VSI::Initialize(target);
+//   LayerFeatures::Initialize(target);
+//   FeatureFields::Initialize(target);
+//   LayerFields::Initialize(target);
+//   FeatureDefnFields::Initialize(target);
+//   GeometryCollectionChildren::Initialize(target);
+//   PolygonRings::Initialize(target);
+//   LineStringPoints::Initialize(target);
+//   CompoundCurveCurves::Initialize(target);
+//   RasterBandOverviews::Initialize(target);
+//   RasterBandPixels::Initialize(target);
+//   Memfile::Initialize(target);
+//   Utils::Initialize(target);
+//   VSI::Initialize(target);
 
   /**
    * The collection of all drivers registered with GDAL

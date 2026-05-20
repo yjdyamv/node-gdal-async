@@ -9,7 +9,7 @@ Napi::FunctionReference LayerNapi::constructor;
 
 Napi::Object LayerNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "LayerNapi",
+    env, "Layer",
     {
       InstanceMethod("toString", &LayerNapi::toString),
       InstanceMethod("getExtent", &LayerNapi::getExtent),
@@ -27,7 +27,7 @@ Napi::Object LayerNapi::Init(Napi::Env env, Napi::Object exports) {
     });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("LayerNapi", func);
+  exports.Set("Layer", func);
   return exports;
 }
 

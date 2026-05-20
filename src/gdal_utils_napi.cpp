@@ -52,7 +52,7 @@ Napi::Object UtilsNapi::Init(Napi::Env env, Napi::Object exports) {
     return UtilsNapi::dem_do(i, true);
   }));
 
-  exports.Set("UtilsNapi", obj);
+  exports.Set("Utils", obj);
   return exports;
 }
 
@@ -483,7 +483,7 @@ namespace WarperNapi {
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   auto obj = Napi::Object::New(env);
   // TODO: port reprojectImage, suggestedWarpOutput
-  exports.Set("WarperNapi", obj);
+  exports.Set("Warper", obj);
   return exports;
 }
 } // namespace WarperNapi
@@ -492,7 +492,7 @@ namespace AlgorithmsNapi {
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   auto obj = Napi::Object::New(env);
   // TODO: port fillNodata, contourGenerate, sieveFilter, checksumImage, polygonize
-  exports.Set("AlgorithmsNapi", obj);
+  exports.Set("Algorithms", obj);
   return exports;
 }
 } // namespace AlgorithmsNapi

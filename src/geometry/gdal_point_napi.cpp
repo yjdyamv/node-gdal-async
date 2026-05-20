@@ -7,7 +7,7 @@ Napi::FunctionReference PointNapi::constructor;
 Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "PointNapi",
+    "Point",
     {
       InstanceMethod("toString", &PointNapi::toString),
       InstanceAccessor<&PointNapi::xGetter, &PointNapi::xSetter>("x"),
@@ -18,7 +18,7 @@ Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("PointNapi", func);
+  exports.Set("Point", func);
   return exports;
 }
 

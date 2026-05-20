@@ -6,11 +6,11 @@ Napi::FunctionReference CircularStringNapi::constructor;
 
 Napi::Object CircularStringNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "CircularStringNapi",
+    env, "CircularString",
     {InstanceMethod("toString", &CircularStringNapi::toString)});
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("CircularStringNapi", func);
+  exports.Set("CircularString", func);
   return exports;
 }
 

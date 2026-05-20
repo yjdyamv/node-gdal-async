@@ -11,7 +11,7 @@ Napi::FunctionReference DatasetBandsNapi::constructor;
 
 Napi::Object DatasetBandsNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "DatasetBandsNapi",
+    env, "DatasetBands",
     {
       InstanceMethod("toString", &DatasetBandsNapi::toString),
       InstanceMethod("count", &DatasetBandsNapi::count),
@@ -20,7 +20,7 @@ Napi::Object DatasetBandsNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("getAsync", &DatasetBandsNapi::getAsync),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("DatasetBandsNapi", func); return exports;
+  exports.Set("DatasetBands", func); return exports;
 }
 
 DatasetBandsNapi::DatasetBandsNapi(const Napi::CallbackInfo &info)
@@ -79,14 +79,14 @@ Napi::FunctionReference DatasetLayersNapi::constructor;
 
 Napi::Object DatasetLayersNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "DatasetLayersNapi",
+    env, "DatasetLayers",
     {
       InstanceMethod("toString", &DatasetLayersNapi::toString),
       InstanceMethod("count", &DatasetLayersNapi::count),
       InstanceMethod("countAsync", &DatasetLayersNapi::countAsync),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("DatasetLayersNapi", func); return exports;
+  exports.Set("DatasetLayers", func); return exports;
 }
 
 DatasetLayersNapi::DatasetLayersNapi(const Napi::CallbackInfo &info)
@@ -121,7 +121,7 @@ Napi::FunctionReference LayerFeaturesNapi::constructor;
 
 Napi::Object LayerFeaturesNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "LayerFeaturesNapi",
+    env, "LayerFeatures",
     {
       InstanceMethod("toString", &LayerFeaturesNapi::toString),
       InstanceMethod("count", &LayerFeaturesNapi::count),
@@ -130,7 +130,7 @@ Napi::Object LayerFeaturesNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("nextAsync", &LayerFeaturesNapi::nextAsync),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("LayerFeaturesNapi", func); return exports;
+  exports.Set("LayerFeatures", func); return exports;
 }
 
 LayerFeaturesNapi::LayerFeaturesNapi(const Napi::CallbackInfo &info)

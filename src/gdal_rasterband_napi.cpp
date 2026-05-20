@@ -29,7 +29,7 @@ Napi::FunctionReference RasterBandNapi::constructor;
 // ---------------------------------------------------------------------------
 Napi::Object RasterBandNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "RasterBandNapi",
+    env, "RasterBand",
     {
       InstanceMethod("toString", &RasterBandNapi::toString),
       InstanceMethod("flush", &RasterBandNapi::flush),
@@ -80,7 +80,7 @@ Napi::Object RasterBandNapi::Init(Napi::Env env, Napi::Object exports) {
     });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("RasterBandNapi", func);
+  exports.Set("RasterBand", func);
   return exports;
 }
 

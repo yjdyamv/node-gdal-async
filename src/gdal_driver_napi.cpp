@@ -18,7 +18,7 @@ Napi::FunctionReference DriverNapi::constructor;
 Napi::Object DriverNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "DriverNapi",
+    "Driver",
     {
       InstanceMethod("toString", &DriverNapi::toString),
       InstanceMethod("open", &DriverNapi::open),
@@ -37,7 +37,7 @@ Napi::Object DriverNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("DriverNapi", func);
+  exports.Set("Driver", func);
   return exports;
 }
 

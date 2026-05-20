@@ -41,7 +41,7 @@ Napi::Object AlgorithmsNapi::Init(Napi::Env env, Napi::Object exports) {
     return AlgorithmsNapi::polygonize_do(i, true);
   }));
 
-  exports.Set("AlgorithmsNapi", obj);
+  exports.Set("Algorithms", obj);
   return exports;
 }
 

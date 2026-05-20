@@ -7,13 +7,13 @@ Napi::FunctionReference GroupNapi::constructor;
 
 Napi::Object GroupNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "GroupNapi",
+    env, "Group",
     {
       InstanceMethod("toString", &GroupNapi::toString),
       InstanceAccessor<&GroupNapi::descriptionGetter>("description"),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("GroupNapi", func); return exports;
+  exports.Set("Group", func); return exports;
 }
 
 GroupNapi::GroupNapi(const Napi::CallbackInfo &info)
@@ -46,14 +46,14 @@ Napi::FunctionReference MDArrayNapi::constructor;
 
 Napi::Object MDArrayNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "MDArrayNapi",
+    env, "MDArray",
     {
       InstanceMethod("toString", &MDArrayNapi::toString),
       InstanceAccessor<&MDArrayNapi::dataTypeGetter>("dataType"),
       InstanceAccessor<&MDArrayNapi::dimensionCountGetter>("dimensionCount"),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("MDArrayNapi", func); return exports;
+  exports.Set("MDArray", func); return exports;
 }
 
 MDArrayNapi::MDArrayNapi(const Napi::CallbackInfo &info)
@@ -83,7 +83,7 @@ Napi::FunctionReference DimensionNapi::constructor;
 
 Napi::Object DimensionNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "DimensionNapi",
+    env, "Dimension",
     {
       InstanceMethod("toString", &DimensionNapi::toString),
       InstanceAccessor<&DimensionNapi::nameGetter>("name"),
@@ -91,7 +91,7 @@ Napi::Object DimensionNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceAccessor<&DimensionNapi::typeGetter>("type"),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("DimensionNapi", func); return exports;
+  exports.Set("Dimension", func); return exports;
 }
 
 DimensionNapi::DimensionNapi(const Napi::CallbackInfo &info)
@@ -125,14 +125,14 @@ Napi::FunctionReference AttributeNapi::constructor;
 
 Napi::Object AttributeNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "AttributeNapi",
+    env, "Attribute",
     {
       InstanceMethod("toString", &AttributeNapi::toString),
       InstanceAccessor<&AttributeNapi::nameGetter>("name"),
       InstanceAccessor<&AttributeNapi::valueGetter>("value"),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("AttributeNapi", func); return exports;
+  exports.Set("Attribute", func); return exports;
 }
 
 AttributeNapi::AttributeNapi(const Napi::CallbackInfo &info)

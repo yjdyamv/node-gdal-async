@@ -138,7 +138,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   obj.Set("readDir", Napi::Function::New(env, readDir));
   obj.Set("readDirAsync", Napi::Function::New(env, readDirAsync));
 
-  exports.Set("VsiNapi", obj);
+  exports.Set("Vsi", obj);
   return exports;
 }
 

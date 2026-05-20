@@ -7,7 +7,7 @@ Napi::FunctionReference GDALDriversNapi::constructor;
 
 Napi::Object GDALDriversNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "GDALDriversNapi",
+    env, "GDALDrivers",
     {
       InstanceMethod("toString", &GDALDriversNapi::toString),
       InstanceMethod("count", &GDALDriversNapi::count),
@@ -18,7 +18,7 @@ Napi::Object GDALDriversNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor.SuppressDestruct();
 
   GDALAllRegister();
-  exports.Set("GDALDriversNapi", func);
+  exports.Set("GDALDrivers", func);
   return exports;
 }
 

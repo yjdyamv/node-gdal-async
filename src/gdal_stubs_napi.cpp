@@ -10,7 +10,7 @@ namespace node_gdal {
 // ===================== RasterBandPixelsNapi =====================
 Napi::FunctionReference RasterBandPixelsNapi::constructor;
 Napi::Object RasterBandPixelsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "RasterBandPixelsNapi", {
+  Napi::Function f = DefineClass(env, "RasterBandPixels", {
     InstanceMethod("get", &RasterBandPixelsNapi::getPixel),
     InstanceMethod("set", &RasterBandPixelsNapi::setPixel),
     InstanceMethod("read", &RasterBandPixelsNapi::read),
@@ -19,7 +19,7 @@ Napi::Object RasterBandPixelsNapi::Init(Napi::Env env, Napi::Object exports) {
     InstanceMethod("writeAsync", &RasterBandPixelsNapi::writeAsync),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("RasterBandPixelsNapi", f); return exports;
+  exports.Set("RasterBandPixels", f); return exports;
 }
 RasterBandPixelsNapi::RasterBandPixelsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<RasterBandPixelsNapi>(info), band_(nullptr) {
@@ -78,14 +78,14 @@ GDAL_ASYNCABLE_DEFINE_NAPI(RasterBandPixelsNapi, write) {
 // ===================== FeatureFieldsNapi =====================
 Napi::FunctionReference FeatureFieldsNapi::constructor;
 Napi::Object FeatureFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "FeatureFieldsNapi", {
+  Napi::Function f = DefineClass(env, "FeatureFields", {
     InstanceMethod("get", &FeatureFieldsNapi::get),
     InstanceMethod("set", &FeatureFieldsNapi::set),
     InstanceMethod("count", &FeatureFieldsNapi::count),
     InstanceMethod("getNames", &FeatureFieldsNapi::getNames),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("FeatureFieldsNapi", f); return exports;
+  exports.Set("FeatureFields", f); return exports;
 }
 FeatureFieldsNapi::FeatureFieldsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<FeatureFieldsNapi>(info), feat_(nullptr) {
@@ -131,13 +131,13 @@ Napi::Value FeatureFieldsNapi::getNames(const Napi::CallbackInfo &info) {
 // ===================== LayerFieldsNapi =====================
 Napi::FunctionReference LayerFieldsNapi::constructor;
 Napi::Object LayerFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "LayerFieldsNapi", {
+  Napi::Function f = DefineClass(env, "LayerFields", {
     InstanceMethod("get", &LayerFieldsNapi::get),
     InstanceMethod("count", &LayerFieldsNapi::count),
     InstanceMethod("getNames", &LayerFieldsNapi::getNames),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("LayerFieldsNapi", f); return exports;
+  exports.Set("LayerFields", f); return exports;
 }
 LayerFieldsNapi::LayerFieldsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<LayerFieldsNapi>(info), layer_(nullptr) {
@@ -171,13 +171,13 @@ Napi::Value LayerFieldsNapi::getNames(const Napi::CallbackInfo &info) {
 // ===================== FeatureDefnFieldsNapi =====================
 Napi::FunctionReference FeatureDefnFieldsNapi::constructor;
 Napi::Object FeatureDefnFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "FeatureDefnFieldsNapi", {
+  Napi::Function f = DefineClass(env, "FeatureDefnFields", {
     InstanceMethod("get", &FeatureDefnFieldsNapi::get),
     InstanceMethod("count", &FeatureDefnFieldsNapi::count),
     InstanceMethod("getNames", &FeatureDefnFieldsNapi::getNames),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("FeatureDefnFieldsNapi", f); return exports;
+  exports.Set("FeatureDefnFields", f); return exports;
 }
 FeatureDefnFieldsNapi::FeatureDefnFieldsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<FeatureDefnFieldsNapi>(info), defn_(nullptr) {
@@ -208,14 +208,14 @@ Napi::Value FeatureDefnFieldsNapi::getNames(const Napi::CallbackInfo &info) {
 // ===================== RasterBandOverviewsNapi =====================
 Napi::FunctionReference RasterBandOverviewsNapi::constructor;
 Napi::Object RasterBandOverviewsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "RasterBandOverviewsNapi", {
+  Napi::Function f = DefineClass(env, "RasterBandOverviews", {
     InstanceMethod("get", &RasterBandOverviewsNapi::get),
     InstanceMethod("getAsync", &RasterBandOverviewsNapi::getAsync),
     InstanceMethod("count", &RasterBandOverviewsNapi::count),
     InstanceMethod("countAsync", &RasterBandOverviewsNapi::countAsync),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("RasterBandOverviewsNapi", f); return exports;
+  exports.Set("RasterBandOverviews", f); return exports;
 }
 RasterBandOverviewsNapi::RasterBandOverviewsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<RasterBandOverviewsNapi>(info), band_(nullptr) {
@@ -246,13 +246,13 @@ GDAL_ASYNCABLE_DEFINE_NAPI(RasterBandOverviewsNapi, count) {
 // ===================== GeometryCollectionChildrenNapi =====================
 Napi::FunctionReference GeometryCollectionChildrenNapi::constructor;
 Napi::Object GeometryCollectionChildrenNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "GeometryCollectionChildrenNapi", {
+  Napi::Function f = DefineClass(env, "GeometryCollectionChildren", {
     InstanceMethod("get", &GeometryCollectionChildrenNapi::get),
     InstanceMethod("count", &GeometryCollectionChildrenNapi::count),
     InstanceMethod("add", &GeometryCollectionChildrenNapi::add),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("GeometryCollectionChildrenNapi", f); return exports;
+  exports.Set("GeometryCollectionChildren", f); return exports;
 }
 GeometryCollectionChildrenNapi::GeometryCollectionChildrenNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<GeometryCollectionChildrenNapi>(info), geom_(nullptr) {
@@ -279,13 +279,13 @@ Napi::Value GeometryCollectionChildrenNapi::add(const Napi::CallbackInfo &info) 
 // ===================== PolygonRingsNapi =====================
 Napi::FunctionReference PolygonRingsNapi::constructor;
 Napi::Object PolygonRingsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "PolygonRingsNapi", {
+  Napi::Function f = DefineClass(env, "PolygonRings", {
     InstanceMethod("get", &PolygonRingsNapi::get),
     InstanceMethod("count", &PolygonRingsNapi::count),
     InstanceMethod("add", &PolygonRingsNapi::add),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("PolygonRingsNapi", f); return exports;
+  exports.Set("PolygonRings", f); return exports;
 }
 PolygonRingsNapi::PolygonRingsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<PolygonRingsNapi>(info), geom_(nullptr) {
@@ -315,14 +315,14 @@ Napi::Value PolygonRingsNapi::add(const Napi::CallbackInfo &info) {
 // ===================== LineStringPointsNapi =====================
 Napi::FunctionReference LineStringPointsNapi::constructor;
 Napi::Object LineStringPointsNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "LineStringPointsNapi", {
+  Napi::Function f = DefineClass(env, "LineStringPoints", {
     InstanceMethod("get", &LineStringPointsNapi::get),
     InstanceMethod("count", &LineStringPointsNapi::count),
     InstanceMethod("add", &LineStringPointsNapi::add),
     InstanceMethod("set", &LineStringPointsNapi::setPi),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("LineStringPointsNapi", f); return exports;
+  exports.Set("LineStringPoints", f); return exports;
 }
 LineStringPointsNapi::LineStringPointsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<LineStringPointsNapi>(info), geom_(nullptr) {
@@ -354,12 +354,12 @@ Napi::Value LineStringPointsNapi::setPi(const Napi::CallbackInfo &info) {
 // ===================== CompoundCurveCurvesNapi =====================
 Napi::FunctionReference CompoundCurveCurvesNapi::constructor;
 Napi::Object CompoundCurveCurvesNapi::Init(Napi::Env env, Napi::Object exports) {
-  Napi::Function f = DefineClass(env, "CompoundCurveCurvesNapi", {
+  Napi::Function f = DefineClass(env, "CompoundCurveCurves", {
     InstanceMethod("get", &CompoundCurveCurvesNapi::get),
     InstanceMethod("count", &CompoundCurveCurvesNapi::count),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
-  exports.Set("CompoundCurveCurvesNapi", f); return exports;
+  exports.Set("CompoundCurveCurves", f); return exports;
 }
 CompoundCurveCurvesNapi::CompoundCurveCurvesNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<CompoundCurveCurvesNapi>(info), geom_(nullptr) {
@@ -376,16 +376,16 @@ Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
 }
 
 // ===================== Multi-dimensional collections =====================
-#define MD_COLL_INIT(klass) \
+#define MD_COLL_INIT(klass, jsname) \
   Napi::FunctionReference klass::constructor; \
   Napi::Object klass::Init(Napi::Env env, Napi::Object exports) { \
-    Napi::Function f = DefineClass(env, #klass, { \
+    Napi::Function f = DefineClass(env, jsname, { \
       InstanceMethod("get", &klass::get), \
       InstanceMethod("count", &klass::count), \
       InstanceMethod("getNames", &klass::getNames), \
     }); \
     constructor = Napi::Persistent(f); constructor.SuppressDestruct(); \
-    exports.Set(#klass, f); return exports; \
+    exports.Set(jsname, f); return exports; \
   }
 
 #define MD_GROUP_CTOR(klass) \
@@ -399,7 +399,7 @@ Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
   }
 
 // --- GroupGroups ---
-MD_COLL_INIT(GroupGroupsNapi) MD_GROUP_CTOR(GroupGroupsNapi)
+MD_COLL_INIT(GroupGroupsNapi, "GroupGroups") MD_GROUP_CTOR(GroupGroupsNapi)
 Napi::Value GroupGroupsNapi::get(const Napi::CallbackInfo &info) {
   if (!group_) return info.Env().Null();
   std::shared_ptr<GDALGroup> r;
@@ -418,7 +418,7 @@ Napi::Value GroupGroupsNapi::getNames(const Napi::CallbackInfo &info) {
 }
 
 // --- GroupArrays ---
-MD_COLL_INIT(GroupArraysNapi) MD_GROUP_CTOR(GroupArraysNapi)
+MD_COLL_INIT(GroupArraysNapi, "GroupArrays") MD_GROUP_CTOR(GroupArraysNapi)
 Napi::Value GroupArraysNapi::get(const Napi::CallbackInfo &info) {
   if (!group_) return info.Env().Null();
   std::shared_ptr<GDALMDArray> r;
@@ -437,7 +437,7 @@ Napi::Value GroupArraysNapi::getNames(const Napi::CallbackInfo &info) {
 }
 
 // --- GroupAttributes ---
-MD_COLL_INIT(GroupAttributesNapi) MD_GROUP_CTOR(GroupAttributesNapi)
+MD_COLL_INIT(GroupAttributesNapi, "GroupAttributes") MD_GROUP_CTOR(GroupAttributesNapi)
 Napi::Value GroupAttributesNapi::get(const Napi::CallbackInfo &info) {
   if (!group_) return info.Env().Null();
   std::shared_ptr<GDALAttribute> r;
@@ -456,7 +456,7 @@ Napi::Value GroupAttributesNapi::getNames(const Napi::CallbackInfo &info) {
 }
 
 // --- GroupDimensions ---
-MD_COLL_INIT(GroupDimensionsNapi) MD_GROUP_CTOR(GroupDimensionsNapi)
+MD_COLL_INIT(GroupDimensionsNapi, "GroupDimensions") MD_GROUP_CTOR(GroupDimensionsNapi)
 Napi::Value GroupDimensionsNapi::get(const Napi::CallbackInfo &info) {
   if (!group_) return info.Env().Null();
   auto dims = group_->GetDimensions();
@@ -480,7 +480,7 @@ Napi::Value GroupDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
 }
 
 // --- ArrayDimensions ---
-MD_COLL_INIT(ArrayDimensionsNapi) MD_ARRAY_CTOR(ArrayDimensionsNapi)
+MD_COLL_INIT(ArrayDimensionsNapi, "ArrayDimensions") MD_ARRAY_CTOR(ArrayDimensionsNapi)
 Napi::Value ArrayDimensionsNapi::get(const Napi::CallbackInfo &info) {
   if (!array_) return info.Env().Null();
   if (info[0].IsNumber()) { auto dims = array_->GetDimensions(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)dims.size()) return DimensionNapi::New(info.Env(), dims[i].get()); }
@@ -497,7 +497,7 @@ Napi::Value ArrayDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
 }
 
 // --- ArrayAttributes ---
-MD_COLL_INIT(ArrayAttributesNapi) MD_ARRAY_CTOR(ArrayAttributesNapi)
+MD_COLL_INIT(ArrayAttributesNapi, "ArrayAttributes") MD_ARRAY_CTOR(ArrayAttributesNapi)
 Napi::Value ArrayAttributesNapi::get(const Napi::CallbackInfo &info) {
   if (!array_) return info.Env().Null();
   std::shared_ptr<GDALAttribute> r;

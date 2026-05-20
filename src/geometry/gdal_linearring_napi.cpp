@@ -1,4 +1,5 @@
 #include "gdal_linearring_napi.hpp"
+#include "../gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -7,15 +8,16 @@ Napi::FunctionReference LinearRingNapi::constructor;
 Napi::Object LinearRingNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "LinearRingNapi",
+    "LinearRing",
     {
       InstanceMethod("toString", &LinearRingNapi::toString),
       InstanceMethod("getArea", &LinearRingNapi::getArea),
+      InstanceAccessor<&LinearRingNapi::pointsGetter>("points"),
     });
 
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("LinearRingNapi", func);
+  exports.Set("LinearRing", func);
   return exports;
 }
 
@@ -49,6 +51,21 @@ Napi::Value LinearRingNapi::toString(const Napi::CallbackInfo &info) {
 Napi::Value LinearRingNapi::getArea(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(LinearRingNapi, geom);
   return Napi::Number::New(info.Env(), geom->this_->get_Area());
+}
+
+Napi::Value LinearRingNapi::pointsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(LinearRingNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__points")) {
+    Napi::Value cached = thiz.Get("__points");
+    if (!cached.IsNull() && !cached.IsUndefined()) return cached;
+  }
+  Napi::Object pts = LineStringPointsNapi::constructor.New({
+    Napi::External<OGRLineString>::New(info.Env(),
+      static_cast<OGRLineString *>(self->this_))
+  });
+  thiz.Set("__points", pts);
+  return pts;
 }
 
 } // namespace node_gdal

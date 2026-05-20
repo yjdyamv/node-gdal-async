@@ -1,4 +1,5 @@
 #include "gdal_geometrycollection_napi.hpp"
+#include "../gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -7,15 +8,16 @@ Napi::FunctionReference GeometryCollectionNapi::constructor;
 
 Napi::Object GeometryCollectionNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "GeometryCollectionNapi",
+    env, "GeometryCollection",
     {
       InstanceMethod("toString", &GeometryCollectionNapi::toString),
       InstanceMethod("getArea", &GeometryCollectionNapi::getArea),
       InstanceMethod("getLength", &GeometryCollectionNapi::getLength),
+      InstanceAccessor<&GeometryCollectionNapi::childrenGetter>("children"),
     });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("GeometryCollectionNapi", func);
+  exports.Set("GeometryCollection", func);
   return exports;
 }
 
@@ -59,10 +61,10 @@ Napi::FunctionReference MultiPointNapi::constructor;
 
 Napi::Object MultiPointNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "MultiPointNapi",
+    env, "MultiPoint",
     {InstanceMethod("toString", &MultiPointNapi::toString)});
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("MultiPointNapi", func); return exports;
+  exports.Set("MultiPoint", func); return exports;
 }
 
 MultiPointNapi::MultiPointNapi(const Napi::CallbackInfo &info)
@@ -90,10 +92,10 @@ Napi::FunctionReference MultiLineStringNapi::constructor;
 
 Napi::Object MultiLineStringNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "MultiLineStringNapi",
+    env, "MultiLineString",
     {InstanceMethod("toString", &MultiLineStringNapi::toString)});
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("MultiLineStringNapi", func); return exports;
+  exports.Set("MultiLineString", func); return exports;
 }
 
 MultiLineStringNapi::MultiLineStringNapi(const Napi::CallbackInfo &info)
@@ -121,10 +123,10 @@ Napi::FunctionReference MultiPolygonNapi::constructor;
 
 Napi::Object MultiPolygonNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "MultiPolygonNapi",
+    env, "MultiPolygon",
     {InstanceMethod("toString", &MultiPolygonNapi::toString)});
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("MultiPolygonNapi", func); return exports;
+  exports.Set("MultiPolygon", func); return exports;
 }
 
 MultiPolygonNapi::MultiPolygonNapi(const Napi::CallbackInfo &info)
@@ -152,10 +154,10 @@ Napi::FunctionReference MultiCurveNapi::constructor;
 
 Napi::Object MultiCurveNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "MultiCurveNapi",
+    env, "MultiCurve",
     {InstanceMethod("toString", &MultiCurveNapi::toString)});
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
-  exports.Set("MultiCurveNapi", func); return exports;
+  exports.Set("MultiCurve", func); return exports;
 }
 
 MultiCurveNapi::MultiCurveNapi(const Napi::CallbackInfo &info)
@@ -176,6 +178,20 @@ MultiCurveNapi::MultiCurveNapi(const Napi::CallbackInfo &info)
 }
 Napi::Value MultiCurveNapi::toString(const Napi::CallbackInfo &info) {
   return Napi::String::New(info.Env(), "MultiCurve");
+}
+
+Napi::Value GeometryCollectionNapi::childrenGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(GeometryCollectionNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__children")) {
+    Napi::Value cached = thiz.Get("__children");
+    if (!cached.IsNull() && !cached.IsUndefined()) return cached;
+  }
+  Napi::Object ch = GeometryCollectionChildrenNapi::constructor.New({
+    Napi::External<OGRGeometryCollection>::New(info.Env(), self->this_)
+  });
+  thiz.Set("__children", ch);
+  return ch;
 }
 
 } // namespace node_gdal

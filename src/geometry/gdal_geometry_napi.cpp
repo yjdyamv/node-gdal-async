@@ -18,7 +18,7 @@ Napi::FunctionReference GeometryNapi::constructor;
 // ---------------------------------------------------------------------------
 Napi::Object GeometryNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "GeometryNapi",
+    env, "Geometry",
     {
       InstanceMethod("toString", &GeometryNapi::toString),
       InstanceMethod("isEmpty", &GeometryNapi::isEmpty),
@@ -84,7 +84,7 @@ Napi::Object GeometryNapi::Init(Napi::Env env, Napi::Object exports) {
   func.Set("getName", Napi::Function::New(env, getName, "getName"));
   func.Set("getConstructor", Napi::Function::New(env, getConstructor, "getConstructor"));
 
-  exports.Set("GeometryNapi", func);
+  exports.Set("Geometry", func);
   return exports;
 }
 

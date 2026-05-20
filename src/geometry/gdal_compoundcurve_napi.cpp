@@ -6,11 +6,11 @@ Napi::FunctionReference CompoundCurveNapi::constructor;
 
 Napi::Object CompoundCurveNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "CompoundCurveNapi",
+    env, "CompoundCurve",
     {InstanceMethod("toString", &CompoundCurveNapi::toString)});
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("CompoundCurveNapi", func);
+  exports.Set("CompoundCurve", func);
   return exports;
 }
 

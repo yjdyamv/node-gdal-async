@@ -40,7 +40,7 @@ Napi::FunctionReference ColorTableNapi::constructor;
 Napi::Object ColorTableNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "ColorTableNapi",
+    "ColorTable",
     {
       InstanceMethod("toString", &ColorTableNapi::toString),
       InstanceMethod("isSame", &ColorTableNapi::isSame),
@@ -55,7 +55,7 @@ Napi::Object ColorTableNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("ColorTableNapi", func);
+  exports.Set("ColorTable", func);
   return exports;
 }
 

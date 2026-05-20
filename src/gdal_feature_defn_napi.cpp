@@ -7,7 +7,7 @@ Napi::FunctionReference FeatureDefnNapi::constructor;
 Napi::Object FeatureDefnNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "FeatureDefnNapi",
+    "FeatureDefn",
     {
       InstanceMethod("toString", &FeatureDefnNapi::toString),
       InstanceMethod("clone", &FeatureDefnNapi::clone),
@@ -23,7 +23,7 @@ Napi::Object FeatureDefnNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("FeatureDefnNapi", func);
+  exports.Set("FeatureDefn", func);
   return exports;
 }
 

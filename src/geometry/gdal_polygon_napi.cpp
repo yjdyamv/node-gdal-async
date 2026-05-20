@@ -1,4 +1,5 @@
 #include "gdal_polygon_napi.hpp"
+#include "../gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -7,15 +8,16 @@ Napi::FunctionReference PolygonNapi::constructor;
 Napi::Object PolygonNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "PolygonNapi",
+    "Polygon",
     {
       InstanceMethod("toString", &PolygonNapi::toString),
       InstanceMethod("getArea", &PolygonNapi::getArea),
+      InstanceAccessor<&PolygonNapi::ringsGetter>("rings"),
     });
 
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("PolygonNapi", func);
+  exports.Set("Polygon", func);
   return exports;
 }
 
@@ -49,6 +51,20 @@ Napi::Value PolygonNapi::toString(const Napi::CallbackInfo &info) {
 Napi::Value PolygonNapi::getArea(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(PolygonNapi, geom);
   return Napi::Number::New(info.Env(), geom->this_->get_Area());
+}
+
+Napi::Value PolygonNapi::ringsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PolygonNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__rings")) {
+    Napi::Value cached = thiz.Get("__rings");
+    if (!cached.IsNull() && !cached.IsUndefined()) return cached;
+  }
+  Napi::Object rings = PolygonRingsNapi::constructor.New({
+    Napi::External<OGRPolygon>::New(info.Env(), self->this_)
+  });
+  thiz.Set("__rings", rings);
+  return rings;
 }
 
 } // namespace node_gdal

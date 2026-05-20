@@ -16,6 +16,7 @@ class SimpleCurveNapi
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value value(const Napi::CallbackInfo &info);
   Napi::Value getLength(const Napi::CallbackInfo &info);
+  Napi::Value pointsGetter(const Napi::CallbackInfo &info);
 };
 
 } // namespace node_gdal

@@ -17,6 +17,7 @@ class GeometryCollectionNapi
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value getArea(const Napi::CallbackInfo &info);
   Napi::Value getLength(const Napi::CallbackInfo &info);
+  Napi::Value childrenGetter(const Napi::CallbackInfo &info);
 };
 
 class MultiPointNapi

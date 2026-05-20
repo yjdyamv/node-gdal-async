@@ -27,7 +27,7 @@ Napi::Object WarperNapi::Init(Napi::Env env, Napi::Object exports) {
     return WarperNapi::suggestedWarpOutput_do(i, true);
   }));
 
-  exports.Set("WarperNapi", obj);
+  exports.Set("Warper", obj);
   return exports;
 }
 
