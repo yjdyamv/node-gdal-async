@@ -39,6 +39,18 @@ try {
   console.log('[gdal-async] No prebuilt binary available, building from source...')
 }
 
+// Install Conan dependencies if available
+const conanToolchain = path.resolve(__dirname, '..', 'build', 'conan', 'conan_toolchain.cmake')
+try {
+  execSync('conan install . -of=conan/install --build=missing', {
+    stdio: 'inherit',
+    env: { ...process.env }
+  })
+  console.log('[gdal-async] Conan dependencies installed')
+} catch (err) {
+  console.log('[gdal-async] Conan not available, skipping dependency installation')
+}
+
 // Build from source with cmake-js
 const buildArgs = []
 if (process.env.npm_config_build_from_source || process.env.npm_config_build_from_source === 'true') {
@@ -48,11 +60,17 @@ if (process.env.npm_config_j) {
   buildArgs.push('-j', process.env.npm_config_j)
 }
 
+// Pass Conan toolchain if available
+const env = { ...process.env }
+if (fs.existsSync(conanToolchain)) {
+  buildArgs.push('--CDCMAKE_TOOLCHAIN_FILE=' + conanToolchain)
+}
+
 try {
   const args = ['cmake-js', 'compile', ...buildArgs].join(' ')
   execSync(`npx ${args}`, {
     stdio: 'inherit',
-    env: { ...process.env }
+    env: env
   })
 } catch (err) {
   console.error('[gdal-async] cmake-js build failed:', err.message)

@@ -33,28 +33,25 @@ jobs:
       with:
         max-size: 1000M
         key: coverage
-    - name: Restore vcpkg cache
+    - name: Restore Conan cache
       uses: actions/cache@v4
       with:
-        path: vcpkg_installed
-        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-${{ runner.os }}-
-    - name: Setup vcpkg
+        path: ~/.conan2
+        key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+        restore-keys: conan-${{ runner.os }}-
+    - name: Setup Conan
       run: |
-        if [ ! -d vcpkg ]; then
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.sh
-        fi
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-    - name: Install vcpkg dependencies
-      run: ./vcpkg/vcpkg install
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
     - run: npm install --ignore-scripts
     - name: Build from sources
       run: npx cmake-js compile --debug --CDENABLE_COVERAGE=ON -j max
       env:
         CXX: ccache g++
         CC: ccache gcc
-        CMAKE_TOOLCHAIN_FILE: ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - name: Run unit tests
       run: npx c8 npm test
       env:
@@ -221,21 +218,18 @@ jobs:
       with:
         max-size: 1000M
         key: mac-${{ matrix.node-version }}
-    - name: Restore vcpkg cache
+    - name: Restore Conan cache
       uses: actions/cache@v4
       with:
-        path: vcpkg_installed
-        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-${{ runner.os }}-
-    - name: Setup vcpkg
+        path: ~/.conan2
+        key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+        restore-keys: conan-${{ runner.os }}-
+    - name: Setup Conan
       run: |
-        if [ ! -d vcpkg ]; then
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.sh
-        fi
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-    - name: Install vcpkg dependencies
-      run: ./vcpkg/vcpkg install
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
     - run: npm install --ignore-scripts
     - name: Build from sources
       run: npx cmake-js compile -j max
@@ -243,7 +237,7 @@ jobs:
         CXX: ccache g++
         CC: ccache gcc
         CXXFLAGS: -DDEBUG_MACOS_FREEZE
-        CMAKE_TOOLCHAIN_FILE: ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - name: Run unit tests
       run: npm test
       env:
@@ -267,15 +261,12 @@ jobs:
       with:
         max-size: 1000M
         key: mac-debug
-    - name: Setup vcpkg
+    - name: Setup Conan
       run: |
-        if [ ! -d vcpkg ]; then
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.sh
-        fi
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-    - name: Install vcpkg dependencies
-      run: ./vcpkg/vcpkg install
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
     - run: npm install --ignore-scripts
     - name: Build from sources
       run: npx cmake-js compile --debug -j max
@@ -283,7 +274,7 @@ jobs:
         CXX: ccache g++
         CC: ccache gcc
         CXXFLAGS: -DDEBUG_MACOS_FREEZE
-        CMAKE_TOOLCHAIN_FILE: ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - name: Run unit tests
       run: npm test
       env:
@@ -304,24 +295,26 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: ${{ matrix.node-version }}
-    - name: Restore vcpkg cache
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+    - name: Restore Conan cache
       uses: actions/cache@v4
       with:
-        path: vcpkg_installed
-        key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-${{ runner.os }}-
-    - name: Setup vcpkg
+        path: ~/.conan2
+        key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+        restore-keys: conan-${{ runner.os }}-
+    - name: Setup Conan
       run: |
-        if (-not (Test-Path vcpkg)) {
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          .\vcpkg\bootstrap-vcpkg.bat
-        }
-        echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
-    - name: Install vcpkg dependencies
-      run: .\vcpkg\vcpkg install
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
     - run: npm install --ignore-scripts
     - name: Build from sources
       run: npx cmake-js compile -j max
+      env:
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - name: Run unit tests
       run: npm test
       env:
@@ -337,18 +330,20 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 20.x
-    - name: Setup vcpkg
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+    - name: Setup Conan
       run: |
-        if (-not (Test-Path vcpkg)) {
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          .\vcpkg\bootstrap-vcpkg.bat
-        }
-        echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
-    - name: Install vcpkg dependencies
-      run: .\vcpkg\vcpkg install
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
     - run: npm install --ignore-scripts
     - name: Build from sources
       run: npx cmake-js compile --debug -j max
+      env:
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - name: Run unit tests
       run: npm test
       env:

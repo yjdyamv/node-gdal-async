@@ -40,6 +40,8 @@ yarn.lock
 Attic
 vcpkg_installed/
 vcpkg-manifest/
+conan/install
+conan_data_paths.json
 
 
 deps/libgdal/gdal/wince

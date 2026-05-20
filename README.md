@@ -57,13 +57,22 @@ Pre-built binaries are provided for most recent Linux distributions, Windows 64 
 npm install gdal-async
 ```
 
-### Linking with your own version of GDAL
+### Building from source
 
-By default all dependencies are the latest versions and bundled out of the box, but if you would like to link against a custom GDAL library you will have to rebuild it when installing using the following flags:
+Building from source (bundled mode) requires [Conan 2.x](https://conan.io/) to manage C++ dependencies:
 
 ```sh
-# --shared_gdal allows linking to the OS-provided libgdal, requires libgdal-dev
-# (debian: sudo apt-get install libgdal-dev)
+pip install conan
+conan profile detect
+npm install gdal-async --build-from-source
+```
+
+### Linking with your own version of GDAL
+
+If you would like to link against a system GDAL library, use `--shared_gdal`. This skips Conan and uses the OS-provided `libgdal-dev`:
+
+```sh
+# debian: sudo apt-get install libgdal-dev
 $ npm install gdal-async --build-from-source --shared_gdal
 ```
 

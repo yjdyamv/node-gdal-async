@@ -30,17 +30,13 @@ if [ "${GDAL}" == "shared" ]; then
   GDAL_NAME="system-installed"
   CMAKE_EXTRA=""
 else
-  GDAL_NAME="vcpkg"
-  # Bootstrap vcpkg if not already present
-  if [ ! -d vcpkg ]; then
-    echo -e "${SEP}Bootstrapping vcpkg${SEP}"
-    git clone --depth 1 https://github.com/microsoft/vcpkg.git
-    ./vcpkg/bootstrap-vcpkg.sh
-  fi
-  # Install dependencies from vcpkg manifest
-  echo -e "${SEP}Installing dependencies via vcpkg${SEP}"
-  ./vcpkg/vcpkg install
-  CMAKE_EXTRA="-DCMAKE_TOOLCHAIN_FILE=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake"
+  GDAL_NAME="conan"
+  echo -e "${SEP}Installing Conan${SEP}"
+  pip3 install conan 2>/dev/null || pip install conan 2>/dev/null
+  conan profile detect
+  echo -e "${SEP}Installing dependencies via Conan${SEP}"
+  conan install . -of=conan/install --build=missing
+  CMAKE_EXTRA="-DCMAKE_TOOLCHAIN_FILE=$(pwd)/conan/install/conan_toolchain.cmake"
 fi
 
 case ${1} in
