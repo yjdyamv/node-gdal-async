@@ -1,6 +1,6 @@
 #include "gdal_utils_napi.hpp"
 #include "gdal_dataset_napi.hpp"
-#include "gdal_common.hpp"
+#include "gdal_common_napi.hpp"
 #include "async_napi.hpp"
 #include <gdal_utils.h>
 

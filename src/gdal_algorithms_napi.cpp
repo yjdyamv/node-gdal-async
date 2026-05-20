@@ -1,7 +1,7 @@
 #include "gdal_algorithms_napi.hpp"
 #include "gdal_rasterband_napi.hpp"
 #include "gdal_layer_napi.hpp"
-#include "gdal_common.hpp"
+#include "gdal_common_napi.hpp"
 #include "async_napi.hpp"
 #include <gdal_alg.h>
 

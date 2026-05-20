@@ -1,7 +1,7 @@
 #include "gdal_warper_napi.hpp"
 #include "gdal_dataset_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
-#include "gdal_common.hpp"
+#include "gdal_common_napi.hpp"
 #include "async_napi.hpp"
 #include <gdalwarper.h>
 
