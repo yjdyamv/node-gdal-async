@@ -1,6 +1,7 @@
 #include "gdal_layer_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
 #include "geometry/gdal_geometry_napi.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -52,7 +53,13 @@ LayerNapi::~LayerNapi() {
 Napi::Value LayerNapi::New(Napi::Env env, OGRLayer *layer) {
   Napi::EscapableHandleScope scope(env);
   if (!layer) return scope.Escape(env.Null());
-  return scope.Escape(constructor.New({Napi::External<OGRLayer>::New(env, layer)}));
+  if (napi_obj_store_has<OGRLayer *>(layer)) {
+    Napi::Object existing = napi_obj_store_get<OGRLayer *>(env, layer);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<OGRLayer>::New(env, layer)});
+  napi_obj_store_add<OGRLayer *>(layer, obj);
+  return scope.Escape(obj);
 }
 
 Napi::Value LayerNapi::toString(const Napi::CallbackInfo &info) {
