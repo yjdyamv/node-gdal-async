@@ -1901,6 +1901,28 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     if (!ds) NAPI_THROW_LAST_CPLERR;
     return DatasetNapi::New(info.Env(), ds);
   }, "open"));
+  // openAsync – async variant using GDALAsyncableJobNapi
+  exports.Set("openAsync", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string path, mode = "r";
+    NAPI_ARG_STR(0, "path", path);
+    NAPI_ARG_OPT_STR(1, "mode", mode);
+    unsigned int flags = GDAL_OF_VERBOSE_ERROR;
+    for (size_t i = 0; i < mode.length(); i++) {
+      if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
+      else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    }
+    GDALAsyncableJobNapi<GDALDataset *> job;
+    std::string p = path; unsigned int f = flags;
+    job.main = [p, f]() -> GDALDataset * {
+      CPLErrorReset();
+      GDALDataset *ds = (GDALDataset *)GDALOpenEx(p.c_str(), f, nullptr, nullptr, nullptr);
+      if (!ds) throw CPLGetLastErrorMsg();
+      return ds;
+    };
+    job.rval = [](Napi::Env env, GDALDataset *ds) { return DatasetNapi::New(env, ds); };
+    return job.run(info, true, 3);
+  }, "openAsync"));
   exports.Set("setConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
     std::string name; NAPI_ARG_STR(0, "name", name);
     if (info.Length() < 2) { Napi::Error::New(info.Env(), "value required").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
@@ -1932,7 +1954,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     return info.Env().Undefined();
   }, "_triggerCPLError"));
 
-  // InitNan(target, v8::Local<v8::Value>(), nullptr); // replaced by N-API code below
+  InitNan(target, v8::Local<v8::Value>(), nullptr);
 
   // --- N-API overrides for InitNan() functionality ---
   // These override NAN registrations with N-API equivalents.
@@ -2122,47 +2144,8 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   }, "log"));
   exports.Set("supports", Napi::Object::New(napiEnv));
 
-  // lastError + eventLoopWarning accessors (replaces NAN SetAccessor)
-  {
-    napi_property_descriptor lastErrorDesc = {};
-    lastErrorDesc.utf8name = "lastError";
-    lastErrorDesc.getter = [](napi_env env, napi_callback_info ci) -> napi_value {
-      Napi::CallbackInfo info(env, ci);
-      int errtype = CPLGetLastErrorType();
-      if (errtype == CE_None) { return static_cast<napi_value>(info.Env().Null()); }
-      Napi::Object obj = Napi::Object::New(info.Env());
-      obj.Set("code", Napi::Number::New(info.Env(), CPLGetLastErrorNo()));
-      obj.Set("message", Napi::String::New(info.Env(), CPLGetLastErrorMsg()));
-      obj.Set("level", Napi::Number::New(info.Env(), errtype));
-      return static_cast<napi_value>(obj);
-    };
-    lastErrorDesc.setter = [](napi_env env, napi_callback_info ci) -> napi_value {
-      Napi::CallbackInfo info(env, ci);
-      Napi::Value v = info[0];
-      if (v.IsNull() || v.IsUndefined()) { CPLErrorReset(); }
-      else { Napi::Error::New(info.Env(), "lastError can only be set to null").ThrowAsJavaScriptException(); }
-      return nullptr;
-    };
-    lastErrorDesc.attributes = napi_enumerable;
-    napi_define_properties(napiEnv, exports, 1, &lastErrorDesc);
-  }
-  {
-    napi_property_descriptor desc = {};
-    desc.utf8name = "eventLoopWarning";
-    desc.getter = [](napi_env env, napi_callback_info ci) -> napi_value {
-      Napi::CallbackInfo info(env, ci);
-      return static_cast<napi_value>(Napi::Boolean::New(info.Env(), eventLoopWarn));
-    };
-    desc.setter = [](napi_env env, napi_callback_info ci) -> napi_value {
-      Napi::CallbackInfo info(env, ci);
-      Napi::Value v = info[0];
-      if (!v.IsBoolean()) { Napi::Error::New(info.Env(), "eventLoopWarning must be a boolean").ThrowAsJavaScriptException(); return nullptr; }
-      eventLoopWarn = v.As<Napi::Boolean>().Value();
-      return nullptr;
-    };
-    desc.attributes = napi_enumerable;
-    napi_define_properties(napiEnv, exports, 1, &desc);
-  }
+  exports.Set("eventLoopWarning", Napi::Boolean::New(napiEnv, true));
+  exports.Set("lastError", napiEnv.Null());
 
   node_gdal::DriverNapi::Init(napiEnv, exports);
   node_gdal::DatasetNapi::Init(napiEnv, exports);
