@@ -306,9 +306,25 @@ Napi::Value PolygonRingsNapi::count(const Napi::CallbackInfo &info) {
 }
 Napi::Value PolygonRingsNapi::add(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
-  LinearRingNapi *ring; NAPI_ARG_WRAPPED(0, "ring", LinearRingNapi, ring);
-  OGRErr err = geom_->addRing(ring->get());
-  if (err) NAPI_THROW_OGRERR(err);
+  // Accept LinearRingNapi object OR (x, y, ...) coordinate pairs
+  if (info.Length() >= 1 && info[0].IsObject() && !info[0].IsNumber()) {
+    LinearRingNapi *ring = nullptr;
+    NAPI_ARG_WRAPPED(0, "ring", LinearRingNapi, ring);
+    OGRErr err = geom_->addRing(ring->get());
+    if (err) NAPI_THROW_OGRERR(err);
+  } else if (info.Length() >= 4 && info[0].IsNumber()) {
+    OGRLinearRing ring;
+    for (int i = 0; i + 1 < (int)info.Length(); i += 2) {
+      double x = info[i].As<Napi::Number>().DoubleValue();
+      double y = info[i+1].As<Napi::Number>().DoubleValue();
+      ring.addPoint(x, y);
+    }
+    ring.closeRings();
+    OGRErr err = geom_->addRing(&ring);
+    if (err) NAPI_THROW_OGRERR(err);
+  } else {
+    Napi::Error::New(info.Env(), "add() requires a LinearRing or (x, y, ...) coordinate pairs").ThrowAsJavaScriptException();
+  }
   return info.Env().Undefined();
 }
 
@@ -339,8 +355,20 @@ Napi::Value LineStringPointsNapi::count(const Napi::CallbackInfo &info) {
 }
 Napi::Value LineStringPointsNapi::add(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
-  PointNapi *pt; NAPI_ARG_WRAPPED(0, "point", PointNapi, pt);
-  geom_->addPoint(pt->get());
+  // Accept PointNapi object OR (x, y, z) coordinates
+  if (info.Length() >= 1 && info[0].IsObject() && !info[0].IsNumber()) {
+    PointNapi *pt = nullptr;
+    NAPI_ARG_WRAPPED(0, "point", PointNapi, pt);
+    geom_->addPoint(pt->get());
+  } else if (info.Length() >= 2 && info[0].IsNumber()) {
+    double x, y, z = 0;
+    NAPI_ARG_DOUBLE(0, "x", x);
+    NAPI_ARG_DOUBLE(1, "y", y);
+    NAPI_ARG_DOUBLE_OPT(2, "z", z);
+    geom_->addPoint(x, y, z);
+  } else {
+    Napi::Error::New(info.Env(), "add() requires a Point or (x, y[, z]) coordinates").ThrowAsJavaScriptException();
+  }
   return info.Env().Undefined();
 }
 Napi::Value LineStringPointsNapi::setPi(const Napi::CallbackInfo &info) {

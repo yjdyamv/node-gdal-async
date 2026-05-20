@@ -82,6 +82,7 @@ Napi::Object DatasetLayersNapi::Init(Napi::Env env, Napi::Object exports) {
     env, "DatasetLayers",
     {
       InstanceMethod("toString", &DatasetLayersNapi::toString),
+      InstanceMethod("get", &DatasetLayersNapi::get),
       InstanceMethod("count", &DatasetLayersNapi::count),
       InstanceMethod("countAsync", &DatasetLayersNapi::countAsync),
     });
@@ -111,6 +112,22 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, count) {
       job.main = [raw]() { return raw->GetLayerCount(); };
       job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
       return job.run(info, async, 0);
+    }
+  }
+  return info.Env().Null();
+}
+
+Napi::Value DatasetLayersNapi::get(const Napi::CallbackInfo &info) {
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  if (priv.IsObject()) {
+    auto *ds = DatasetNapi::Unwrap(priv.As<Napi::Object>());
+    if (ds && ds->isAlive()) {
+      int layer_id;
+      NAPI_ARG_INT(0, "layer id", layer_id);
+      GDALDataset *raw = ds->get();
+      OGRLayer *layer = raw->GetLayer(layer_id);
+      if (!layer) { Napi::Error::New(info.Env(), "Invalid layer index").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+      return LayerNapi::New(info.Env(), layer);
     }
   }
   return info.Env().Null();
