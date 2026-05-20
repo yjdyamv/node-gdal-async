@@ -36,8 +36,6 @@ class NodeGdalAsyncConan(ConanFile):
         "gdal*:ogr_optional_drivers": True,
         "gdal*:tools": False,
         "*:shared": False,
-        "zlib*:shared": True,
-        "openssl*:shared": True,
     }
 
     def requirements(self):

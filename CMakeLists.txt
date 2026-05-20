@@ -224,12 +224,19 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   target_compile_options(gdal PRIVATE /MP /GR /EHsc /permissive- /Zc:__cplusplus /utf-8 /GS /guard:cf /W4 -WX-)
-  # Security hardening
   target_link_options(gdal PRIVATE /NXCOMPAT /DYNAMICBASE /GUARD:CF)
-  # Export all symbols for DLL
+  # Allow multiply-defined symbols: node.exe exports zlib/openssl via node.lib,
+  # our static libs provide identical symbols; /FORCE:MULTIPLE uses first definition
+  target_link_options(gdal PRIVATE /FORCE:MULTIPLE)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 else()
   target_compile_options(gdal PRIVATE -Wall -Wextra -Wpedantic -Wno-cast-function-type-mismatch)
+  # Allow multiply-defined symbols for static libs that overlap with node's exports
+  if(APPLE)
+    target_link_options(gdal PRIVATE -Wl,-force_multiple)
+  else()
+    target_link_options(gdal PRIVATE -Wl,--allow-multiple-definition)
+  endif()
 endif()
 
 # --- Post-build: copy to lib/binding ---
@@ -274,10 +281,19 @@ endif()
 add_custom_command(TARGET gdal POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/${BINDING_DIR}"
   COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:gdal>" "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/gdal.node"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CONAN_SHARED_LIBS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  COMMENT "Copying gdal.node and shared libs to ${BINDING_DIR}"
+  COMMENT "Copying gdal.node to ${BINDING_DIR}"
 )
+
+# Copy shared libs if any (only needed when some deps are DLLs)
+list(LENGTH CONAN_SHARED_LIBS CONAN_SHLIB_COUNT)
+if(CONAN_SHLIB_COUNT GREATER 0)
+  add_custom_command(TARGET gdal POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CONAN_SHARED_LIBS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Copying ${CONAN_SHLIB_COUNT} shared libs to ${BINDING_DIR}"
+  )
+endif()
 
 # RPATH for non-Windows platforms so .node finds .so/.dylib relative to itself
 if(APPLE)
