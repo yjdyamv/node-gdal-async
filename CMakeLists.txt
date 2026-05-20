@@ -40,7 +40,7 @@ if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32 -DPLATFORM="win")
   add_definitions(-D_HAS_EXCEPTIONS=1)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  # Force dynamic CRT (/MD) to match vcpkg DLLs; cmake-js defaults to static CRT (/MT)
+  # Force dynamic CRT (/MD) to match shared deps; cmake-js defaults to static CRT (/MT)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
 elseif(APPLE)
   set(PLATFORM "mac")
@@ -60,14 +60,15 @@ if(ENABLE_LOGGING)
   add_definitions(-DENABLE_LOGGING=1)
 endif()
 
-# --- vcpkg dependencies ---
+# --- Dependencies ---
 find_package(GDAL CONFIG REQUIRED)
 find_package(PROJ CONFIG REQUIRED)
 find_package(GEOS CONFIG REQUIRED)
 find_package(CURL REQUIRED)
-find_package(EXPAT REQUIRED)
+find_package(expat REQUIRED)
 find_package(SQLite3 REQUIRED)
-find_package(HDF5 REQUIRED)
+# HDF5 disabled due to GDAL 3.12.1 Conan recipe incompatibility
+# find_package(HDF5 REQUIRED)
 find_package(netCDF CONFIG REQUIRED)
 find_package(OpenJPEG REQUIRED)
 find_package(libaec CONFIG REQUIRED)
@@ -185,9 +186,9 @@ target_link_libraries(gdal PRIVATE
   PROJ::proj
   GEOS::geos_c
   CURL::libcurl
-  EXPAT::EXPAT
+  expat::expat
   SQLite::SQLite3
-  hdf5::hdf5-shared
+  # HDF5::HDF5
   netCDF::netcdf
   openjp2
   libaec::aec
@@ -223,12 +224,19 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   target_compile_options(gdal PRIVATE /MP /GR /EHsc /permissive- /Zc:__cplusplus /utf-8 /GS /guard:cf /W4 -WX-)
-  # Security hardening
   target_link_options(gdal PRIVATE /NXCOMPAT /DYNAMICBASE /GUARD:CF)
-  # Export all symbols for DLL
+  # Allow multiply-defined symbols: node.exe exports zlib/openssl via node.lib,
+  # our static libs provide identical symbols; /FORCE:MULTIPLE uses first definition
+  target_link_options(gdal PRIVATE /FORCE:MULTIPLE)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 else()
   target_compile_options(gdal PRIVATE -Wall -Wextra -Wpedantic -Wno-cast-function-type-mismatch)
+  # Allow multiply-defined symbols for static libs that overlap with node's exports
+  if(APPLE)
+    target_link_options(gdal PRIVATE -Wl,-force_multiple)
+  else()
+    target_link_options(gdal PRIVATE -Wl,--allow-multiple-definition)
+  endif()
 endif()
 
 # --- Post-build: copy to lib/binding ---
@@ -253,35 +261,51 @@ execute_process(
 )
 set(BINDING_DIR "lib/binding/node-v${NODE_ABI}-${NODE_PLATFORM}-${NODE_ARCH}")
 
-# Gather shared libraries that need to be alongside gdal.node
-set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/bin")
-if(WIN32)
-  file(GLOB VCPKG_DLLS "${VCPKG_BIN_DIR}/*.dll")
-  # Do not filter DLLs at configure time; all needed DLLs are copied
-  # Debug DLLs (e.g. gdald.dll) won't be loaded at runtime in Release builds
+# Collect shared libs from all Conan packages (CONAN_RUNTIME_LIB_DIRS set by toolchain)
+set(CONAN_SHARED_LIBS "")
+if(DEFINED CONAN_RUNTIME_LIB_DIRS)
+  foreach(dir ${CONAN_RUNTIME_LIB_DIRS})
+    if(EXISTS "${dir}")
+      if(WIN32)
+        file(GLOB LIBS "${dir}/*.dll")
+      elseif(APPLE)
+        file(GLOB LIBS "${dir}/*.dylib")
+      else()
+        file(GLOB LIBS "${dir}/*.so")
+      endif()
+      list(APPEND CONAN_SHARED_LIBS ${LIBS})
+    endif()
+  endforeach()
 endif()
 
 add_custom_command(TARGET gdal POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/${BINDING_DIR}"
   COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:gdal>" "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/gdal.node"
-  COMMAND ${CMAKE_COMMAND} -E copy ${VCPKG_DLLS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  COMMENT "Copying gdal.node and dependencies to ${BINDING_DIR}"
+  COMMENT "Copying gdal.node to ${BINDING_DIR}"
 )
 
-# RPATH settings so .node finds .so/.dylib relative to itself (Linux/macOS)
-if(NOT WIN32)
-  if(APPLE)
-    set_target_properties(gdal PROPERTIES
-      INSTALL_RPATH "@loader_path"
-      BUILD_RPATH "${VCPKG_BIN_DIR}"
-    )
-  else()
-    set_target_properties(gdal PROPERTIES
-      INSTALL_RPATH "$ORIGIN"
-      BUILD_RPATH "${VCPKG_BIN_DIR}"
-    )
-  endif()
+# Copy shared libs if any (only needed when some deps are DLLs)
+list(LENGTH CONAN_SHARED_LIBS CONAN_SHLIB_COUNT)
+if(CONAN_SHLIB_COUNT GREATER 0)
+  add_custom_command(TARGET gdal POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CONAN_SHARED_LIBS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Copying ${CONAN_SHLIB_COUNT} shared libs to ${BINDING_DIR}"
+  )
+endif()
+
+# RPATH for non-Windows platforms so .node finds .so/.dylib relative to itself
+if(APPLE)
+  set_target_properties(gdal PROPERTIES
+    INSTALL_RPATH "@loader_path"
+    BUILD_RPATH "${CONAN_RUNTIME_LIB_DIRS}"
+  )
+elseif(NOT WIN32)
+  set_target_properties(gdal PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_RPATH "${CONAN_RUNTIME_LIB_DIRS}"
+  )
 endif()
 
 # --- cmake-js Node.js integration ---

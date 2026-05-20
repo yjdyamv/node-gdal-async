@@ -60,23 +60,18 @@ jobs:
     - uses: actions/setup-python@v6
       with:
         python-version: "3.11"
-    - name: Setup vcpkg
+    - name: Setup Conan
       shell: bash
       run: |
-        if [ ! -d vcpkg ]; then
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            ./vcpkg/bootstrap-vcpkg.bat
-          else
-            ./vcpkg/bootstrap-vcpkg.sh
-          fi
-        fi
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-    - name: Install vcpkg dependencies
-      run: ./vcpkg/vcpkg install
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
     - run: npm install --ignore-scripts
     - name: Build from sources
       run: npx cmake-js compile -j max
+      env:
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - run: npm test
     - run: npx @mapbox/node-pre-gyp package
     - run: npx @mmomtchev/node-pre-gyp-github publish
