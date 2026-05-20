@@ -1,4 +1,5 @@
 #include "gdal_rasterband_napi.hpp"
+#include "utils/napi_object_store.hpp"
 #include <array>
 
 namespace node_gdal {
@@ -103,7 +104,13 @@ RasterBandNapi::~RasterBandNapi() { this_ = nullptr; }
 Napi::Value RasterBandNapi::New(Napi::Env env, GDALRasterBand *band) {
   Napi::EscapableHandleScope scope(env);
   if (!band) return scope.Escape(env.Null());
-  return scope.Escape(constructor.New({Napi::External<GDALRasterBand>::New(env, band)}));
+  if (napi_obj_store_has<GDALRasterBand *>(band)) {
+    Napi::Object existing = napi_obj_store_get<GDALRasterBand *>(env, band);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<GDALRasterBand>::New(env, band)});
+  napi_obj_store_add<GDALRasterBand *>(band, obj);
+  return scope.Escape(obj);
 }
 
 Napi::Value RasterBandNapi::toString(const Napi::CallbackInfo &info) {

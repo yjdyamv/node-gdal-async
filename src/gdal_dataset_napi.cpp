@@ -2,6 +2,7 @@
 #include "gdal_dataset_napi.hpp"
 #include "gdal_driver_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -62,8 +63,14 @@ DatasetNapi::~DatasetNapi() {
 Napi::Value DatasetNapi::New(Napi::Env env, GDALDataset *ds) {
   Napi::EscapableHandleScope scope(env);
   if (!ds) return scope.Escape(env.Null());
-  return scope.Escape(
-    constructor.New({Napi::External<GDALDataset>::New(env, ds)}));
+  // Return existing wrapper if already registered
+  if (napi_obj_store_has<GDALDataset *>(ds)) {
+    Napi::Object existing = napi_obj_store_get<GDALDataset *>(env, ds);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<GDALDataset>::New(env, ds)});
+  napi_obj_store_add<GDALDataset *>(ds, obj);
+  return scope.Escape(obj);
 }
 
 // ---------------------------------------------------------------------------
