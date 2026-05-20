@@ -515,11 +515,4 @@ Napi::Value ArrayAttributesNapi::getNames(const Napi::CallbackInfo &info) {
   return r;
 }
 
-namespace VsiNapi {
-Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  exports.Set("VsiNapi", Napi::Object::New(env));
-  return exports;
-}
-}
-
 } // namespace node_gdal

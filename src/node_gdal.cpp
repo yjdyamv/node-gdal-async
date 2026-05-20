@@ -97,6 +97,7 @@
 #include "collections/collections_napi.hpp"
 #include "gdal_utils_napi.hpp"
 #include "gdal_stubs_napi.hpp"
+#include "gdal_vsi_napi.hpp"
 
 // std
 #include <sstream>
