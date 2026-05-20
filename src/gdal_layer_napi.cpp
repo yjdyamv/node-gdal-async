@@ -1,5 +1,6 @@
 #include "gdal_layer_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
+#include "geometry/gdal_geometry_napi.hpp"
 
 namespace node_gdal {
 
@@ -104,9 +105,15 @@ Napi::Value LayerNapi::setSpatialFilter(const Napi::CallbackInfo &info) {
     layer->this_->SetSpatialFilterRect(minX, minY, maxX, maxY);
   } else if (info.Length() == 0 || (info.Length() == 1 && info[0].IsNull())) {
     layer->this_->SetSpatialFilter(nullptr);
-  } else if (info.Length() >= 1 && info[0].IsObject()) {
-    // Accept GeometryNapi (placeholder - GeometryNapi not yet fully wired)
-    layer->this_->SetSpatialFilter(nullptr);
+  } else if (info.Length() >= 1 && info[0].IsObject() &&
+             info[0].As<Napi::Object>().InstanceOf(GeometryNapi::constructor.Value())) {
+    GeometryNapi *geom = GeometryNapi::Unwrap(info[0].As<Napi::Object>());
+    if (!geom || !geom->isAlive()) {
+      Napi::Error::New(info.Env(), "GeometryNapi object has been destroyed")
+        .ThrowAsJavaScriptException();
+      return info.Env().Undefined();
+    }
+    layer->this_->SetSpatialFilter(geom->this_);
   } else {
     Napi::Error::New(info.Env(), "Invalid number of arguments").ThrowAsJavaScriptException();
   }
@@ -117,8 +124,7 @@ Napi::Value LayerNapi::getSpatialFilter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(LayerNapi, layer);
   OGRGeometry *filter = layer->this_->GetSpatialFilter();
   if (!filter) return info.Env().Null();
-  // TODO: return GeometryNapi when fully wired
-  return info.Env().Null();
+  return GeometryNapi::New(info.Env(), filter, false);
 }
 
 Napi::Value LayerNapi::testCapability(const Napi::CallbackInfo &info) {
