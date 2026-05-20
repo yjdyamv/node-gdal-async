@@ -2122,7 +2122,47 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   }, "log"));
   exports.Set("supports", Napi::Object::New(napiEnv));
 
-  exports.Set("eventLoopWarning", Napi::Boolean::New(napiEnv, true));
+  // lastError + eventLoopWarning accessors (replaces NAN SetAccessor)
+  {
+    napi_property_descriptor lastErrorDesc = {};
+    lastErrorDesc.utf8name = "lastError";
+    lastErrorDesc.getter = [](napi_env env, napi_callback_info ci) -> napi_value {
+      Napi::CallbackInfo info(env, ci);
+      int errtype = CPLGetLastErrorType();
+      if (errtype == CE_None) { return static_cast<napi_value>(info.Env().Null()); }
+      Napi::Object obj = Napi::Object::New(info.Env());
+      obj.Set("code", Napi::Number::New(info.Env(), CPLGetLastErrorNo()));
+      obj.Set("message", Napi::String::New(info.Env(), CPLGetLastErrorMsg()));
+      obj.Set("level", Napi::Number::New(info.Env(), errtype));
+      return static_cast<napi_value>(obj);
+    };
+    lastErrorDesc.setter = [](napi_env env, napi_callback_info ci) -> napi_value {
+      Napi::CallbackInfo info(env, ci);
+      Napi::Value v = info[0];
+      if (v.IsNull() || v.IsUndefined()) { CPLErrorReset(); }
+      else { Napi::Error::New(info.Env(), "lastError can only be set to null").ThrowAsJavaScriptException(); }
+      return nullptr;
+    };
+    lastErrorDesc.attributes = napi_enumerable;
+    napi_define_properties(napiEnv, exports, 1, &lastErrorDesc);
+  }
+  {
+    napi_property_descriptor desc = {};
+    desc.utf8name = "eventLoopWarning";
+    desc.getter = [](napi_env env, napi_callback_info ci) -> napi_value {
+      Napi::CallbackInfo info(env, ci);
+      return static_cast<napi_value>(Napi::Boolean::New(info.Env(), eventLoopWarn));
+    };
+    desc.setter = [](napi_env env, napi_callback_info ci) -> napi_value {
+      Napi::CallbackInfo info(env, ci);
+      Napi::Value v = info[0];
+      if (!v.IsBoolean()) { Napi::Error::New(info.Env(), "eventLoopWarning must be a boolean").ThrowAsJavaScriptException(); return nullptr; }
+      eventLoopWarn = v.As<Napi::Boolean>().Value();
+      return nullptr;
+    };
+    desc.attributes = napi_enumerable;
+    napi_define_properties(napiEnv, exports, 1, &desc);
+  }
 
   node_gdal::DriverNapi::Init(napiEnv, exports);
   node_gdal::DatasetNapi::Init(napiEnv, exports);
