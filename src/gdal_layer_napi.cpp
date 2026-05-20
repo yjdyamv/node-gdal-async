@@ -1,8 +1,9 @@
-#include "../gdal_stubs_napi.hpp"
 #include "gdal_layer_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
 #include "geometry/gdal_geometry_napi.hpp"
 #include "utils/napi_object_store.hpp"
+#include "collections/collections_napi.hpp"
+#include "gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -176,7 +177,6 @@ Napi::Value LayerNapi::fidColumnGetter(const Napi::CallbackInfo &info) {
   return SafeStringNapi(info.Env(), layer->this_->GetFIDColumn());
 }
 
-} // namespace node_gdal
 
 Napi::Value LayerNapi::featuresGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(LayerNapi, self);
@@ -193,3 +193,5 @@ Napi::Value LayerNapi::fieldsGetter(const Napi::CallbackInfo &info) {
   Napi::Object f = LayerFieldsNapi::constructor.New({Napi::External<OGRLayer>::New(info.Env(), self->this_)});
   thiz.Set("__fields", f); return f;
 }
+
+} // namespace node_gdal

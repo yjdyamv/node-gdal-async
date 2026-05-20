@@ -1,6 +1,6 @@
-#include "../gdal_stubs_napi.hpp"
 #include "gdal_feature_napi.hpp"
 #include "gdal_feature_defn_napi.hpp"
+#include "gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -245,8 +245,6 @@ void FeatureNapi::fidSetter(const Napi::CallbackInfo &info, const Napi::Value &v
   feature->this_->SetFID(value.As<Napi::Number>().Int64Value());
 }
 
-} // namespace node_gdal
-
 Napi::Value FeatureNapi::fieldsGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(FeatureNapi, self);
   Napi::Object thiz = info.This().As<Napi::Object>();
@@ -254,3 +252,5 @@ Napi::Value FeatureNapi::fieldsGetter(const Napi::CallbackInfo &info) {
   Napi::Object f = FeatureFieldsNapi::constructor.New({Napi::External<OGRFeature>::New(info.Env(), self->this_)});
   thiz.Set("__fields", f); return f;
 }
+
+} // namespace node_gdal

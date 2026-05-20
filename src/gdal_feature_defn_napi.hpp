@@ -39,6 +39,7 @@ class FeatureDefnNapi : public Napi::ObjectWrap<FeatureDefnNapi> {
 
     private:
   OGRFeatureDefn *this_;
+  Napi::Value fieldsGetter(const Napi::CallbackInfo &info);
   bool owned_;
 };
 

@@ -1,5 +1,5 @@
-#include "../gdal_stubs_napi.hpp"
 #include "gdal_feature_defn_napi.hpp"
+#include "gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -171,8 +171,6 @@ void FeatureDefnNapi::styleIgnoredSetter(const Napi::CallbackInfo &info, const N
   def->this_->SetStyleIgnored(value.As<Napi::Boolean>().Value());
 }
 
-} // namespace node_gdal
-
 Napi::Value FeatureDefnNapi::fieldsGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(FeatureDefnNapi, self);
   Napi::Object thiz = info.This().As<Napi::Object>();
@@ -180,3 +178,5 @@ Napi::Value FeatureDefnNapi::fieldsGetter(const Napi::CallbackInfo &info) {
   Napi::Object f = FeatureDefnFieldsNapi::constructor.New({Napi::External<OGRFeatureDefn>::New(info.Env(), self->this_)});
   thiz.Set("__fields", f); return f;
 }
+
+} // namespace node_gdal
