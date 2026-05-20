@@ -34,6 +34,9 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
   GDAL_ASYNCABLE_GETTER_DECLARE_NAPI(srsGetter);
   GDAL_ASYNCABLE_GETTER_DECLARE_NAPI(geoTransformGetter);
 
+  Napi::Value bandsGetter(const Napi::CallbackInfo &info);
+  Napi::Value layersGetter(const Napi::CallbackInfo &info);
+
   void srsSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
   void geoTransformSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 

@@ -3,6 +3,7 @@
 #include "gdal_driver_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
 #include "utils/napi_object_store.hpp"
+#include "collections/collections_napi.hpp"
 
 namespace node_gdal {
 
@@ -30,6 +31,8 @@ Napi::Object DatasetNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceAccessor<&DatasetNapi::geoTransformGetterAsync>("geoTransformAsync"),
       InstanceAccessor<&DatasetNapi::srsGetter>("srs"),
       InstanceAccessor<&DatasetNapi::srsGetterAsync>("srsAsync"),
+      InstanceAccessor<&DatasetNapi::bandsGetter>("bands"),
+      InstanceAccessor<&DatasetNapi::layersGetter>("layers"),
     });
 
   constructor = Napi::Persistent(func);
@@ -318,6 +321,22 @@ void DatasetNapi::geoTransformSetter(const Napi::CallbackInfo &info, const Napi:
   if (err != CE_None) {
     Napi::Error::New(info.Env(), CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
   }
+}
+
+Napi::Value DatasetNapi::bandsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(DatasetNapi, ds);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__bands")) { Napi::Value c = thiz.Get("__bands"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object bands = DatasetBandsNapi::constructor.New({Napi::External<GDALDataset>::New(info.Env(), ds->this_dataset)});
+  thiz.Set("__bands", bands); return bands;
+}
+
+Napi::Value DatasetNapi::layersGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(DatasetNapi, ds);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__layers")) { Napi::Value c = thiz.Get("__layers"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object layers = DatasetLayersNapi::constructor.New({Napi::External<GDALDataset>::New(info.Env(), ds->this_dataset)});
+  thiz.Set("__layers", layers); return layers;
 }
 
 } // namespace node_gdal
