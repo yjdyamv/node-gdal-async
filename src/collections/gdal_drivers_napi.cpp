@@ -29,14 +29,14 @@ GDALDriversNapi::GDALDriversNapi(const Napi::CallbackInfo &info)
       .ThrowAsJavaScriptException();
     return;
   }
-  if (info.Length() == 0 || !info[0].IsExternal()) {
+  if (info.Length() == 0 || (!info[0].IsExternal() && !info[0].IsNull())) {
     Napi::Error::New(info.Env(), "Cannot create GDALDrivers directly")
       .ThrowAsJavaScriptException();
   }
 }
 
 Napi::Value GDALDriversNapi::New(Napi::Env env) {
-  return constructor.New({});
+  return constructor.New({env.Null()});
 }
 
 Napi::Value GDALDriversNapi::toString(const Napi::CallbackInfo &info) {
