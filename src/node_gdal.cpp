@@ -464,8 +464,8 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
    * @name drivers
    * @type {GDALDrivers}
    */
-  GDALDrivers::Initialize(target); // calls GDALRegisterAll()
-  Nan::Set(target, Nan::New("drivers").ToLocalChecked(), GDALDrivers::New());
+  // GDALDrivers::Initialize(target); // N-API: GDALDriversNapi::Init handles GDALAllRegister
+  // gdal.drivers set by GDALDriversNapi::New() in InitNapi()
 
   /*
    * DMD Constants
@@ -1985,6 +1985,9 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::VsiNapi::Init(napiEnv, exports);
   node_gdal::AlgebraNapi::Init(napiEnv, exports);
   node_gdal::MemfileNapi::Init(napiEnv, exports);
+
+  // Replace NAN GDALDrivers with N-API version
+  exports.Set("drivers", GDALDriversNapi::New(napiEnv));
 
   return exports;
 }
