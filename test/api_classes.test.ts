@@ -81,7 +81,7 @@ describe('Class semantics', () => {
       assert.match(((gdal as Record<string, unknown>)[name] as new () => unknown).prototype.toString.call(o), new RegExp(name))
       assert.throws(() => {
         ((gdal as Record<string, unknown>)[name] as () => unknown)()
-      }, /Cannot call constructor|abstract/)
+      }, /Cannot call constructor|Class constructors cannot be invoked|abstract/)
     })
   }
 })
