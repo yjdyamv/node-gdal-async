@@ -57,13 +57,13 @@ DatasetNapi::DatasetNapi(const Napi::CallbackInfo &info)
 }
 
 DatasetNapi::~DatasetNapi() {
-  if (this_dataset) {
+  if (this_dataset && owned_) {
     GDALClose(this_dataset);
-    this_dataset = nullptr;
   }
+  this_dataset = nullptr;
 }
 
-Napi::Value DatasetNapi::New(Napi::Env env, GDALDataset *ds) {
+Napi::Value DatasetNapi::New(Napi::Env env, GDALDataset *ds, bool owned) {
   Napi::EscapableHandleScope scope(env);
   if (!ds) return scope.Escape(env.Null());
   // Return existing wrapper if already registered
@@ -72,6 +72,8 @@ Napi::Value DatasetNapi::New(Napi::Env env, GDALDataset *ds) {
     if (!existing.IsEmpty()) return scope.Escape(existing);
   }
   Napi::Object obj = constructor.New({Napi::External<GDALDataset>::New(env, ds)});
+  DatasetNapi *w = DatasetNapi::Unwrap(obj);
+  if (w) w->owned_ = owned;
   napi_obj_store_add<GDALDataset *>(ds, obj);
   return scope.Escape(obj);
 }
@@ -86,10 +88,10 @@ Napi::Value DatasetNapi::toString(const Napi::CallbackInfo &info) {
 
 Napi::Value DatasetNapi::close(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(DatasetNapi, ds);
-  if (ds->this_dataset) {
+  if (ds->this_dataset && ds->owned_) {
     GDALClose(ds->this_dataset);
-    ds->this_dataset = nullptr;
   }
+  ds->this_dataset = nullptr;
   return info.Env().Undefined();
 }
 

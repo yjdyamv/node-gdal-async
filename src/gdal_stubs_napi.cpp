@@ -7,6 +7,24 @@
 
 namespace node_gdal {
 
+// Convert GDALDataType to a Napi::TypedArray
+static Napi::TypedArray NewTypedArray(Napi::Env env, GDALDataType type, size_t elements) {
+  switch (type) {
+    case GDT_Byte:
+    case GDT_Int8:   return Napi::Int8Array::New(env, elements);
+    case GDT_UInt16: return Napi::Uint16Array::New(env, elements);
+    case GDT_Int16:  return Napi::Int16Array::New(env, elements);
+    case GDT_UInt32: return Napi::Uint32Array::New(env, elements);
+    case GDT_Int32:  return Napi::Int32Array::New(env, elements);
+    case GDT_UInt64: return Napi::BigUint64Array::New(env, elements);
+    case GDT_Int64:  return Napi::BigInt64Array::New(env, elements);
+    case GDT_Float32:return Napi::Float32Array::New(env, elements);
+    case GDT_Float64:return Napi::Float64Array::New(env, elements);
+    default:         return Napi::Float32Array::New(env, elements);
+  }
+}
+static size_t GetDataTypeSize(GDALDataType type) { return GDALGetDataTypeSizeBytes(type); }
+
 // ===================== RasterBandPixelsNapi =====================
 Napi::FunctionReference RasterBandPixelsNapi::constructor;
 Napi::Object RasterBandPixelsNapi::Init(Napi::Env env, Napi::Object exports) {
@@ -45,18 +63,46 @@ GDAL_ASYNCABLE_DEFINE_NAPI(RasterBandPixelsNapi, read) {
   if (!band_) return info.Env().Null();
   int x, y, w, h;
   NAPI_ARG_INT(0, "x", x); NAPI_ARG_INT(1, "y", y); NAPI_ARG_INT(2, "w", w); NAPI_ARG_INT(3, "h", h);
+
+  int buffer_w = w, buffer_h = h;
+  if (info.Length() > 5 && info[5].IsNumber()) buffer_w = info[5].As<Napi::Number>().Int32Value();
+  if (info.Length() > 6 && info[6].IsNumber()) buffer_h = info[6].As<Napi::Number>().Int32Value();
+
   GDALDataType type = band_->GetRasterDataType();
-  int size = w * h * GDALGetDataTypeSizeBytes(type);
-  std::vector<uint8_t> buf(size);
+  if (info.Length() > 7 && info[7].IsNumber())
+    type = static_cast<GDALDataType>(info[7].As<Napi::Number>().Int32Value());
+
+  int pixel_space = GDALGetDataTypeSizeBytes(type);
+  int line_space = pixel_space * buffer_w;
+  if (info.Length() > 8 && info[8].IsNumber()) pixel_space = info[8].As<Napi::Number>().Int32Value();
+  if (info.Length() > 9 && info[9].IsNumber()) line_space = info[9].As<Napi::Number>().Int32Value();
+
+  bool hasData = info.Length() > 4 && !info[4].IsNull() && !info[4].IsUndefined();
+  int size = line_space * buffer_h;
+  if (size <= 0) {
+    Napi::Error::New(info.Env(), "Invalid buffer dimensions").ThrowAsJavaScriptException();
+    return info.Env().Undefined();
+  }
+
   GDALRasterBand *raw = band_;
-  GDALAsyncableJobNapi<CPLErr> job;
-  job.main = [raw, x, y, w, h, type, buf = std::move(buf)]() mutable {
-    CPLErr err = raw->RasterIO(GF_Read, x, y, w, h, buf.data(), w, h, type, 0, 0);
-    if (err) throw CPLGetLastErrorMsg();
-    return err;
-  };
-  job.rval = [](Napi::Env env, CPLErr) { return env.Null(); };
-  return job.run(info, async, 5);
+  Napi::Env env = info.Env();
+
+  if (!hasData) {
+    // allocate new typed array, read synchronously into it
+    size_t elements = static_cast<size_t>(w) * h;
+    Napi::TypedArray result = NewTypedArray(env, type, elements);
+    CPLErr err =
+      raw->RasterIO(GF_Read, x, y, w, h, result.ArrayBuffer().Data(), buffer_w, buffer_h, type, pixel_space, line_space, nullptr);
+    if (err) NAPI_THROW_LAST_CPLERR;
+    return result;
+  }
+
+  // user-provided buffer – read synchronously into it
+  Napi::Buffer<uint8_t> buf = info[4].As<Napi::Buffer<uint8_t>>();
+  CPLErr err =
+    raw->RasterIO(GF_Read, x, y, w, h, buf.Data(), buffer_w, buffer_h, type, pixel_space, line_space, nullptr);
+  if (err) NAPI_THROW_LAST_CPLERR;
+  return info.Env().Undefined();
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(RasterBandPixelsNapi, write) {
   if (!band_) return info.Env().Null();
@@ -64,15 +110,25 @@ GDAL_ASYNCABLE_DEFINE_NAPI(RasterBandPixelsNapi, write) {
   NAPI_ARG_INT(0, "x", x); NAPI_ARG_INT(1, "y", y); NAPI_ARG_INT(2, "w", w); NAPI_ARG_INT(3, "h", h);
   if (info.Length() < 5 || !info[4].IsBuffer()) return info.Env().Undefined();
   Napi::Buffer<uint8_t> buf = info[4].As<Napi::Buffer<uint8_t>>();
+
+  int buffer_w = w, buffer_h = h;
+  if (info.Length() > 5 && info[5].IsNumber()) buffer_w = info[5].As<Napi::Number>().Int32Value();
+  if (info.Length() > 6 && info[6].IsNumber()) buffer_h = info[6].As<Napi::Number>().Int32Value();
+
+  GDALDataType type = band_->GetRasterDataType();
+  if (info.Length() > 7 && info[7].IsNumber())
+    type = static_cast<GDALDataType>(info[7].As<Napi::Number>().Int32Value());
+
+  int pixel_space = GDALGetDataTypeSizeBytes(type);
+  int line_space = pixel_space * buffer_w;
+  if (info.Length() > 8 && info[8].IsNumber()) pixel_space = info[8].As<Napi::Number>().Int32Value();
+  if (info.Length() > 9 && info[9].IsNumber()) line_space = info[9].As<Napi::Number>().Int32Value();
+
   GDALRasterBand *raw = band_;
-  GDALAsyncableJobNapi<CPLErr> job;
-  job.main = [raw, x, y, w, h, d = buf.Data(), l = buf.Length()]() {
-    CPLErr err = raw->RasterIO(GF_Write, x, y, w, h, (void *)d, w, h, GDT_Byte, 0, 0);
-    if (err) throw CPLGetLastErrorMsg();
-    return err;
-  };
-  job.rval = [](Napi::Env env, CPLErr) { return env.Undefined(); };
-  return job.run(info, async, 5);
+  CPLErr err =
+    raw->RasterIO(GF_Write, x, y, w, h, (void *)buf.Data(), buffer_w, buffer_h, type, pixel_space, line_space, nullptr);
+  if (err) NAPI_THROW_LAST_CPLERR;
+  return info.Env().Undefined();
 }
 
 // ===================== FeatureFieldsNapi =====================

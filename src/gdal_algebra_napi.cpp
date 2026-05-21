@@ -13,7 +13,7 @@ namespace node_gdal {
 
 static inline Napi::Value AlgebraRVal(Napi::Env env, GDALRasterBand *r) {
   if (!r) return env.Null();
-  DatasetNapi::New(env, r->GetDataset());
+  DatasetNapi::New(env, r->GetDataset(), false); // computed datasets should not be closed
   return RasterBandNapi::New(env, r);
 }
 

@@ -13,10 +13,12 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
     public:
   static Napi::FunctionReference constructor;
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
-  static Napi::Value New(Napi::Env env, GDALDataset *ds);
+  static Napi::Value New(Napi::Env env, GDALDataset *ds, bool owned = true);
 
   DatasetNapi(const Napi::CallbackInfo &info);
   ~DatasetNapi();
+
+  void setOwned(bool owned) { owned_ = owned; }
 
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value close(const Napi::CallbackInfo &info);
@@ -49,6 +51,7 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
 
     private:
   GDALDataset *this_dataset;
+  bool owned_ = true;
 };
 
 } // namespace node_gdal
