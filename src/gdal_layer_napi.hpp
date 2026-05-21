@@ -38,9 +38,11 @@ class LayerNapi : public Napi::ObjectWrap<LayerNapi> {
   bool isAlive() {
     return this_ != nullptr;
   }
+  void setParentDataset(Napi::Object ds) { parent_ds_.Reset(ds, 1); }
 
     private:
   OGRLayer *this_;
+  Napi::Reference<Napi::Object> parent_ds_;
 };
 
 } // namespace node_gdal

@@ -132,8 +132,10 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, get) {
         if (!layer) throw "Invalid layer index";
         return layer;
       };
-      job.rval = [](Napi::Env env, OGRLayer *l) {
-        return LayerNapi::New(env, l);
+      job.rval = [priv](Napi::Env env, OGRLayer *l) {
+        Napi::Value result = LayerNapi::New(env, l);
+        if (result.IsObject()) result.As<Napi::Object>().Set("_ds", priv);
+        return result;
       };
       return job.run(info, async, 1);
     }
@@ -189,7 +191,25 @@ GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, count) {
   return info.Env().Null();
 }
 
+// Helper: check if parent dataset of a layer features object is still alive
+static bool isLayerParentDsAlive(const Napi::CallbackInfo &info) {
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  if (!priv.IsObject()) return false;
+  auto *layer = LayerNapi::Unwrap(priv.As<Napi::Object>());
+  if (!layer || !layer->isAlive()) return false;
+  Napi::Value dsVal = priv.As<Napi::Object>().Get("_ds");
+  if (dsVal.IsObject()) {
+    auto *ds = DatasetNapi::Unwrap(dsVal.As<Napi::Object>());
+    if (!ds || !ds->isAlive()) return false;
+  }
+  return true;
+}
+
 GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, next) {
+  if (!isLayerParentDsAlive(info)) {
+    Napi::Error::New(info.Env(), "Layer object has already been destroyed").ThrowAsJavaScriptException();
+    return info.Env().Undefined();
+  }
   auto priv = info.This().As<Napi::Object>().Get("_parent");
   if (priv.IsObject()) {
     auto *layer = LayerNapi::Unwrap(priv.As<Napi::Object>());
@@ -208,24 +228,23 @@ GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, next) {
 }
 
 GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, first) {
-  auto priv = info.This().As<Napi::Object>().Get("_parent");
-  if (priv.IsObject()) {
-    auto *layer = LayerNapi::Unwrap(priv.As<Napi::Object>());
-    if (layer && layer->isAlive()) {
-      GDALAsyncableJobNapi<OGRFeature *> job;
-      OGRLayer *raw = layer->get();
-      job.main = [raw]() -> OGRFeature * {
-        raw->ResetReading();
-        return raw->GetNextFeature();
-      };
-      job.rval = [](Napi::Env env, OGRFeature *f) -> Napi::Value {
-        if (!f) return env.Null();
-        return FeatureNapi::New(env, f);
-      };
-      return job.run(info, async, 0);
-    }
+  if (!isLayerParentDsAlive(info)) {
+    Napi::Error::New(info.Env(), "Layer object has already been destroyed").ThrowAsJavaScriptException();
+    return info.Env().Undefined();
   }
-  return info.Env().Null();
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  auto *layer = LayerNapi::Unwrap(priv.As<Napi::Object>());
+  GDALAsyncableJobNapi<OGRFeature *> job;
+  OGRLayer *raw = layer->get();
+  job.main = [raw]() -> OGRFeature * {
+    raw->ResetReading();
+    return raw->GetNextFeature();
+  };
+  job.rval = [](Napi::Env env, OGRFeature *f) -> Napi::Value {
+    if (!f) return env.Null();
+    return FeatureNapi::New(env, f);
+  };
+  return job.run(info, async, 0);
 }
 
 } // namespace node_gdal
