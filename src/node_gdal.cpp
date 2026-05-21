@@ -1895,6 +1895,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     unsigned int flags = GDAL_OF_VERBOSE_ERROR;
     for (size_t i = 0; i < mode.length(); i++) {
       if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 'm') { flags |= GDAL_OF_MULTIDIM_RASTER; }
       else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
       else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
     }
@@ -1910,6 +1911,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     unsigned int flags = GDAL_OF_VERBOSE_ERROR;
     for (size_t i = 0; i < mode.length(); i++) {
       if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 'm') { flags |= GDAL_OF_MULTIDIM_RASTER; }
       else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
       else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
     }
