@@ -84,8 +84,8 @@ find_package(muparser CONFIG REQUIRED)
 set(SOURCES
   src/utils/ptr_manager.cpp
   src/node_gdal.cpp
-  src/async.cpp
-  src/gdal_common.cpp
+# src/async.cpp
+# src/gdal_common.cpp
   # N-API modules
   src/gdal_dataset_napi.cpp
   src/gdal_driver_napi.cpp

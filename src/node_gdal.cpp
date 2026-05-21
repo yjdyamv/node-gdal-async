@@ -102,6 +102,7 @@
 // std
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace node_gdal {
@@ -112,6 +113,7 @@ using namespace v8;
 FILE *log_file = NULL;
 ObjectStore object_store;
 bool eventLoopWarn = true;
+std::thread::id mainV8ThreadId;  // moved from async.cpp
 
 static NAN_GETTER(LastErrorGetter) {
 
