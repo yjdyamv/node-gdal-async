@@ -82,6 +82,49 @@ class GDALAsyncWorkerNapiPromise : public Napi::AsyncWorker {
 };
 
 // ---------------------------------------------------------------------------
+// Progress callback support
+// ---------------------------------------------------------------------------
+
+// Context passed to main() so algorithms can wire up GDAL progress callbacks.
+class NapiProgressContext {
+    public:
+  NapiProgressContext() : cb_(nullptr), env_(nullptr) {}
+  void setCallback(Napi::FunctionReference *cb, napi_env env) { cb_ = cb; env_ = env; }
+
+  // Returns a GDALProgressFunc trampoline (or nullptr if no callback)
+  GDALProgressFunc getFunc() const;
+  // Returns user-data pointer for the trampoline
+  void *getArg() const { return (void *)cb_; }
+
+    private:
+  Napi::FunctionReference *cb_;
+  napi_env env_;
+};
+
+// C-linkage trampoline: called by GDAL during long-running operations.
+// Only supports sync mode (runs on main V8 thread).
+static int ProgressTrampolineNapi(double dfComplete, const char *pszMessage, void *pProgressArg) {
+  Napi::FunctionReference *cb = static_cast<Napi::FunctionReference *>(pProgressArg);
+  if (!cb || cb->IsEmpty()) return true; // continue
+  Napi::Env env = cb->Env();
+  try {
+    Napi::HandleScope scope(env);
+    Napi::Value result = cb->Call({
+      Napi::Number::New(env, dfComplete),
+      SafeStringNapi(env, pszMessage)
+    });
+    if (result.IsBoolean()) return result.As<Napi::Boolean>().Value();
+  } catch (...) {
+    // Swallow JS exceptions from progress callbacks
+  }
+  return true; // continue
+}
+
+inline GDALProgressFunc NapiProgressContext::getFunc() const {
+  return (cb_ && !cb_->IsEmpty()) ? ProgressTrampolineNapi : nullptr;
+}
+
+// ---------------------------------------------------------------------------
 // Simplified async dispatch (callback or Promise)
 // ---------------------------------------------------------------------------
 template <class GDALType>
@@ -92,16 +135,26 @@ class GDALAsyncableJobNapi {
 
   MainFunc main;
   RValFunc rval;
+  Napi::FunctionReference progress_cb_;
 
   GDALAsyncableJobNapi() : main(), rval() {
   }
+
+  // Set up progress context before calling main() in sync mode
+  void setupProgress(Napi::Env env) {
+    if (!progress_cb_.IsEmpty()) {
+      ctx_.setCallback(&progress_cb_, env);
+    }
+  }
+
+  GDALProgressFunc progressFunc() { return ctx_.getFunc(); }
+  void *progressArg() { return ctx_.getArg(); }
 
   // Dispatch: sync if !async, else queue an async worker.
   // If async and last arg is a Function, use callback mode.
   // Otherwise return a Promise.
   Napi::Value run(const Napi::CallbackInfo &info, bool async, int cb_index) {
     if (async) {
-      // callback mode if callback provided
       if (info.Length() > cb_index && info[cb_index].IsFunction()) {
         Napi::Function callback = info[cb_index].As<Napi::Function>();
         auto *worker = new GDALAsyncWorkerNapi<GDALType>(callback, main, rval);
@@ -116,6 +169,8 @@ class GDALAsyncableJobNapi {
       return deferred.Promise();
     }
 
+    // Sync mode: set up progress context, then call main
+    setupProgress(info.Env());
     try {
       GDALType result = main();
       return rval(info.Env(), result);
@@ -126,6 +181,9 @@ class GDALAsyncableJobNapi {
     }
     return info.Env().Undefined();
   }
+
+    private:
+  NapiProgressContext ctx_;
 };
 
 } // namespace node_gdal
