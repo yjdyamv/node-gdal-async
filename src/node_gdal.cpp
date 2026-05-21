@@ -227,53 +227,53 @@ static NAN_METHOD(Log) {
 /*
  * Common code for sync and async opening.
  */
-GDAL_ASYNCABLE_GLOBAL(gdal_open);
-GDAL_ASYNCABLE_DEFINE(gdal_open) {
-
-  std::string path;
-  std::string mode = "r";
-
-  NODE_ARG_STR(0, "path", path);
-  NODE_ARG_OPT_STR(1, "mode", mode);
-
-  unsigned int flags = 0;
-  for (unsigned i = 0; i < mode.length(); i++) {
-    if (mode[i] == 'r') {
-      if (i < mode.length() - 1 && mode[i + 1] == '+') {
-        flags |= GDAL_OF_UPDATE;
-        i++;
-      } else {
-        flags |= GDAL_OF_READONLY;
-      }
-    } else if (mode[i] == 'm') {
-#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-      flags |= GDAL_OF_MULTIDIM_RASTER;
-#else
-      Nan::ThrowError("Multidimensional support requires GDAL 3.1");
-#endif
-    } else if (mode[i] == 't') {
-#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 10)
-      flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
-#else
-      Nan::ThrowError("Thread-safe read-only reading requires GDAL 3.10");
-      return;
-#endif
-    } else {
-      Nan::ThrowError("Invalid open mode. Must contain only \"r\" or \"r+\" and \"m\" or \"t\" ");
-      return;
-    }
-  }
-  flags |= GDAL_OF_VERBOSE_ERROR;
-
-  GDALAsyncableJob<GDALDataset *> job(0);
-  job.rval = [](GDALDataset *ds, const GetFromPersistentFunc &) { return Dataset::New(ds); };
-  job.main = [path, flags](const GDALExecutionProgress &) {
-    GDALDataset *ds = (GDALDataset *)GDALOpenEx(path.c_str(), flags, NULL, NULL, NULL);
-    if (!ds) throw CPLGetLastErrorMsg();
-    return ds;
-  };
-  job.run(info, async, 2);
-}
+// GDAL_ASYNCABLE_GLOBAL(gdal_open);
+// GDAL_ASYNCABLE_DEFINE(gdal_open) {
+// 
+//   std::string path;
+//   std::string mode = "r";
+// 
+//   NODE_ARG_STR(0, "path", path);
+//   NODE_ARG_OPT_STR(1, "mode", mode);
+// 
+//   unsigned int flags = 0;
+//   for (unsigned i = 0; i < mode.length(); i++) {
+//     if (mode[i] == 'r') {
+//       if (i < mode.length() - 1 && mode[i + 1] == '+') {
+//         flags |= GDAL_OF_UPDATE;
+//         i++;
+//       } else {
+//         flags |= GDAL_OF_READONLY;
+//       }
+//     } else if (mode[i] == 'm') {
+// #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
+//       flags |= GDAL_OF_MULTIDIM_RASTER;
+// #else
+//       Nan::ThrowError("Multidimensional support requires GDAL 3.1");
+// #endif
+//     } else if (mode[i] == 't') {
+// #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 10)
+//       flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
+// #else
+//       Nan::ThrowError("Thread-safe read-only reading requires GDAL 3.10");
+//       return;
+// #endif
+//     } else {
+//       Nan::ThrowError("Invalid open mode. Must contain only \"r\" or \"r+\" and \"m\" or \"t\" ");
+//       return;
+//     }
+//   }
+//   flags |= GDAL_OF_VERBOSE_ERROR;
+// 
+//   GDALAsyncableJob<GDALDataset *> job(0);
+//   job.rval = [](GDALDataset *ds, const GetFromPersistentFunc &) { return Dataset::New(ds); };
+//   job.main = [path, flags](const GDALExecutionProgress &) {
+//     GDALDataset *ds = (GDALDataset *)GDALOpenEx(path.c_str(), flags, NULL, NULL, NULL);
+//     if (!ds) throw CPLGetLastErrorMsg();
+//     return ds;
+//   };
+//   job.run(info, async, 2);
+// }
 
 static NAN_METHOD(setConfigOption) {
 
