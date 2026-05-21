@@ -68,6 +68,7 @@ Napi::Object MultiPointNapi::Init(Napi::Env env, Napi::Object exports) {
     {InstanceMethod("toString", &MultiPointNapi::toString)});
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
   exports.Set("MultiPoint", func); return exports;
 }
@@ -101,6 +102,7 @@ Napi::Object MultiLineStringNapi::Init(Napi::Env env, Napi::Object exports) {
     {InstanceMethod("toString", &MultiLineStringNapi::toString)});
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
   exports.Set("MultiLineString", func); return exports;
 }
@@ -134,6 +136,7 @@ Napi::Object MultiPolygonNapi::Init(Napi::Env env, Napi::Object exports) {
     {InstanceMethod("toString", &MultiPolygonNapi::toString)});
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
   exports.Set("MultiPolygon", func); return exports;
 }
@@ -167,6 +170,7 @@ Napi::Object MultiCurveNapi::Init(Napi::Env env, Napi::Object exports) {
     {InstanceMethod("toString", &MultiCurveNapi::toString)});
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
   exports.Set("MultiCurve", func); return exports;
 }

@@ -1,3 +1,4 @@
+#include "gdal_geometry_napi.hpp"
 #include "gdal_simplecurve_napi.hpp"
 #include "gdal_circularstring_napi.hpp"
 #include "../gdal_stubs_napi.hpp"
@@ -15,6 +16,7 @@ Napi::Object CircularStringNapi::Init(Napi::Env env, Napi::Object exports) {
     });
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, SimpleCurveNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
   exports.Set("CircularString", func);
   return exports;
