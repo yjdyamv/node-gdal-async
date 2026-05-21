@@ -65,10 +65,10 @@ static Napi::Value binary(const Napi::CallbackInfo &cb, bool async, F op) {
   double n1=NAN, n2=NAN;
   GDALRasterBand *r1=nullptr, *r2=nullptr;
   if (isBand(cb[0])) r1=unwrapBand(cb[0]); else if (cb[0].IsNumber()) n1=cb[0].As<Napi::Number>().DoubleValue();
-  else { Napi::TypeError::New(cb.Env(),"Argument must be a RasterBand or number").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  else { Napi::TypeError::New(cb.Env(),"Argument must be either a number or a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   if (isBand(cb[1])) r2=unwrapBand(cb[1]); else if (cb[1].IsNumber()) n2=cb[1].As<Napi::Number>().DoubleValue();
-  else { Napi::TypeError::New(cb.Env(),"Argument must be a RasterBand or number").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
-  if (!r1 && !r2) { Napi::Error::New(cb.Env(),"Need at least one RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  else { Napi::TypeError::New(cb.Env(),"Argument must be either a number or a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  if (!r1 && !r2) { Napi::Error::New(cb.Env(),"At least one RasterBand must be given").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
 
   AlgebraMain m;
   if (r1 && r2) { m = [r1,r2,op]() { return new GDALComputedRasterBand(op(*r1, *r2)); }; }

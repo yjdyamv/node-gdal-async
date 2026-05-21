@@ -219,3 +219,4 @@ deps/libsqlite/sqlite/*.1
 deps/libsqlite/sqlite/*.rc
 deps/libsqlite/sqlite/*.cs
 deps/libsqlite/sqlite/tea
+conan/recipes/

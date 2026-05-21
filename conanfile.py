@@ -29,6 +29,7 @@ class NodeGdalAsyncConan(ConanFile):
         "gdal*:with_opencl": True,
         "gdal*:with_openjpeg": True,
         "gdal*:with_png": True,
+        "gdal*:with_muparser": True,
         "gdal*:with_qhull": True,
         "gdal*:with_sqlite3": True,
         "gdal*:with_libaec": True,
@@ -44,8 +45,6 @@ class NodeGdalAsyncConan(ConanFile):
         # come transitively through GDAL's options (with_geos, etc.)
         # CMakeDeps generates config files for transitive deps automatically
         self.requires("gdal/3.12.1")
-        # muparser has no 'with_muparser' option in Conan's GDAL recipe
-        self.requires("muparser/2.3.5")
 
     def generate(self):
         # Write data paths for dev-time GDAL_DATA / PROJ_LIB resolution
@@ -57,13 +56,14 @@ class NodeGdalAsyncConan(ConanFile):
                 if dep_name == "gdal" and os.path.isdir(os.path.join(res_dir, "gdal")):
                     data_paths["GDAL_DATA"] = os.path.join(res_dir, "gdal")
                 elif dep_name == "proj":
-                    # PROJ data files (.tif, proj.db) are in res/ directly
                     data_paths["PROJ_LIB"] = res_dir
             except Exception:
                 pass
 
         if data_paths:
-            output_dir = self.generators_folder
+            # Output to conan/install which is the default search path in gdal.js
+            output_dir = os.path.join(os.getcwd(), "conan", "install")
+            os.makedirs(output_dir, exist_ok=True)
             paths_file = os.path.join(output_dir, "conan_data_paths.json")
             with open(paths_file, "w") as f:
                 json.dump(data_paths, f)
