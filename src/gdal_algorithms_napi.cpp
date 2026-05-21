@@ -4,9 +4,263 @@
 #include "gdal_common_napi.hpp"
 #include "async_napi.hpp"
 #include <gdal_alg.h>
+#include <uv.h>
+#include <thread>
+#include "../include/node_gdal.h"
 
 namespace node_gdal {
 
+extern std::thread::id mainV8ThreadId;  // defined in node_gdal.cpp
+
+// Helper: create a TypedArray of the appropriate type for the given GDALDataType
+static Napi::TypedArray NewTypedArrayForPixel(Napi::Env env, GDALDataType type, size_t elements) {
+  switch (type) {
+    case GDT_Byte:
+    case GDT_Int8:   return Napi::Int8Array::New(env, elements);
+    case GDT_UInt16: return Napi::Uint16Array::New(env, elements);
+    case GDT_Int16:  return Napi::Int16Array::New(env, elements);
+    case GDT_UInt32: return Napi::Uint32Array::New(env, elements);
+    case GDT_Int32:  return Napi::Int32Array::New(env, elements);
+    case GDT_Float32:return Napi::Float32Array::New(env, elements);
+    case GDT_Float64:return Napi::Float64Array::New(env, elements);
+    default:         return Napi::Float32Array::New(env, elements);
+  }
+}
+
+// =========================================================================
+// Pixel Function Infrastructure (GDAL >= 3.5)
+// =========================================================================
+#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 5)
+
+struct pixelFnCallNapi {
+  void **sources;
+  size_t num;
+  void *destination;
+  int width, height;
+  GDALDataType inType;
+  GDALDataType outType;
+  std::map<std::string, std::string> args;
+  std::string *err;
+};
+
+struct pixelFnNapi {
+  Napi::FunctionReference fn;
+  pixelFnCallNapi call;
+  uv_mutex_t callJS;
+  uv_sem_t returnJS;
+  uv_async_t *async;
+};
+
+std::vector<pixelFnNapi> pixelFuncsNapi;
+
+#define PFN_ID_FIELD "node_gdal_pfn_id"
+const char metadataTemplateNapi[] =
+  "<PixelFunctionArgumentsList>\n"
+  "   <Argument name ='" PFN_ID_FIELD
+  "' type='constant' value='%x' />\n"
+  "</PixelFunctionArgumentsList>";
+
+static void callJSpfnNapi(uv_async_t *async) {
+  pixelFnNapi *fn = reinterpret_cast<pixelFnNapi *>(async->data);
+  Napi::Env env = fn->fn.Env();
+  Napi::HandleScope scope(env);
+
+  Napi::Array sources = Napi::Array::New(env, fn->call.num);
+  size_t len = fn->call.width * fn->call.height;
+  for (size_t i = 0; i < fn->call.num; i++) {
+    size_t byteLen = len * GDALGetDataTypeSizeBytes(fn->call.inType);
+    Napi::TypedArray arr = NewTypedArrayForPixel(env, fn->call.inType, len);
+    memcpy(arr.ArrayBuffer().Data(), fn->call.sources[i], byteLen);
+    sources.Set(i, arr);
+  }
+
+  Napi::TypedArray destination = NewTypedArrayForPixel(env, fn->call.outType, len);
+  memcpy(destination.ArrayBuffer().Data(), fn->call.destination,
+         len * GDALGetDataTypeSizeBytes(fn->call.outType));
+
+  Napi::Number width = Napi::Number::New(env, fn->call.width);
+  Napi::Number height = Napi::Number::New(env, fn->call.height);
+
+  Napi::Object pfArgs = Napi::Object::New(env);
+  if (!fn->call.args.empty()) {
+    for (auto const &el : fn->call.args) {
+      char *end;
+      double dval = std::strtod(el.second.c_str(), &end);
+      if (*end == 0)
+        pfArgs.Set(el.first, Napi::Number::New(env, dval));
+      else
+        pfArgs.Set(el.first, Napi::String::New(env, el.second));
+    }
+  }
+
+  Napi::Value args[] = {sources, destination, pfArgs, width, height};
+
+  fn->call.err = nullptr;
+  try {
+    fn->fn.Call({sources, destination, pfArgs, width, height});
+  } catch (Napi::Error &e) {
+    fn->call.err = new std::string(e.Message());
+  } catch (...) {
+    fn->call.err = new std::string("Unknown pixel function error");
+  }
+  uv_sem_post(&fn->returnJS);
+}
+
+static CPLErr pixelFuncNapi(
+  void **papoSources, int nSources, void *pData,
+  int nBufXSize, int nBufYSize,
+  GDALDataType eSrcType, GDALDataType eBufType,
+  int nPixelSpace, int nLineSpace,
+  CSLConstList papszFunctionArgs) {
+
+  std::map<std::string, std::string> pfArgsMap;
+  ParseCSLConstList(papszFunctionArgs, pfArgsMap);
+
+  auto uid = pfArgsMap.find(PFN_ID_FIELD);
+  if (uid == pfArgsMap.end()) {
+    CPLError(CE_Failure, CPLE_AppDefined, "gdal-async Internal error, pixelFuncs inconsistency, id=NULL");
+    return CE_Failure;
+  }
+  char *end;
+  size_t id = std::strtoul(uid->second.c_str(), &end, 16);
+  if (end == uid->second.c_str() || id >= pixelFuncsNapi.size()) {
+    CPLError(CE_Failure, CPLE_AppDefined, "gdal-async Internal error, pixelFuncs inconsistency");
+    return CE_Failure;
+  }
+  pfArgsMap.erase(PFN_ID_FIELD);
+
+  size_t size = GDALGetDataTypeSizeBytes(eBufType);
+  if (size == 0) {
+    CPLError(CE_Failure, CPLE_AppDefined, "Invalid GDAL data type");
+    return CE_Failure;
+  }
+  if (size != static_cast<size_t>(nPixelSpace) ||
+      size * static_cast<size_t>(nBufXSize) != static_cast<size_t>(nLineSpace)) {
+    CPLError(CE_Failure, CPLE_AppDefined, "gdal-async still does not support irregular buffer strides");
+    return CE_Failure;
+  }
+
+  uv_mutex_lock(&pixelFuncsNapi[id].callJS);
+
+  uv_async_t *async = pixelFuncsNapi[id].async;
+  async->data = &pixelFuncsNapi[id];
+
+  pixelFuncsNapi[id].call = {
+    papoSources, static_cast<size_t>(nSources), pData,
+    nBufXSize, nBufYSize, eSrcType, eBufType,
+    std::move(pfArgsMap), nullptr};
+
+  if (std::this_thread::get_id() == mainV8ThreadId) {
+    callJSpfnNapi(async);
+  } else {
+    int s = uv_async_send(async);
+    if (s != 0) {
+      CPLError(CE_Failure, CPLE_AppDefined, "Pixel function error: failed scheduling async");
+      return CE_Failure;
+    }
+    uv_sem_wait(&pixelFuncsNapi[id].returnJS);
+  }
+
+  uv_mutex_unlock(&pixelFuncsNapi[id].callJS);
+
+  if (pixelFuncsNapi[id].call.err != nullptr) {
+    CPLError(CE_Failure, CPLE_AppDefined, "Pixel function error: %s", pixelFuncsNapi[id].call.err->c_str());
+    delete pixelFuncsNapi[id].call.err;
+    pixelFuncsNapi[id].call.err = nullptr;
+    return CE_Failure;
+  }
+
+  return CE_None;
+}
+#endif // GDAL >= 3.5
+
+// =========================================================================
+// addPixelFunc
+// =========================================================================
+
+Napi::Value AlgorithmsNapi::addPixelFunc(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  std::string name;
+  NAPI_ARG_STR(0, "name", name);
+
+  if (info.Length() < 2 || info[1].IsNull() || info[1].IsUndefined()) {
+    Napi::TypeError::New(env, "pixelFn must be given").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  Napi::TypedArray arr = info[1].As<Napi::TypedArray>();
+  if (arr.ByteLength() < 8) {
+    Napi::TypeError::New(env, "pixelFn must be a native code pixel function").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  uint64_t magic = *reinterpret_cast<uint64_t *>(static_cast<char *>(arr.ArrayBuffer().Data()) + arr.ByteOffset());
+  if (magic != NODE_GDAL_CAPI_MAGIC) {
+    Napi::TypeError::New(env, "pixelFn must be a native code pixel function").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 5)
+  pixel_func *desc = reinterpret_cast<pixel_func *>(
+    static_cast<char *>(arr.ArrayBuffer().Data()) + arr.ByteOffset());
+  CPLErr err = GDALAddDerivedBandPixelFuncWithArgs(name.c_str(), desc->fn, desc->metadata);
+  if (err != CE_None) NAPI_THROW_LAST_CPLERR;
+#else
+  Napi::Error::New(env, "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
+#endif
+  return env.Undefined();
+}
+
+// =========================================================================
+// toPixelFunc
+// =========================================================================
+
+Napi::Value AlgorithmsNapi::toPixelFunc(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+
+#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 5)
+  if (info.Length() < 1 || !info[0].IsFunction()) {
+    Napi::TypeError::New(env, "pixelFn must be a function").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  Napi::Function pfn = info[0].As<Napi::Function>();
+
+  size_t uid = pixelFuncsNapi.size();
+  pixelFuncsNapi.push_back({});
+  pixelFuncsNapi[uid].fn = Napi::Persistent(pfn);
+  pixelFuncsNapi[uid].call = {};
+  int s = uv_mutex_init(&pixelFuncsNapi[uid].callJS);
+  if (s != 0) { Napi::Error::New(env, "Failed creating a mutex").ThrowAsJavaScriptException(); return env.Undefined(); }
+  s = uv_sem_init(&pixelFuncsNapi[uid].returnJS, 0);
+  if (s != 0) { Napi::Error::New(env, "Failed creating a semaphore").ThrowAsJavaScriptException(); return env.Undefined(); }
+  pixelFuncsNapi[uid].async = new uv_async_t;
+  s = uv_async_init(uv_default_loop(), pixelFuncsNapi[uid].async, callJSpfnNapi);
+  if (s != 0) { Napi::Error::New(env, "Failed creating libuv async").ThrowAsJavaScriptException(); return env.Undefined(); }
+  uv_unref(reinterpret_cast<uv_handle_t *>(pixelFuncsNapi[uid].async));
+
+  std::string metadata;
+  metadata.reserve(strlen(metadataTemplateNapi) + 32);
+  snprintf(&metadata[0], metadata.capacity(), metadataTemplateNapi, static_cast<unsigned>(uid));
+
+  size_t totalSize = sizeof(node_gdal::pixel_func) + strlen(metadata.c_str()) + 1;
+  Napi::Buffer<uint8_t> buf = Napi::Buffer<uint8_t>::New(env, totalSize);
+  node_gdal::pixel_func *desc = reinterpret_cast<node_gdal::pixel_func *>(buf.Data());
+
+  desc->magic = NODE_GDAL_CAPI_MAGIC;
+  desc->fn = pixelFuncNapi;
+  char *md = reinterpret_cast<char *>(desc) + sizeof(node_gdal::pixel_func);
+  memcpy(md, metadata.data(), strlen(metadata.c_str()));
+  desc->metadata = md;
+
+  return buf;
+#else
+  Napi::Error::New(env, "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
+  return env.Undefined();
+#endif
+}
+
+// =========================================================================
+// Init
+// =========================================================================
 Napi::Object AlgorithmsNapi::Init(Napi::Env env, Napi::Object exports) {
   auto obj = Napi::Object::New(env);
 
@@ -33,6 +287,10 @@ Napi::Object AlgorithmsNapi::Init(Napi::Env env, Napi::Object exports) {
   exports.Set("checksumImageAsync", obj.Get("checksumImageAsync"));
   exports.Set("polygonize", obj.Get("polygonize"));
   exports.Set("polygonizeAsync", obj.Get("polygonizeAsync"));
+  obj.Set("addPixelFunc", Napi::Function::New(env, AlgorithmsNapi::addPixelFunc));
+  obj.Set("toPixelFunc", Napi::Function::New(env, AlgorithmsNapi::toPixelFunc));
+  exports.Set("addPixelFunc", obj.Get("addPixelFunc"));
+  exports.Set("toPixelFunc", obj.Get("toPixelFunc"));
   return exports;
 }
 

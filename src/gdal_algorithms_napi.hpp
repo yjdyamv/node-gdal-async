@@ -29,6 +29,9 @@ class AlgorithmsNapi {
   static Napi::Value polygonize(const Napi::CallbackInfo &info);
   static Napi::Value polygonizeAsync(const Napi::CallbackInfo &info);
   static Napi::Value polygonize_do(const Napi::CallbackInfo &info, bool async);
+
+  static Napi::Value addPixelFunc(const Napi::CallbackInfo &info);
+  static Napi::Value toPixelFunc(const Napi::CallbackInfo &info);
 };
 
 } // namespace node_gdal
