@@ -72,12 +72,16 @@ ColorTableNapi::ColorTableNapi(const Napi::CallbackInfo &info)
     this_ = info[0].As<Napi::External<GDALColorTable>>().Data();
   } else {
     std::string pi;
-    if (info.Length() < 1 || !info[0].IsString()) {
-      Napi::Error::New(info.Env(), "palette interpretation must be a string")
+    if (info.Length() < 1 || (!info[0].IsString() && !info[0].IsNumber())) {
+      Napi::Error::New(info.Env(), "palette interpretation must be a string or number")
         .ThrowAsJavaScriptException();
       return;
     }
-    pi = info[0].As<Napi::String>().Utf8Value();
+    if (info[0].IsNumber()) {
+      pi = GDALGetPaletteInterpretationName(static_cast<GDALPaletteInterp>(info[0].As<Napi::Number>().Int32Value()));
+    } else {
+      pi = info[0].As<Napi::String>().Utf8Value();
+    }
 
     GDALPaletteInterp gpi;
     if (pi == "Gray") gpi = GPI_Gray;
