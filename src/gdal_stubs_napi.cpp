@@ -486,12 +486,20 @@ Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
 
 #define MD_GROUP_CTOR(klass) \
   klass::klass(const Napi::CallbackInfo &info) : Napi::ObjectWrap<klass>(info), group_(nullptr) { \
-    if (info.Length() > 0 && info[0].IsExternal()) group_ = info[0].As<Napi::External<GDALGroup>>().Data(); \
+    if (info.Length() < 1 || !info[0].IsExternal()) { \
+      Napi::Error::New(info.Env(), "Cannot create " #klass " directly").ThrowAsJavaScriptException(); \
+      return; \
+    } \
+    group_ = info[0].As<Napi::External<GDALGroup>>().Data(); \
   }
 
 #define MD_ARRAY_CTOR(klass) \
   klass::klass(const Napi::CallbackInfo &info) : Napi::ObjectWrap<klass>(info), array_(nullptr) { \
-    if (info.Length() > 0 && info[0].IsExternal()) array_ = info[0].As<Napi::External<GDALMDArray>>().Data(); \
+    if (info.Length() < 1 || !info[0].IsExternal()) { \
+      Napi::Error::New(info.Env(), "Cannot create " #klass " directly").ThrowAsJavaScriptException(); \
+      return; \
+    } \
+    array_ = info[0].As<Napi::External<GDALMDArray>>().Data(); \
   }
 
 // --- GroupGroups ---
