@@ -316,6 +316,14 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, createCopy) {
     return info.Env().Undefined();
   }
 
+  // Extract source dataset
+  GDALDataset *src_ds = nullptr;
+  if (info[1].IsObject() &&
+      info[1].As<Napi::Object>().InstanceOf(DatasetNapi::constructor.Value())) {
+    DatasetNapi *src = DatasetNapi::Unwrap(info[1].As<Napi::Object>());
+    if (src && src->isAlive()) src_ds = src->get();
+  }
+
   auto options = std::make_shared<NapiStringList>();
   if (info.Length() > 2 && !options->parse(info[2])) {
     Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException();
@@ -328,11 +336,16 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, createCopy) {
   GDALDriver *raw = driver->getGDALDriver();
 
   GDALAsyncableJobNapi<GDALDataset *> job;
-  job.main = [raw, filename, strict, options]() {
-    // TODO: accept Dataset parameter once ported
+  // Extract progress callback from options at index 4
+  if (info.Length() > 4 && info[4].IsObject()) {
+    Napi::Object progObj = info[4].As<Napi::Object>();
+    NAPI_CB_FROM_OBJ_OPT(progObj, "progress_cb", job.progress_cb_);
+  }
+  job.main = [raw, filename, src_ds, strict, options, &job]() {
     CPLErrorReset();
     GDALDataset *ds = raw->CreateCopy(
-      filename.c_str(), nullptr, strict, options->get(), nullptr, nullptr);
+      filename.c_str(), src_ds, strict, options->get(), job.progressFunc(), job.progressArg());
+    if (!job.progress_error_.empty()) throw job.progress_error_.c_str();
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };

@@ -85,27 +85,38 @@ class GDALAsyncWorkerNapiPromise : public Napi::AsyncWorker {
 // Progress callback support
 // ---------------------------------------------------------------------------
 
+// Non-template base for GDALAsyncableJobNapi so the progress trampoline
+// can access progress_error_ without knowing the template parameter.
+class GDALAsyncableJobNapiBase {
+    public:
+  std::string progress_error_;
+};
+
 // Context passed to main() so algorithms can wire up GDAL progress callbacks.
 class NapiProgressContext {
     public:
-  NapiProgressContext() : cb_(nullptr), env_(nullptr) {}
+  NapiProgressContext() : cb_(nullptr), env_(nullptr), job_(nullptr) {}
   void setCallback(Napi::FunctionReference *cb, napi_env env) { cb_ = cb; env_ = env; }
+  void setJob(GDALAsyncableJobNapiBase *job) { job_ = job; }
 
-  // Returns a GDALProgressFunc trampoline (or nullptr if no callback)
   GDALProgressFunc getFunc() const;
-  // Returns user-data pointer for the trampoline
-  void *getArg() const { return (void *)cb_; }
+  void *getArg() const { return (void *)this; }  // pass context itself as user data
 
-    private:
+  // Accessed by trampoline
   Napi::FunctionReference *cb_;
+  GDALAsyncableJobNapiBase *job_;
+    private:
   napi_env env_;
 };
 
 // C-linkage trampoline: called by GDAL during long-running operations.
 // Only supports sync mode (runs on main V8 thread).
+// The pProgressArg points to a NapiProgressContext (which holds cb and job ptr).
 static int ProgressTrampolineNapi(double dfComplete, const char *pszMessage, void *pProgressArg) {
-  Napi::FunctionReference *cb = static_cast<Napi::FunctionReference *>(pProgressArg);
-  if (!cb || cb->IsEmpty()) return true; // continue
+  NapiProgressContext *ctx = static_cast<NapiProgressContext *>(pProgressArg);
+  if (!ctx) return true;
+  Napi::FunctionReference *cb = ctx->cb_;
+  if (!cb || cb->IsEmpty()) return true;
   Napi::Env env = cb->Env();
   try {
     Napi::HandleScope scope(env);
@@ -114,8 +125,15 @@ static int ProgressTrampolineNapi(double dfComplete, const char *pszMessage, voi
       SafeStringNapi(env, pszMessage)
     });
     if (result.IsBoolean()) return result.As<Napi::Boolean>().Value();
+  } catch (const Napi::Error &e) {
+    if (ctx->job_) ctx->job_->progress_error_ = std::string("sync progress callback exception: ") + e.Message();
+    return false;  // stop GDAL operation
+  } catch (const std::exception &e) {
+    if (ctx->job_) ctx->job_->progress_error_ = std::string("sync progress callback exception: ") + e.what();
+    return false;
   } catch (...) {
-    // Swallow JS exceptions from progress callbacks
+    if (ctx->job_) ctx->job_->progress_error_ = "sync progress callback exception: Unknown error";
+    return false;
   }
   return true; // continue
 }
@@ -128,7 +146,7 @@ inline GDALProgressFunc NapiProgressContext::getFunc() const {
 // Simplified async dispatch (callback or Promise)
 // ---------------------------------------------------------------------------
 template <class GDALType>
-class GDALAsyncableJobNapi {
+class GDALAsyncableJobNapi : public GDALAsyncableJobNapiBase {
     public:
   using MainFunc = typename GDALAsyncWorkerNapi<GDALType>::MainFunc;
   using RValFunc = typename GDALAsyncWorkerNapi<GDALType>::RValFunc;
@@ -144,6 +162,7 @@ class GDALAsyncableJobNapi {
   void setupProgress(Napi::Env env) {
     if (!progress_cb_.IsEmpty()) {
       ctx_.setCallback(&progress_cb_, env);
+      ctx_.setJob(static_cast<GDALAsyncableJobNapiBase *>(this));
     }
   }
 
@@ -170,9 +189,14 @@ class GDALAsyncableJobNapi {
     }
 
     // Sync mode: set up progress context, then call main
+    progress_error_.clear();
     setupProgress(info.Env());
     try {
       GDALType result = main();
+      if (!progress_error_.empty()) {
+        Napi::Error::New(info.Env(), progress_error_).ThrowAsJavaScriptException();
+        return info.Env().Undefined();
+      }
       return rval(info.Env(), result);
     } catch (const std::exception &e) {
       Napi::Error::New(info.Env(), e.what()).ThrowAsJavaScriptException();
