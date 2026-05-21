@@ -23,7 +23,7 @@ execute_process(
   OUTPUT_VARIABLE NODE_ADDON_API_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-# --- nan (still needed during transition from N-API migration) ---
+# --- nan (infrastructure: async engine + object store still needed) ---
 execute_process(
   COMMAND node -p "require('nan')"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
