@@ -1,4 +1,5 @@
 #include "gdal_multi_napi.hpp"
+#include "gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -11,6 +12,10 @@ Napi::Object GroupNapi::Init(Napi::Env env, Napi::Object exports) {
     {
       InstanceMethod("toString", &GroupNapi::toString),
       InstanceAccessor<&GroupNapi::descriptionGetter>("description"),
+      InstanceAccessor<&GroupNapi::groupsGetter>("groups"),
+      InstanceAccessor<&GroupNapi::arraysGetter>("arrays"),
+      InstanceAccessor<&GroupNapi::dimensionsGetter>("dimensions"),
+      InstanceAccessor<&GroupNapi::attributesGetter>("attributes"),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
   exports.Set("Group", func); return exports;
@@ -40,6 +45,22 @@ Napi::Value GroupNapi::descriptionGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(GroupNapi, self);
   return SafeStringNapi(info.Env(), self->this_->GetFullName().c_str());
 }
+Napi::Value GroupNapi::groupsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(GroupNapi, self);
+  return GroupGroupsNapi::constructor.New({Napi::External<GDALGroup>::New(info.Env(), self->this_)});
+}
+Napi::Value GroupNapi::arraysGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(GroupNapi, self);
+  return GroupArraysNapi::constructor.New({Napi::External<GDALGroup>::New(info.Env(), self->this_)});
+}
+Napi::Value GroupNapi::dimensionsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(GroupNapi, self);
+  return GroupDimensionsNapi::constructor.New({Napi::External<GDALGroup>::New(info.Env(), self->this_)});
+}
+Napi::Value GroupNapi::attributesGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(GroupNapi, self);
+  return GroupAttributesNapi::constructor.New({Napi::External<GDALGroup>::New(info.Env(), self->this_)});
+}
 
 // ===================== MDArrayNapi =====================
 Napi::FunctionReference MDArrayNapi::constructor;
@@ -51,6 +72,8 @@ Napi::Object MDArrayNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("toString", &MDArrayNapi::toString),
       InstanceAccessor<&MDArrayNapi::dataTypeGetter>("dataType"),
       InstanceAccessor<&MDArrayNapi::dimensionCountGetter>("dimensionCount"),
+      InstanceAccessor<&MDArrayNapi::dimensionsGetter>("dimensions"),
+      InstanceAccessor<&MDArrayNapi::attributesGetter>("attributes"),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
   exports.Set("MDArray", func); return exports;
@@ -76,6 +99,14 @@ Napi::Value MDArrayNapi::dataTypeGetter(const Napi::CallbackInfo &info) {
 Napi::Value MDArrayNapi::dimensionCountGetter(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(MDArrayNapi, self);
   return Napi::Number::New(info.Env(), self->this_->GetDimensionCount());
+}
+Napi::Value MDArrayNapi::dimensionsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(MDArrayNapi, self);
+  return ArrayDimensionsNapi::constructor.New({Napi::External<GDALMDArray>::New(info.Env(), self->this_)});
+}
+Napi::Value MDArrayNapi::attributesGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(MDArrayNapi, self);
+  return ArrayAttributesNapi::constructor.New({Napi::External<GDALMDArray>::New(info.Env(), self->this_)});
 }
 
 // ===================== DimensionNapi =====================

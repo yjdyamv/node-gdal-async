@@ -475,7 +475,9 @@ Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
   Napi::Object klass::Init(Napi::Env env, Napi::Object exports) { \
     Napi::Function f = DefineClass(env, jsname, { \
       InstanceMethod("get", &klass::get), \
+      InstanceMethod("getAsync", &klass::getAsync), \
       InstanceMethod("count", &klass::count), \
+      InstanceMethod("countAsync", &klass::countAsync), \
       InstanceMethod("getNames", &klass::getNames), \
     }); \
     constructor = Napi::Persistent(f); constructor.SuppressDestruct(); \
@@ -494,15 +496,31 @@ Napi::Value CompoundCurveCurvesNapi::count(const Napi::CallbackInfo &info) {
 
 // --- GroupGroups ---
 MD_COLL_INIT(GroupGroupsNapi, "GroupGroups") MD_GROUP_CTOR(GroupGroupsNapi)
-Napi::Value GroupGroupsNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupGroupsNapi, get) {
   if (!group_) return info.Env().Null();
-  std::shared_ptr<GDALGroup> r;
-  if (info[0].IsString()) r = group_->OpenGroup(info[0].As<Napi::String>().Utf8Value());
-  else if (info[0].IsNumber()) { auto names = group_->GetGroupNames(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0 && i<(int)names.size()) r = group_->OpenGroup(names[i]); }
-  return r ? GroupNapi::New(info.Env(), r.get()) : info.Env().Null();
+  GDALGroup *raw = group_;
+  bool byName = info[0].IsString();
+  std::string key = byName ? info[0].As<Napi::String>().Utf8Value() : "";
+  int idx = byName ? -1 : info[0].As<Napi::Number>().Int32Value();
+  GDALAsyncableJobNapi<std::shared_ptr<GDALGroup>> job;
+  job.main = [raw, byName, key, idx]() -> std::shared_ptr<GDALGroup> {
+    if (byName) return raw->OpenGroup(key);
+    auto names = raw->GetGroupNames();
+    if (idx >= 0 && idx < (int)names.size()) return raw->OpenGroup(names[idx]);
+    return nullptr;
+  };
+  job.rval = [](Napi::Env env, std::shared_ptr<GDALGroup> r) {
+    return r ? GroupNapi::New(env, r.get()) : env.Null();
+  };
+  return job.run(info, async, 1);
 }
-Napi::Value GroupGroupsNapi::count(const Napi::CallbackInfo &info) {
-  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetGroupNames().size()) : Napi::Number::New(info.Env(), 0);
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupGroupsNapi, count) {
+  if (!group_) return Napi::Number::New(info.Env(), 0);
+  GDALGroup *raw = group_;
+  GDALAsyncableJobNapi<int> job;
+  job.main = [raw]() { return (int)raw->GetGroupNames().size(); };
+  job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
+  return job.run(info, async, 0);
 }
 Napi::Value GroupGroupsNapi::getNames(const Napi::CallbackInfo &info) {
   if (!group_) return Napi::Array::New(info.Env(), 0);
@@ -513,15 +531,31 @@ Napi::Value GroupGroupsNapi::getNames(const Napi::CallbackInfo &info) {
 
 // --- GroupArrays ---
 MD_COLL_INIT(GroupArraysNapi, "GroupArrays") MD_GROUP_CTOR(GroupArraysNapi)
-Napi::Value GroupArraysNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupArraysNapi, get) {
   if (!group_) return info.Env().Null();
-  std::shared_ptr<GDALMDArray> r;
-  if (info[0].IsString()) r = group_->OpenMDArray(info[0].As<Napi::String>().Utf8Value());
-  else if (info[0].IsNumber()) { auto ns = group_->GetMDArrayNames(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)ns.size()) r = group_->OpenMDArray(ns[i]); }
-  return r ? MDArrayNapi::New(info.Env(), r.get()) : info.Env().Null();
+  GDALGroup *raw = group_;
+  bool byName = info[0].IsString();
+  std::string key = byName ? info[0].As<Napi::String>().Utf8Value() : "";
+  int idx = byName ? -1 : info[0].As<Napi::Number>().Int32Value();
+  GDALAsyncableJobNapi<std::shared_ptr<GDALMDArray>> job;
+  job.main = [raw, byName, key, idx]() -> std::shared_ptr<GDALMDArray> {
+    if (byName) return raw->OpenMDArray(key);
+    auto ns = raw->GetMDArrayNames();
+    if (idx >= 0 && idx < (int)ns.size()) return raw->OpenMDArray(ns[idx]);
+    return nullptr;
+  };
+  job.rval = [](Napi::Env env, std::shared_ptr<GDALMDArray> r) {
+    return r ? MDArrayNapi::New(env, r.get()) : env.Null();
+  };
+  return job.run(info, async, 1);
 }
-Napi::Value GroupArraysNapi::count(const Napi::CallbackInfo &info) {
-  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetMDArrayNames().size()) : Napi::Number::New(info.Env(), 0);
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupArraysNapi, count) {
+  if (!group_) return Napi::Number::New(info.Env(), 0);
+  GDALGroup *raw = group_;
+  GDALAsyncableJobNapi<int> job;
+  job.main = [raw]() { return (int)raw->GetMDArrayNames().size(); };
+  job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
+  return job.run(info, async, 0);
 }
 Napi::Value GroupArraysNapi::getNames(const Napi::CallbackInfo &info) {
   if (!group_) return Napi::Array::New(info.Env(), 0);
@@ -532,15 +566,31 @@ Napi::Value GroupArraysNapi::getNames(const Napi::CallbackInfo &info) {
 
 // --- GroupAttributes ---
 MD_COLL_INIT(GroupAttributesNapi, "GroupAttributes") MD_GROUP_CTOR(GroupAttributesNapi)
-Napi::Value GroupAttributesNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupAttributesNapi, get) {
   if (!group_) return info.Env().Null();
-  std::shared_ptr<GDALAttribute> r;
-  if (info[0].IsString()) r = group_->GetAttribute(info[0].As<Napi::String>().Utf8Value());
-  else if (info[0].IsNumber()) { auto attrs = group_->GetAttributes(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)attrs.size()) r = attrs[i]; }
-  return r ? AttributeNapi::New(info.Env(), r.get()) : info.Env().Null();
+  GDALGroup *raw = group_;
+  bool byName = info[0].IsString();
+  std::string key = byName ? info[0].As<Napi::String>().Utf8Value() : "";
+  int idx = byName ? -1 : info[0].As<Napi::Number>().Int32Value();
+  GDALAsyncableJobNapi<std::shared_ptr<GDALAttribute>> job;
+  job.main = [raw, byName, key, idx]() -> std::shared_ptr<GDALAttribute> {
+    if (byName) return raw->GetAttribute(key);
+    auto attrs = raw->GetAttributes();
+    if (idx >= 0 && idx < (int)attrs.size()) return attrs[idx];
+    return nullptr;
+  };
+  job.rval = [](Napi::Env env, std::shared_ptr<GDALAttribute> r) {
+    return r ? AttributeNapi::New(env, r.get()) : env.Null();
+  };
+  return job.run(info, async, 1);
 }
-Napi::Value GroupAttributesNapi::count(const Napi::CallbackInfo &info) {
-  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetAttributes().size()) : Napi::Number::New(info.Env(), 0);
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupAttributesNapi, count) {
+  if (!group_) return Napi::Number::New(info.Env(), 0);
+  GDALGroup *raw = group_;
+  GDALAsyncableJobNapi<int> job;
+  job.main = [raw]() { return (int)raw->GetAttributes().size(); };
+  job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
+  return job.run(info, async, 0);
 }
 Napi::Value GroupAttributesNapi::getNames(const Napi::CallbackInfo &info) {
   if (!group_) return Napi::Array::New(info.Env(), 0);
@@ -551,20 +601,31 @@ Napi::Value GroupAttributesNapi::getNames(const Napi::CallbackInfo &info) {
 
 // --- GroupDimensions ---
 MD_COLL_INIT(GroupDimensionsNapi, "GroupDimensions") MD_GROUP_CTOR(GroupDimensionsNapi)
-Napi::Value GroupDimensionsNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupDimensionsNapi, get) {
   if (!group_) return info.Env().Null();
-  auto dims = group_->GetDimensions();
-  if (info[0].IsString()) {
-    for (auto &d : dims) if (d->GetName() == info[0].As<Napi::String>().Utf8Value())
-      return DimensionNapi::New(info.Env(), d.get());
-  } else if (info[0].IsNumber()) {
-    int i = info[0].As<Napi::Number>().Int32Value();
-    if (i>=0 && i<(int)dims.size()) return DimensionNapi::New(info.Env(), dims[i].get());
-  }
-  return info.Env().Null();
+  GDALGroup *raw = group_;
+  bool byName = info[0].IsString();
+  std::string key = byName ? info[0].As<Napi::String>().Utf8Value() : "";
+  int idx = byName ? -1 : info[0].As<Napi::Number>().Int32Value();
+  GDALAsyncableJobNapi<std::shared_ptr<GDALDimension>> job;
+  job.main = [raw, byName, key, idx]() -> std::shared_ptr<GDALDimension> {
+    auto dims = raw->GetDimensions();
+    if (byName) { for (auto &d : dims) if (d->GetName() == key) return d; }
+    else if (idx >= 0 && idx < (int)dims.size()) return dims[idx];
+    return nullptr;
+  };
+  job.rval = [](Napi::Env env, std::shared_ptr<GDALDimension> r) {
+    return r ? DimensionNapi::New(env, r.get()) : env.Null();
+  };
+  return job.run(info, async, 1);
 }
-Napi::Value GroupDimensionsNapi::count(const Napi::CallbackInfo &info) {
-  return group_ ? Napi::Number::New(info.Env(), (int)group_->GetDimensions().size()) : Napi::Number::New(info.Env(), 0);
+GDAL_ASYNCABLE_DEFINE_NAPI(GroupDimensionsNapi, count) {
+  if (!group_) return Napi::Number::New(info.Env(), 0);
+  GDALGroup *raw = group_;
+  GDALAsyncableJobNapi<int> job;
+  job.main = [raw]() { return (int)raw->GetDimensions().size(); };
+  job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
+  return job.run(info, async, 0);
 }
 Napi::Value GroupDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
   if (!group_) return Napi::Array::New(info.Env(), 0);
@@ -575,13 +636,28 @@ Napi::Value GroupDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
 
 // --- ArrayDimensions ---
 MD_COLL_INIT(ArrayDimensionsNapi, "ArrayDimensions") MD_ARRAY_CTOR(ArrayDimensionsNapi)
-Napi::Value ArrayDimensionsNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(ArrayDimensionsNapi, get) {
   if (!array_) return info.Env().Null();
-  if (info[0].IsNumber()) { auto dims = array_->GetDimensions(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)dims.size()) return DimensionNapi::New(info.Env(), dims[i].get()); }
-  return info.Env().Null();
+  GDALMDArray *raw = array_;
+  int idx = info[0].As<Napi::Number>().Int32Value();
+  GDALAsyncableJobNapi<std::shared_ptr<GDALDimension>> job;
+  job.main = [raw, idx]() -> std::shared_ptr<GDALDimension> {
+    auto dims = raw->GetDimensions();
+    if (idx >= 0 && idx < (int)dims.size()) return dims[idx];
+    return nullptr;
+  };
+  job.rval = [](Napi::Env env, std::shared_ptr<GDALDimension> r) {
+    return r ? DimensionNapi::New(env, r.get()) : env.Null();
+  };
+  return job.run(info, async, 1);
 }
-Napi::Value ArrayDimensionsNapi::count(const Napi::CallbackInfo &info) {
-  return array_ ? Napi::Number::New(info.Env(), (int)array_->GetDimensions().size()) : Napi::Number::New(info.Env(), 0);
+GDAL_ASYNCABLE_DEFINE_NAPI(ArrayDimensionsNapi, count) {
+  if (!array_) return Napi::Number::New(info.Env(), 0);
+  GDALMDArray *raw = array_;
+  GDALAsyncableJobNapi<int> job;
+  job.main = [raw]() { return (int)raw->GetDimensions().size(); };
+  job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
+  return job.run(info, async, 0);
 }
 Napi::Value ArrayDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
   if (!array_) return Napi::Array::New(info.Env(), 0);
@@ -592,15 +668,31 @@ Napi::Value ArrayDimensionsNapi::getNames(const Napi::CallbackInfo &info) {
 
 // --- ArrayAttributes ---
 MD_COLL_INIT(ArrayAttributesNapi, "ArrayAttributes") MD_ARRAY_CTOR(ArrayAttributesNapi)
-Napi::Value ArrayAttributesNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(ArrayAttributesNapi, get) {
   if (!array_) return info.Env().Null();
-  std::shared_ptr<GDALAttribute> r;
-  if (info[0].IsString()) r = array_->GetAttribute(info[0].As<Napi::String>().Utf8Value());
-  else if (info[0].IsNumber()) { auto attrs = array_->GetAttributes(); int i = info[0].As<Napi::Number>().Int32Value(); if (i>=0&&i<(int)attrs.size()) r = attrs[i]; }
-  return r ? AttributeNapi::New(info.Env(), r.get()) : info.Env().Null();
+  GDALMDArray *raw = array_;
+  bool byName = info[0].IsString();
+  std::string key = byName ? info[0].As<Napi::String>().Utf8Value() : "";
+  int idx = byName ? -1 : info[0].As<Napi::Number>().Int32Value();
+  GDALAsyncableJobNapi<std::shared_ptr<GDALAttribute>> job;
+  job.main = [raw, byName, key, idx]() -> std::shared_ptr<GDALAttribute> {
+    if (byName) return raw->GetAttribute(key);
+    auto attrs = raw->GetAttributes();
+    if (idx >= 0 && idx < (int)attrs.size()) return attrs[idx];
+    return nullptr;
+  };
+  job.rval = [](Napi::Env env, std::shared_ptr<GDALAttribute> r) {
+    return r ? AttributeNapi::New(env, r.get()) : env.Null();
+  };
+  return job.run(info, async, 1);
 }
-Napi::Value ArrayAttributesNapi::count(const Napi::CallbackInfo &info) {
-  return array_ ? Napi::Number::New(info.Env(), (int)array_->GetAttributes().size()) : Napi::Number::New(info.Env(), 0);
+GDAL_ASYNCABLE_DEFINE_NAPI(ArrayAttributesNapi, count) {
+  if (!array_) return Napi::Number::New(info.Env(), 0);
+  GDALMDArray *raw = array_;
+  GDALAsyncableJobNapi<int> job;
+  job.main = [raw]() { return (int)raw->GetAttributes().size(); };
+  job.rval = [](Napi::Env env, int c) { return Napi::Number::New(env, c); };
+  return job.run(info, async, 0);
 }
 Napi::Value ArrayAttributesNapi::getNames(const Napi::CallbackInfo &info) {
   if (!array_) return Napi::Array::New(info.Env(), 0);

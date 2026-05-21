@@ -46,8 +46,43 @@ class GDALAsyncWorkerNapi : public Napi::AsyncWorker {
   GDALType result_;
 };
 
+// Promise-based async worker (no callback)
+template <class GDALType>
+class GDALAsyncWorkerNapiPromise : public Napi::AsyncWorker {
+    public:
+  using MainFunc = std::function<GDALType()>;
+  using RValFunc = std::function<Napi::Value(Napi::Env, const GDALType &)>;
+
+  GDALAsyncWorkerNapiPromise(Napi::Env env, Napi::Promise::Deferred deferred, MainFunc main, RValFunc rval)
+    : Napi::AsyncWorker(env),
+      deferred_(std::move(deferred)),
+      main_(std::move(main)),
+      rval_(std::move(rval)) {}
+
+  void Execute() override {
+    try { result_ = main_(); }
+    catch (const std::exception &e) { SetError(e.what()); }
+    catch (const char *e) { SetError(e); }
+  }
+
+  void OnOK() override {
+    Napi::HandleScope scope(Env());
+    deferred_.Resolve(rval_(Env(), result_));
+  }
+
+  void OnError(const Napi::Error &e) override {
+    deferred_.Reject(e.Value());
+  }
+
+    private:
+  Napi::Promise::Deferred deferred_;
+  MainFunc main_;
+  RValFunc rval_;
+  GDALType result_;
+};
+
 // ---------------------------------------------------------------------------
-// Simplified async dispatch (callback-based only)
+// Simplified async dispatch (callback or Promise)
 // ---------------------------------------------------------------------------
 template <class GDALType>
 class GDALAsyncableJobNapi {
@@ -61,18 +96,24 @@ class GDALAsyncableJobNapi {
   GDALAsyncableJobNapi() : main(), rval() {
   }
 
-  // Dispatch: sync if !async, else queue an async worker with callback
+  // Dispatch: sync if !async, else queue an async worker.
+  // If async and last arg is a Function, use callback mode.
+  // Otherwise return a Promise.
   Napi::Value run(const Napi::CallbackInfo &info, bool async, int cb_index) {
     if (async) {
-      if (info.Length() <= cb_index || !info[cb_index].IsFunction()) {
-        Napi::TypeError::New(info.Env(), "callback must be a function")
-          .ThrowAsJavaScriptException();
+      // callback mode if callback provided
+      if (info.Length() > cb_index && info[cb_index].IsFunction()) {
+        Napi::Function callback = info[cb_index].As<Napi::Function>();
+        auto *worker = new GDALAsyncWorkerNapi<GDALType>(callback, main, rval);
+        worker->Queue();
         return info.Env().Undefined();
       }
-      Napi::Function callback = info[cb_index].As<Napi::Function>();
-      auto *worker = new GDALAsyncWorkerNapi<GDALType>(callback, main, rval);
+      // Promise mode
+      Napi::Env env = info.Env();
+      Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
+      auto *worker = new GDALAsyncWorkerNapiPromise<GDALType>(env, deferred, main, rval);
       worker->Queue();
-      return info.Env().Undefined();
+      return deferred.Promise();
     }
 
     try {

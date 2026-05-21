@@ -83,6 +83,7 @@ Napi::Object DatasetLayersNapi::Init(Napi::Env env, Napi::Object exports) {
     {
       InstanceMethod("toString", &DatasetLayersNapi::toString),
       InstanceMethod("get", &DatasetLayersNapi::get),
+      InstanceMethod("getAsync", &DatasetLayersNapi::getAsync),
       InstanceMethod("count", &DatasetLayersNapi::count),
       InstanceMethod("countAsync", &DatasetLayersNapi::countAsync),
     });
@@ -117,7 +118,7 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, count) {
   return info.Env().Null();
 }
 
-Napi::Value DatasetLayersNapi::get(const Napi::CallbackInfo &info) {
+GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, get) {
   auto priv = info.This().As<Napi::Object>().Get("_parent");
   if (priv.IsObject()) {
     auto *ds = DatasetNapi::Unwrap(priv.As<Napi::Object>());
@@ -125,9 +126,16 @@ Napi::Value DatasetLayersNapi::get(const Napi::CallbackInfo &info) {
       int layer_id;
       NAPI_ARG_INT(0, "layer id", layer_id);
       GDALDataset *raw = ds->get();
-      OGRLayer *layer = raw->GetLayer(layer_id);
-      if (!layer) { Napi::Error::New(info.Env(), "Invalid layer index").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-      return LayerNapi::New(info.Env(), layer);
+      GDALAsyncableJobNapi<OGRLayer *> job;
+      job.main = [raw, layer_id]() -> OGRLayer * {
+        OGRLayer *layer = raw->GetLayer(layer_id);
+        if (!layer) throw "Invalid layer index";
+        return layer;
+      };
+      job.rval = [](Napi::Env env, OGRLayer *l) {
+        return LayerNapi::New(env, l);
+      };
+      return job.run(info, async, 1);
     }
   }
   return info.Env().Null();
@@ -143,6 +151,8 @@ Napi::Object LayerFeaturesNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("toString", &LayerFeaturesNapi::toString),
       InstanceMethod("count", &LayerFeaturesNapi::count),
       InstanceMethod("countAsync", &LayerFeaturesNapi::countAsync),
+      InstanceMethod("first", &LayerFeaturesNapi::first),
+      InstanceMethod("firstAsync", &LayerFeaturesNapi::firstAsync),
       InstanceMethod("next", &LayerFeaturesNapi::next),
       InstanceMethod("nextAsync", &LayerFeaturesNapi::nextAsync),
     });
@@ -187,6 +197,27 @@ GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, next) {
       GDALAsyncableJobNapi<OGRFeature *> job;
       OGRLayer *raw = layer->get();
       job.main = [raw]() -> OGRFeature * { return raw->GetNextFeature(); };
+      job.rval = [](Napi::Env env, OGRFeature *f) -> Napi::Value {
+        if (!f) return env.Null();
+        return FeatureNapi::New(env, f);
+      };
+      return job.run(info, async, 0);
+    }
+  }
+  return info.Env().Null();
+}
+
+GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, first) {
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  if (priv.IsObject()) {
+    auto *layer = LayerNapi::Unwrap(priv.As<Napi::Object>());
+    if (layer && layer->isAlive()) {
+      GDALAsyncableJobNapi<OGRFeature *> job;
+      OGRLayer *raw = layer->get();
+      job.main = [raw]() -> OGRFeature * {
+        raw->ResetReading();
+        return raw->GetNextFeature();
+      };
       job.rval = [](Napi::Env env, OGRFeature *f) -> Napi::Value {
         if (!f) return env.Null();
         return FeatureNapi::New(env, f);
