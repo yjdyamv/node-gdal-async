@@ -306,8 +306,18 @@ Napi::Value PolygonRingsNapi::count(const Napi::CallbackInfo &info) {
 }
 Napi::Value PolygonRingsNapi::add(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
-  // Accept LinearRingNapi object OR (x, y, ...) coordinate pairs
-  if (info.Length() >= 1 && info[0].IsObject() && !info[0].IsNumber()) {
+  // Accept LinearRingNapi object OR Array of rings OR (x, y, ...) coordinate pairs
+  if (info.Length() >= 1 && info[0].IsArray()) {
+    Napi::Array rings = info[0].As<Napi::Array>();
+    for (uint32_t i = 0; i < rings.Length(); i++) {
+      Napi::Value item = rings.Get(i);
+      if (!item.IsObject()) { Napi::Error::New(info.Env(), "Array elements must be LinearRing objects").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+      LinearRingNapi *ring = LinearRingNapi::Unwrap(item.As<Napi::Object>());
+      if (!ring || !ring->isAlive()) { Napi::Error::New(info.Env(), "LinearRing object has been destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+      OGRErr err = geom_->addRing(ring->get());
+      if (err) NAPI_THROW_OGRERR(err);
+    }
+  } else if (info.Length() >= 1 && info[0].IsObject() && !info[0].IsNumber()) {
     LinearRingNapi *ring = nullptr;
     NAPI_ARG_WRAPPED(0, "ring", LinearRingNapi, ring);
     OGRErr err = geom_->addRing(ring->get());
