@@ -23,15 +23,6 @@ execute_process(
   OUTPUT_VARIABLE NODE_ADDON_API_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-# --- nan (infrastructure: async engine + object store still needed) ---
-execute_process(
-  COMMAND node -p "require('nan')"
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE NAN_DIR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-include_directories(${NODE_ADDON_API_DIR})
-include_directories(${NAN_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # --- Platform settings ---
@@ -82,7 +73,7 @@ find_package(muparser CONFIG REQUIRED)
 #   gdal_common.cpp — NAN macros (used by ptr_manager, async)
 # All class .cpp files replaced by *_napi.cpp equivalents
 set(SOURCES
-  src/utils/ptr_manager.cpp
+# src/utils/ptr_manager.cpp
   src/node_gdal.cpp
 # src/async.cpp
 # src/gdal_common.cpp

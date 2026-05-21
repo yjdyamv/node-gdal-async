@@ -4,7 +4,6 @@
 #include <node_version.h>
 
 // nan
-#include "nan-wrapper.h"
 
 // napi (for module init switch)
 #include <napi.h>
@@ -111,7 +110,7 @@ using namespace node;
 using namespace v8;
 
 FILE *log_file = NULL;
-ObjectStore object_store;
+// ObjectStore object_store; // NAN dependency removed
 bool eventLoopWarn = true;
 std::thread::id mainV8ThreadId;  // moved from async.cpp
 
@@ -364,17 +363,17 @@ static NAN_METHOD(ThrowDummyCPLError) {
   return;
 }
 
-static NAN_METHOD(isAlive) {
+// static NAN_METHOD(isAlive) {
+// 
+//   long uid;
+//   NODE_ARG_INT(0, "uid", uid);
+// 
+//   info.GetReturnValue().Set(Nan::New(object_store.isAlive(uid)));
+// }
 
-  long uid;
-  NODE_ARG_INT(0, "uid", uid);
-
-  info.GetReturnValue().Set(Nan::New(object_store.isAlive(uid)));
-}
-
-void Cleanup(void *) {
-  object_store.cleanup();
-}
+// void Cleanup(void *) {
+//   object_store.cleanup();
+// }
 
 static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   static bool initialized = false;
@@ -1878,7 +1877,7 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   NODE_DEFINE_CONSTANT(target, CPLE_UserInterrupt);
 
   auto *env = GetCurrentEnvironment(target->GetIsolate()->GetCurrentContext());
-  AtExit(env, Cleanup, nullptr);
+//   AtExit(env, Cleanup, nullptr);
 }
 }
 
