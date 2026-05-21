@@ -1,0 +1,8 @@
+patches:
+  3.12.1:
+  - patch_file: patches/3.12.x/0-replace-find-package.patch
+  - patch_file: patches/3.12.x/2-allow-cycles-in-cmake-targets.patch
+sources:
+  3.12.1:
+    sha256: 266cbadf8534d1de831db8834374afd95603e0a6af4f53d0547ae0d46bd3d2d1
+    url: https://github.com/OSGeo/gdal/releases/download/v3.12.1/gdal-3.12.1.tar.gz
