@@ -2158,6 +2158,8 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::CoordinateTransformationNapi::Init(napiEnv, exports);
   node_gdal::ColorTableNapi::Init(napiEnv, exports);
   node_gdal::GDALDriversNapi::Init(napiEnv, exports);
+  node_gdal::GeometryNapi::Init(napiEnv, exports);       // base class: must be first
+  node_gdal::GeometryCollectionNapi::Init(napiEnv, exports);
   node_gdal::PointNapi::Init(napiEnv, exports);
   node_gdal::SimpleCurveNapi::Init(napiEnv, exports);
   node_gdal::LineStringNapi::Init(napiEnv, exports);
@@ -2165,12 +2167,10 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::PolygonNapi::Init(napiEnv, exports);
   node_gdal::CircularStringNapi::Init(napiEnv, exports);
   node_gdal::CompoundCurveNapi::Init(napiEnv, exports);
-  node_gdal::GeometryCollectionNapi::Init(napiEnv, exports);
   node_gdal::MultiPointNapi::Init(napiEnv, exports);
   node_gdal::MultiLineStringNapi::Init(napiEnv, exports);
   node_gdal::MultiPolygonNapi::Init(napiEnv, exports);
   node_gdal::MultiCurveNapi::Init(napiEnv, exports);
-  node_gdal::GeometryNapi::Init(napiEnv, exports);
   node_gdal::GroupNapi::Init(napiEnv, exports);
   node_gdal::MDArrayNapi::Init(napiEnv, exports);
   node_gdal::DimensionNapi::Init(napiEnv, exports);

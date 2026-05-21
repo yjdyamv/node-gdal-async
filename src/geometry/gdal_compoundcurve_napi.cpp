@@ -1,3 +1,4 @@
+#include "gdal_simplecurve_napi.hpp"
 #include "gdal_compoundcurve_napi.hpp"
 #include "../gdal_stubs_napi.hpp"
 
@@ -13,6 +14,7 @@ Napi::Object CompoundCurveNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceAccessor<&CompoundCurveNapi::pointsGetter>("points"),
     });
   constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, SimpleCurveNapi::constructor.Value());
   constructor.SuppressDestruct();
   exports.Set("CompoundCurve", func);
   return exports;

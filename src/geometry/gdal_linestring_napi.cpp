@@ -1,3 +1,4 @@
+#include "gdal_simplecurve_napi.hpp"
 #include "gdal_linestring_napi.hpp"
 #include "../gdal_stubs_napi.hpp"
 
@@ -15,6 +16,7 @@ Napi::Object LineStringNapi::Init(Napi::Env env, Napi::Object exports) {
     });
 
   constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, SimpleCurveNapi::constructor.Value());
   constructor.SuppressDestruct();
   exports.Set("LineString", func);
   return exports;

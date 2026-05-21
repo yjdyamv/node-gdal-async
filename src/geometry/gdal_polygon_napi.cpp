@@ -1,4 +1,5 @@
 #include "gdal_polygon_napi.hpp"
+#include "gdal_geometry_napi.hpp"
 #include "../gdal_stubs_napi.hpp"
 
 namespace node_gdal {
@@ -14,6 +15,18 @@ Napi::Object PolygonNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("getArea", &PolygonNapi::getArea),
       InstanceAccessor<&PolygonNapi::ringsGetter>("rings"),
     });
+
+  // JS prototype inheritance: Object.setPrototypeOf(Polygon.prototype, Geometry.prototype)
+  {
+    napi_value polyProto, geomProto, global, objectObj, setProtoFn;
+    napi_get_named_property(env, func, "prototype", &polyProto);
+    napi_get_named_property(env, GeometryNapi::constructor.Value(), "prototype", &geomProto);
+    napi_get_global(env, &global);
+    napi_get_named_property(env, global, "Object", &objectObj);
+    napi_get_named_property(env, objectObj, "setPrototypeOf", &setProtoFn);
+    napi_value args[2] = {polyProto, geomProto};
+    napi_call_function(env, objectObj, setProtoFn, 2, args, nullptr);
+  }
 
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();

@@ -1,3 +1,4 @@
+#include "gdal_geometry_napi.hpp"
 #include "gdal_point_napi.hpp"
 
 namespace node_gdal {
@@ -16,6 +17,7 @@ Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
     });
 
   constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryNapi::constructor.Value());
   constructor.SuppressDestruct();
 
   exports.Set("Point", func);

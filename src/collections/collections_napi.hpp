@@ -24,6 +24,7 @@ class DatasetLayersNapi : public Napi::ObjectWrap<DatasetLayersNapi> {
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
   DatasetLayersNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
+  Napi::Value get(const Napi::CallbackInfo &info);
   GDAL_ASYNCABLE_DECLARE_NAPI(count);
 };
 

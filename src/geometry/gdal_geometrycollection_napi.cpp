@@ -1,3 +1,4 @@
+#include "gdal_geometry_napi.hpp"
 #include "gdal_geometrycollection_napi.hpp"
 #include "../gdal_stubs_napi.hpp"
 
@@ -16,6 +17,7 @@ Napi::Object GeometryCollectionNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceAccessor<&GeometryCollectionNapi::childrenGetter>("children"),
     });
   constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryNapi::constructor.Value());
   constructor.SuppressDestruct();
   exports.Set("GeometryCollection", func);
   return exports;
@@ -63,7 +65,9 @@ Napi::Object MultiPointNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "MultiPoint",
     {InstanceMethod("toString", &MultiPointNapi::toString)});
-  constructor = Napi::Persistent(func); constructor.SuppressDestruct();
+  constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  constructor.SuppressDestruct();
   exports.Set("MultiPoint", func); return exports;
 }
 
@@ -94,7 +98,9 @@ Napi::Object MultiLineStringNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "MultiLineString",
     {InstanceMethod("toString", &MultiLineStringNapi::toString)});
-  constructor = Napi::Persistent(func); constructor.SuppressDestruct();
+  constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  constructor.SuppressDestruct();
   exports.Set("MultiLineString", func); return exports;
 }
 
@@ -125,7 +131,9 @@ Napi::Object MultiPolygonNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "MultiPolygon",
     {InstanceMethod("toString", &MultiPolygonNapi::toString)});
-  constructor = Napi::Persistent(func); constructor.SuppressDestruct();
+  constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  constructor.SuppressDestruct();
   exports.Set("MultiPolygon", func); return exports;
 }
 
@@ -156,7 +164,9 @@ Napi::Object MultiCurveNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env, "MultiCurve",
     {InstanceMethod("toString", &MultiCurveNapi::toString)});
-  constructor = Napi::Persistent(func); constructor.SuppressDestruct();
+  constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryCollectionNapi::constructor.Value());
+  constructor.SuppressDestruct();
   exports.Set("MultiCurve", func); return exports;
 }
 

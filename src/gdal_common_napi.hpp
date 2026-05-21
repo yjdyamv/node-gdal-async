@@ -524,4 +524,18 @@ inline Napi::Object MajorObjectNapiGetMetadata(Napi::Env env, char **metadata) {
   return result;
 }
 
+// Helper: set JS prototype inheritance (childFunc.prototype.__proto__ = parent.prototype)
+inline void NapiSetPrototypeChain(napi_env env, napi_value childFunc,
+                                   napi_value parentFunc) {
+  napi_value childProto, parentProto;
+  napi_get_named_property(env, childFunc, "prototype", &childProto);
+  napi_get_named_property(env, parentFunc, "prototype", &parentProto);
+  napi_value global, objectObj, setProtoFn;
+  napi_get_global(env, &global);
+  napi_get_named_property(env, global, "Object", &objectObj);
+  napi_get_named_property(env, objectObj, "setPrototypeOf", &setProtoFn);
+  napi_value args[2] = {childProto, parentProto};
+  napi_call_function(env, objectObj, setProtoFn, 2, args, nullptr);
+}
+
 #endif // __GDAL_COMMON_NAPI_H__

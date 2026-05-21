@@ -1,3 +1,4 @@
+#include "gdal_linestring_napi.hpp"
 #include "gdal_linearring_napi.hpp"
 #include "../gdal_stubs_napi.hpp"
 
@@ -16,6 +17,7 @@ Napi::Object LinearRingNapi::Init(Napi::Env env, Napi::Object exports) {
     });
 
   constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, LineStringNapi::constructor.Value());
   constructor.SuppressDestruct();
   exports.Set("LinearRing", func);
   return exports;
