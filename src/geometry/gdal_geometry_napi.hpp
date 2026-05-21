@@ -17,6 +17,7 @@ class GeometryNapi : public Napi::ObjectWrap<GeometryNapi>,
   static Napi::Value New(Napi::Env env, OGRGeometry *geom, bool owned);
 
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
+  static void AddInheritedMethods(Napi::Env env, Napi::Function ctor);
   GeometryNapi(const Napi::CallbackInfo &info);
 
   Napi::Value toString(const Napi::CallbackInfo &info);

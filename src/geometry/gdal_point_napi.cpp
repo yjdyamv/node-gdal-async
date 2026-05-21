@@ -12,6 +12,9 @@ Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
     {
       InstanceMethod("toString", &PointNapi::toString),
       InstanceMethod("toJSON", &PointNapi::toJSON),
+      InstanceMethod("isValid", &PointNapi::isValid),
+      InstanceMethod("isSimple", &PointNapi::isSimple),
+      InstanceMethod("swapXY", &PointNapi::swapXY),
       InstanceAccessor<&PointNapi::xGetter, &PointNapi::xSetter>("x"),
       InstanceAccessor<&PointNapi::yGetter, &PointNapi::ySetter>("y"),
       InstanceAccessor<&PointNapi::zGetter, &PointNapi::zSetter>("z"),
@@ -149,6 +152,20 @@ Napi::Value PointNapi::toJSON(const Napi::CallbackInfo &info) {
   coords.Set(uint32_t(2), Napi::Number::New(info.Env(), self->this_->getZ()));
   obj.Set("coordinates", coords);
   return obj;
+}
+
+Napi::Value PointNapi::isValid(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  return Napi::Boolean::New(info.Env(), self->this_->IsValid());
+}
+Napi::Value PointNapi::isSimple(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  return Napi::Boolean::New(info.Env(), self->this_->IsSimple());
+}
+Napi::Value PointNapi::swapXY(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  self->this_->swapXY();
+  return info.Env().Undefined();
 }
 
 } // namespace node_gdal

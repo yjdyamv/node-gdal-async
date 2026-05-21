@@ -28,6 +28,7 @@ Napi::Object PolygonNapi::Init(Napi::Env env, Napi::Object exports) {
     napi_call_function(env, objectObj, setProtoFn, 2, args, nullptr);
   }
 
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
   exports.Set("Polygon", func);

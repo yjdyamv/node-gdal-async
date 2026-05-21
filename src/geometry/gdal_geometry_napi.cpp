@@ -13,6 +13,62 @@ namespace node_gdal {
 
 Napi::FunctionReference GeometryNapi::constructor;
 
+// Extract OGRGeometry* from any geometry JS object (Geometry, Point,
+// LineString, Polygon, etc.) without requiring C++ inheritance.
+// Needed because e.g. PointNapi does not inherit from GeometryNapi in C++.
+static OGRGeometry *GetGeometryFromObject(Napi::Object obj) {
+  if (obj.InstanceOf(GeometryNapi::constructor.Value())) {
+    auto *g = GeometryNapi::Unwrap(obj);
+    return (g && g->isAlive()) ? g->this_ : nullptr;
+  }
+  if (obj.InstanceOf(PointNapi::constructor.Value())) {
+    auto *p = PointNapi::Unwrap(obj);
+    return (p && p->isAlive()) ? p->this_ : nullptr;
+  }
+  if (obj.InstanceOf(LineStringNapi::constructor.Value())) {
+    auto *l = LineStringNapi::Unwrap(obj);
+    return (l && l->isAlive()) ? l->this_ : nullptr;
+  }
+  if (obj.InstanceOf(LinearRingNapi::constructor.Value())) {
+    auto *r = LinearRingNapi::Unwrap(obj);
+    return (r && r->isAlive()) ? r->this_ : nullptr;
+  }
+  if (obj.InstanceOf(PolygonNapi::constructor.Value())) {
+    auto *p = PolygonNapi::Unwrap(obj);
+    return (p && p->isAlive()) ? p->this_ : nullptr;
+  }
+  if (obj.InstanceOf(CircularStringNapi::constructor.Value())) {
+    auto *c = CircularStringNapi::Unwrap(obj);
+    return (c && c->isAlive()) ? c->this_ : nullptr;
+  }
+  if (obj.InstanceOf(CompoundCurveNapi::constructor.Value())) {
+    auto *c = CompoundCurveNapi::Unwrap(obj);
+    return (c && c->isAlive()) ? c->this_ : nullptr;
+  }
+  if (obj.InstanceOf(GeometryCollectionNapi::constructor.Value())) {
+    auto *c = GeometryCollectionNapi::Unwrap(obj);
+    return (c && c->isAlive()) ? c->this_ : nullptr;
+  }
+  return nullptr;
+}
+
+// Unwrap geometry from this — throws if destroyed
+#define NAPI_UNWRAP_GEOM(var)                                                                  \
+  OGRGeometry *var = GetGeometryFromObject(info.This().As<Napi::Object>());                    \
+  if (!var) {                                                                                  \
+    Napi::Error::New(info.Env(), "Geometry object has already been destroyed")                  \
+      .ThrowAsJavaScriptException();                                                           \
+    return info.Env().Undefined();                                                             \
+  }
+
+#define NAPI_UNWRAP_GEOM_VOID(var)                                                             \
+  OGRGeometry *var = GetGeometryFromObject(info.This().As<Napi::Object>());                    \
+  if (!var) {                                                                                  \
+    Napi::Error::New(info.Env(), "Geometry object has already been destroyed")                  \
+      .ThrowAsJavaScriptException();                                                           \
+    return;                                                                                    \
+  }
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -149,19 +205,19 @@ Napi::Value GeometryNapi::New(Napi::Env env, OGRGeometry *geom, bool owned) {
 // ---------------------------------------------------------------------------
 
 // Creates a GDALAsyncableJobNapi for a boolean predicate (takes 1 Geometry arg)
-static auto GeoBoolPred(Napi::Env, GeometryNapi *self, GeometryNapi *other,
+static auto GeoBoolPred(Napi::Env, OGRGeometry *geom, GeometryNapi *other,
                         OGRBoolean (OGRGeometry::*fn)(const OGRGeometry *) const) {
   GDALAsyncableJobNapi<int> job;
-  job.main = [self, other, fn]() { return (self->get()->*fn)(other->get()); };
+  job.main = [geom, other, fn]() { return (geom->*fn)(other->get()); };
   job.rval = [](Napi::Env env, int r) -> Napi::Value { return Napi::Boolean::New(env, r); };
   return job;
 }
 
 // Creates a GDALAsyncableJobNapi for a geometry-returning unary operation
 static auto GeoUnary(OGRGeometry *(OGRGeometry::*fn)() const) {
-  return [fn](Napi::Env env, GeometryNapi *self) {
+  return [fn](Napi::Env env, OGRGeometry *geom) {
     GDALAsyncableJobNapi<OGRGeometry *> job;
-    job.main = [self, fn]() { return (self->this_->*fn)(); };
+    job.main = [geom, fn]() { return (geom->*fn)(); };
     job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
       if (!g) return env.Null();
       return GeometryNapi::New(env, g);
@@ -174,45 +230,45 @@ static auto GeoUnary(OGRGeometry *(OGRGeometry::*fn)() const) {
 // toString
 // ---------------------------------------------------------------------------
 Napi::Value GeometryNapi::toString(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   std::ostringstream ss;
-  ss << "Geometry (" << self->this_->getGeometryName() << ")";
+  ss << "Geometry (" << geom->getGeometryName() << ")";
   return Napi::String::New(info.Env(), ss.str());
 }
 
 Napi::Value GeometryNapi::clone(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  return GeometryNapi::New(info.Env(), self->this_->clone());
+  NAPI_UNWRAP_GEOM(geom);
+  return GeometryNapi::New(info.Env(), geom->clone());
 }
 
 // ---------------------------------------------------------------------------
 // Simple bool predicates (no args)
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, isEmpty) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { return self->this_->IsEmpty(); };
+  job.main = [geom]() { return geom->IsEmpty(); };
   job.rval = [](Napi::Env env, int r) { return Napi::Boolean::New(env, r); };
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, isValid) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { return self->this_->IsValid(); };
+  job.main = [geom]() { return geom->IsValid(); };
   job.rval = [](Napi::Env env, int r) { return Napi::Boolean::New(env, r); };
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, isSimple) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { return self->this_->IsSimple(); };
+  job.main = [geom]() { return geom->IsSimple(); };
   job.rval = [](Napi::Env env, int r) { return Napi::Boolean::New(env, r); };
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, isRing) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { return self->this_->IsRing(); };
+  job.main = [geom]() { return geom->IsRing(); };
   job.rval = [](Napi::Env env, int r) { return Napi::Boolean::New(env, r); };
   return job.run(info, async, 0);
 }
@@ -221,30 +277,30 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, isRing) {
 // Void operations
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, empty) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { self->this_->empty(); return 0; };
+  job.main = [geom]() { geom->empty(); return 0; };
   job.rval = [](Napi::Env env, int) { return env.Undefined(); };
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, closeRings) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { self->this_->closeRings(); return 0; };
+  job.main = [geom]() { geom->closeRings(); return 0; };
   job.rval = [](Napi::Env env, int) { return env.Undefined(); };
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, swapXY) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { self->this_->swapXY(); return 0; };
+  job.main = [geom]() { geom->swapXY(); return 0; };
   job.rval = [](Napi::Env env, int) { return env.Undefined(); };
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, flattenTo2D) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self]() { self->this_->flattenTo2D(); return 0; };
+  job.main = [geom]() { geom->flattenTo2D(); return 0; };
   job.rval = [](Napi::Env env, int) { return env.Undefined(); };
   return job.run(info, async, 0);
 }
@@ -254,10 +310,10 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, flattenTo2D) {
 // ---------------------------------------------------------------------------
 #define GEO_BOOL_PRED(name, fn)                                                                \
   GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, name) {                                             \
-    NAPI_UNWRAP_THIS(GeometryNapi, self);                                                       \
+    NAPI_UNWRAP_GEOM(geom);                                                       \
     GeometryNapi *other;                                                                        \
     NAPI_ARG_WRAPPED(0, "geometry", GeometryNapi, other);                                       \
-    auto job = GeoBoolPred(info.Env(), self, other, &OGRGeometry::fn);                           \
+    auto job = GeoBoolPred(info.Env(), geom, other, &OGRGeometry::fn);                           \
     return job.run(info, async, 1);                                                             \
   }
 
@@ -275,8 +331,8 @@ GEO_BOOL_PRED(overlaps, Overlaps)
 // ---------------------------------------------------------------------------
 #define GEO_UNARY(name, fn)                                                                    \
   GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, name) {                                             \
-    NAPI_UNWRAP_THIS(GeometryNapi, self);                                                       \
-    auto job = GeoUnary(&OGRGeometry::fn)(info.Env(), self);                                    \
+    NAPI_UNWRAP_GEOM(geom);                                                       \
+    auto job = GeoUnary(&OGRGeometry::fn)(info.Env(), geom);                                    \
     return job.run(info, async, 0);                                                             \
   }
 
@@ -284,11 +340,11 @@ GEO_UNARY(boundary, Boundary)
 GEO_UNARY(convexHull, ConvexHull)
 // centroid has different signature (OGRErr Centroid(OGRPoint*)), implemented below
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, getEnvelope) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<OGREnvelope *> job;
-  job.main = [self]() {
+  job.main = [geom]() {
     auto env = new OGREnvelope();
-    self->this_->getEnvelope(env);
+    geom->getEnvelope(env);
     return env;
   };
   job.rval = [](Napi::Env env, OGREnvelope *e) -> Napi::Value {
@@ -304,11 +360,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, getEnvelope) {
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, getEnvelope3D) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<OGREnvelope3D *> job;
-  job.main = [self]() {
+  job.main = [geom]() {
     auto env = new OGREnvelope3D();
-    self->this_->getEnvelope(env);
+    geom->getEnvelope(env);
     return env;
   };
   job.rval = [](Napi::Env env, OGREnvelope3D *e) -> Napi::Value {
@@ -330,11 +386,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, getEnvelope3D) {
 // distance (1 Geometry arg, returns double)
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, distance) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GeometryNapi *other;
   NAPI_ARG_WRAPPED(0, "geometry", GeometryNapi, other);
   GDALAsyncableJobNapi<double> job;
-  job.main = [self, other]() { return self->this_->Distance(other->this_); };
+  job.main = [geom, other]() { return geom->Distance(other->this_); };
   job.rval = [](Napi::Env env, double d) { return Napi::Number::New(env, d); };
   return job.run(info, async, 1);
 }
@@ -343,11 +399,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, distance) {
 // buffer (double arg, returns Geometry)
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, buffer) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   double dist;
   NAPI_ARG_DOUBLE(0, "distance", dist);
   GDALAsyncableJobNapi<OGRGeometry *> job;
-  job.main = [self, dist]() { return self->this_->Buffer(dist); };
+  job.main = [geom, dist]() { return geom->Buffer(dist); };
   job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
     if (!g) return env.Null();
     return GeometryNapi::New(env, g);
@@ -360,11 +416,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, buffer) {
 // ---------------------------------------------------------------------------
 #define GEO_BINARY(name, fn)                                                                   \
   GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, name) {                                             \
-    NAPI_UNWRAP_THIS(GeometryNapi, self);                                                       \
+    NAPI_UNWRAP_GEOM(geom);                                                       \
     GeometryNapi *other;                                                                        \
     NAPI_ARG_WRAPPED(0, "geometry", GeometryNapi, other);                                       \
     GDALAsyncableJobNapi<OGRGeometry *> job;                                                    \
-    job.main = [self, other]() { return (self->this_->fn)(other->this_); };                    \
+    job.main = [geom, other]() { return (geom->fn)(other->this_); };                    \
     job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {                              \
       if (!g) return env.Null();                                                                \
       return GeometryNapi::New(env, g);                                                        \
@@ -381,11 +437,11 @@ GEO_BINARY(symDifference, SymDifference)
 // simplify / simplifyPreserveTopology (double arg, returns Geometry)
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, simplify) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   double tol;
   NAPI_ARG_DOUBLE(0, "tolerance", tol);
   GDALAsyncableJobNapi<OGRGeometry *> job;
-  job.main = [self, tol]() { return self->this_->Simplify(tol); };
+  job.main = [geom, tol]() { return geom->Simplify(tol); };
   job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
     if (!g) return env.Null();
     return GeometryNapi::New(env, g);
@@ -393,11 +449,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, simplify) {
   return job.run(info, async, 1);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, simplifyPreserveTopology) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   double tol;
   NAPI_ARG_DOUBLE(0, "tolerance", tol);
   GDALAsyncableJobNapi<OGRGeometry *> job;
-  job.main = [self, tol]() { return self->this_->SimplifyPreserveTopology(tol); };
+  job.main = [geom, tol]() { return geom->SimplifyPreserveTopology(tol); };
   job.rval = [](Napi::Env env, OGRGeometry *g) -> Napi::Value {
     if (!g) return env.Null();
     return GeometryNapi::New(env, g);
@@ -409,11 +465,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, simplifyPreserveTopology) {
 // segmentize (double arg, void)
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, segmentize) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   double len;
   NAPI_ARG_DOUBLE(0, "segment length", len);
   GDALAsyncableJobNapi<int> job;
-  job.main = [self, len]() { self->this_->segmentize(len); return 0; };
+  job.main = [geom, len]() { geom->segmentize(len); return 0; };
   job.rval = [](Napi::Env env, int) { return env.Undefined(); };
   return job.run(info, async, 1);
 }
@@ -422,11 +478,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, segmentize) {
 // Export methods
 // ---------------------------------------------------------------------------
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToWKT) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<char *> job;
-  job.main = [self]() {
+  job.main = [geom]() {
     char *wkt = nullptr;
-    self->this_->exportToWkt(&wkt);
+    geom->exportToWkt(&wkt);
     return wkt;
   };
   job.rval = [](Napi::Env env, char *wkt) -> Napi::Value {
@@ -438,12 +494,12 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToWKT) {
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToWKB) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<std::pair<unsigned char *, int>> job;
-  job.main = [self]() -> std::pair<unsigned char *, int> {
-    int size = self->this_->WkbSize();
+  job.main = [geom]() -> std::pair<unsigned char *, int> {
+    int size = geom->WkbSize();
     auto buf = new unsigned char[size];
-    self->this_->exportToWkb(wkbNDR, buf);
+    geom->exportToWkb(wkbNDR, buf);
     return {buf, size};
   };
   job.rval = [](Napi::Env env, std::pair<unsigned char *, int> r) -> Napi::Value {
@@ -454,10 +510,10 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToWKB) {
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToJSON) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<char *> job;
-  job.main = [self]() {
-    return self->this_->exportToJson(nullptr);
+  job.main = [geom]() {
+    return geom->exportToJson(nullptr);
   };
   job.rval = [](Napi::Env env, char *json) -> Napi::Value {
     if (!json) return env.Null();
@@ -468,10 +524,10 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToJSON) {
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToKML) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<char *> job;
-  job.main = [self]() {
-    return self->this_->exportToKML();
+  job.main = [geom]() {
+    return geom->exportToKML();
   };
   job.rval = [](Napi::Env env, char *kml) -> Napi::Value {
     if (!kml) return env.Null();
@@ -482,10 +538,10 @@ GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToKML) {
   return job.run(info, async, 0);
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(GeometryNapi, exportToGML) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM(geom);
   GDALAsyncableJobNapi<char *> job;
-  job.main = [self]() {
-    return self->this_->exportToGML();
+  job.main = [geom]() {
+    return geom->exportToGML();
   };
   job.rval = [](Napi::Env env, char *gml) -> Napi::Value {
     if (!gml) return env.Null();
@@ -546,15 +602,15 @@ Napi::Value GeometryNapi::getConstructor(const Napi::CallbackInfo &info) {
 // Getters & Setters
 // ---------------------------------------------------------------------------
 Napi::Value GeometryNapi::srsGetter(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  const OGRSpatialReference *srs = self->this_->getSpatialReference();
+  NAPI_UNWRAP_GEOM(geom);
+  const OGRSpatialReference *srs = geom->getSpatialReference();
   if (!srs) return info.Env().Null();
   return SpatialReferenceNapi::New(info.Env(), srs);
 }
 void GeometryNapi::srsSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
-  NAPI_UNWRAP_THIS_VOID(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM_VOID(geom);
   if (value.IsNull() || value.IsUndefined()) {
-    self->this_->assignSpatialReference(nullptr);
+    geom->assignSpatialReference(nullptr);
     return;
   }
   if (value.IsObject() && value.As<Napi::Object>().InstanceOf(SpatialReferenceNapi::constructor.Value())) {
@@ -564,7 +620,7 @@ void GeometryNapi::srsSetter(const Napi::CallbackInfo &info, const Napi::Value &
         .ThrowAsJavaScriptException();
       return;
     }
-    self->this_->assignSpatialReference(srs->get());
+    geom->assignSpatialReference(srs->get());
     return;
   }
   Napi::Error::New(info.Env(), "srs must be a SpatialReferenceNapi object")
@@ -572,35 +628,114 @@ void GeometryNapi::srsSetter(const Napi::CallbackInfo &info, const Napi::Value &
 }
 
 Napi::Value GeometryNapi::typeGetter(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  OGRwkbGeometryType type = self->this_->getGeometryType();
-  if (std::string(self->this_->getGeometryName()) == "LINEARRING")
+  NAPI_UNWRAP_GEOM(geom);
+  OGRwkbGeometryType type = geom->getGeometryType();
+  if (std::string(geom->getGeometryName()) == "LINEARRING")
     type = (OGRwkbGeometryType)(wkbLinearRing | (type & wkb25DBit));
   return Napi::Number::New(info.Env(), type);
 }
 Napi::Value GeometryNapi::nameGetter(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  return Napi::String::New(info.Env(), self->this_->getGeometryName());
+  NAPI_UNWRAP_GEOM(geom);
+  return Napi::String::New(info.Env(), geom->getGeometryName());
 }
 Napi::Value GeometryNapi::wkbSizeGetter(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  return Napi::Number::New(info.Env(), self->this_->WkbSize());
+  NAPI_UNWRAP_GEOM(geom);
+  return Napi::Number::New(info.Env(), geom->WkbSize());
 }
 Napi::Value GeometryNapi::dimensionGetter(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  return Napi::Number::New(info.Env(), self->this_->getDimension());
+  NAPI_UNWRAP_GEOM(geom);
+  return Napi::Number::New(info.Env(), geom->getDimension());
 }
 Napi::Value GeometryNapi::coordinateDimensionGetter(const Napi::CallbackInfo &info) {
-  NAPI_UNWRAP_THIS(GeometryNapi, self);
-  return Napi::Number::New(info.Env(), self->this_->getCoordinateDimension());
+  NAPI_UNWRAP_GEOM(geom);
+  return Napi::Number::New(info.Env(), geom->getCoordinateDimension());
 }
 void GeometryNapi::coordinateDimensionSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
-  NAPI_UNWRAP_THIS_VOID(GeometryNapi, self);
+  NAPI_UNWRAP_GEOM_VOID(geom);
   if (!value.IsNumber()) {
     Napi::Error::New(info.Env(), "coordinateDimension must be a number").ThrowAsJavaScriptException();
     return;
   }
-  self->this_->setCoordinateDimension(value.As<Napi::Number>().Int32Value());
+  geom->setCoordinateDimension(value.As<Napi::Number>().Int32Value());
+}
+
+// Add inherited geometry methods to subclass prototypes.
+// InstanceMethod in GeometryNapi::DefineClass calls GeometryNapi::Unwrap()
+// which fails for subclass objects (PointNapi, LineStringNapi, etc.).
+// Instead, we attach the same logic as raw Napi::Function lambdas that use
+// GetGeometryFromObject(), which handles all geometry types correctly.
+void GeometryNapi::AddInheritedMethods(Napi::Env env, Napi::Function ctor) {
+  napi_value proto_nv;
+  napi_get_named_property(env, ctor, "prototype", &proto_nv);
+  Napi::Object proto = Napi::Object(env, proto_nv);
+
+  // isValid
+  proto.Set("isValid", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    return Napi::Boolean::New(info.Env(), geom->IsValid());
+  }, "isValid"));
+
+  // isSimple
+  proto.Set("isSimple", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    return Napi::Boolean::New(info.Env(), geom->IsSimple());
+  }, "isSimple"));
+
+  // swapXY
+  proto.Set("swapXY", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    geom->swapXY();
+    return info.Env().Undefined();
+  }, "swapXY"));
+
+  // isEmpty
+  proto.Set("isEmpty", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    return Napi::Boolean::New(info.Env(), geom->IsEmpty());
+  }, "isEmpty"));
+
+  // clone
+  proto.Set("clone", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    return GeometryNapi::New(info.Env(), geom->clone());
+  }, "clone"));
+
+  // exportToWKT
+  proto.Set("exportToWKT", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    char *wkt = nullptr;
+    geom->exportToWkt(&wkt);
+    if (!wkt) return info.Env().Null();
+    Napi::String result = Napi::String::New(info.Env(), wkt);
+    CPLFree(wkt);
+    return result;
+  }, "exportToWKT"));
+
+  // exportToJSON
+  proto.Set("exportToJSON", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    char *json = geom->exportToJson(nullptr);
+    if (!json) return info.Env().Null();
+    Napi::String result = Napi::String::New(info.Env(), json);
+    CPLFree(json);
+    return result;
+  }, "exportToJSON"));
+
+  // toString
+  proto.Set("toString", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
+    if (!geom) return Napi::String::New(info.Env(), "Null geometry");
+    std::ostringstream ss;
+    ss << "Geometry (" << geom->getGeometryName() << ")";
+    return Napi::String::New(info.Env(), ss.str());
+  }, "toString"));
 }
 
 } // namespace node_gdal
