@@ -11,6 +11,7 @@ Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
     "Point",
     {
       InstanceMethod("toString", &PointNapi::toString),
+      InstanceMethod("toJSON", &PointNapi::toJSON),
       InstanceAccessor<&PointNapi::xGetter, &PointNapi::xSetter>("x"),
       InstanceAccessor<&PointNapi::yGetter, &PointNapi::ySetter>("y"),
       InstanceAccessor<&PointNapi::zGetter, &PointNapi::zSetter>("z"),
@@ -136,6 +137,18 @@ void PointNapi::zSetter(const Napi::CallbackInfo &info, const Napi::Value &value
     return;
   }
   self->this_->setZ(value.As<Napi::Number>().DoubleValue());
+}
+
+Napi::Value PointNapi::toJSON(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  Napi::Object obj = Napi::Object::New(info.Env());
+  obj.Set("type", Napi::String::New(info.Env(), "Point"));
+  Napi::Array coords = Napi::Array::New(info.Env());
+  coords.Set(uint32_t(0), Napi::Number::New(info.Env(), self->this_->getX()));
+  coords.Set(uint32_t(1), Napi::Number::New(info.Env(), self->this_->getY()));
+  coords.Set(uint32_t(2), Napi::Number::New(info.Env(), self->this_->getZ()));
+  obj.Set("coordinates", coords);
+  return obj;
 }
 
 } // namespace node_gdal

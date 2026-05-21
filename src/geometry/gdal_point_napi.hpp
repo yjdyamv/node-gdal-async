@@ -15,6 +15,7 @@ class PointNapi : public Napi::ObjectWrap<PointNapi>, public GeometryBaseNapi<Po
   PointNapi(const Napi::CallbackInfo &info);
 
   Napi::Value toString(const Napi::CallbackInfo &info);
+  Napi::Value toJSON(const Napi::CallbackInfo &info);
   Napi::Value xGetter(const Napi::CallbackInfo &info);
   Napi::Value yGetter(const Napi::CallbackInfo &info);
   Napi::Value zGetter(const Napi::CallbackInfo &info);
