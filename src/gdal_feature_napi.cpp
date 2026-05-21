@@ -250,7 +250,7 @@ Napi::Value FeatureNapi::fieldsGetter(const Napi::CallbackInfo &info) {
   Napi::Object thiz = info.This().As<Napi::Object>();
   if (thiz.Has("__fields")) { Napi::Value c = thiz.Get("__fields"); if (!c.IsNull() && !c.IsUndefined()) return c; }
   Napi::Object f = FeatureFieldsNapi::constructor.New({Napi::External<OGRFeature>::New(info.Env(), self->this_)});
-  thiz.Set("__fields", f); return f;
+  f.Set("_parent", thiz); thiz.Set("__fields", f); return f;
 }
 
 } // namespace node_gdal

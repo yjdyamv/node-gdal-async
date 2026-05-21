@@ -328,6 +328,7 @@ Napi::Value DatasetNapi::bandsGetter(const Napi::CallbackInfo &info) {
   Napi::Object thiz = info.This().As<Napi::Object>();
   if (thiz.Has("__bands")) { Napi::Value c = thiz.Get("__bands"); if (!c.IsNull() && !c.IsUndefined()) return c; }
   Napi::Object bands = DatasetBandsNapi::constructor.New({Napi::External<GDALDataset>::New(info.Env(), ds->this_dataset)});
+  bands.Set("_parent", thiz);  // parent reference for collection operations
   thiz.Set("__bands", bands); return bands;
 }
 
@@ -336,6 +337,7 @@ Napi::Value DatasetNapi::layersGetter(const Napi::CallbackInfo &info) {
   Napi::Object thiz = info.This().As<Napi::Object>();
   if (thiz.Has("__layers")) { Napi::Value c = thiz.Get("__layers"); if (!c.IsNull() && !c.IsUndefined()) return c; }
   Napi::Object layers = DatasetLayersNapi::constructor.New({Napi::External<GDALDataset>::New(info.Env(), ds->this_dataset)});
+  layers.Set("_parent", thiz);  // parent reference for collection operations
   thiz.Set("__layers", layers); return layers;
 }
 
