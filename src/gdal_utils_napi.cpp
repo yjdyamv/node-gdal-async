@@ -493,13 +493,4 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 }
 } // namespace WarperNapi
 
-namespace AlgorithmsNapi {
-Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  auto obj = Napi::Object::New(env);
-  // TODO: port fillNodata, contourGenerate, sieveFilter, checksumImage, polygonize
-  exports.Set("Algorithms", obj);
-  return exports;
-}
-} // namespace AlgorithmsNapi
-
 } // namespace node_gdal

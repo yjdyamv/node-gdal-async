@@ -47,9 +47,6 @@ class UtilsNapi {
 namespace WarperNapi {
   Napi::Object Init(Napi::Env env, Napi::Object exports);
 }
-namespace AlgorithmsNapi {
-  Napi::Object Init(Napi::Env env, Napi::Object exports);
-}
 
 } // namespace node_gdal
 

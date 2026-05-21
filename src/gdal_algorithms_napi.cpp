@@ -10,38 +10,29 @@ namespace node_gdal {
 Napi::Object AlgorithmsNapi::Init(Napi::Env env, Napi::Object exports) {
   auto obj = Napi::Object::New(env);
 
-  obj.Set("fillNodata", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::fillNodata_do(i, false);
-  }));
-  obj.Set("fillNodataAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::fillNodata_do(i, true);
-  }));
-  obj.Set("contourGenerate", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::contourGenerate_do(i, false);
-  }));
-  obj.Set("contourGenerateAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::contourGenerate_do(i, true);
-  }));
-  obj.Set("sieveFilter", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::sieveFilter_do(i, false);
-  }));
-  obj.Set("sieveFilterAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::sieveFilter_do(i, true);
-  }));
-  obj.Set("checksumImage", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::checksumImage_do(i, false);
-  }));
-  obj.Set("checksumImageAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::checksumImage_do(i, true);
-  }));
-  obj.Set("polygonize", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::polygonize_do(i, false);
-  }));
-  obj.Set("polygonizeAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
-    return AlgorithmsNapi::polygonize_do(i, true);
-  }));
+  obj.Set("fillNodata", Napi::Function::New(env, AlgorithmsNapi::fillNodata));
+  obj.Set("fillNodataAsync", Napi::Function::New(env, AlgorithmsNapi::fillNodataAsync));
+  obj.Set("contourGenerate", Napi::Function::New(env, AlgorithmsNapi::contourGenerate));
+  obj.Set("contourGenerateAsync", Napi::Function::New(env, AlgorithmsNapi::contourGenerateAsync));
+  obj.Set("sieveFilter", Napi::Function::New(env, AlgorithmsNapi::sieveFilter));
+  obj.Set("sieveFilterAsync", Napi::Function::New(env, AlgorithmsNapi::sieveFilterAsync));
+  obj.Set("checksumImage", Napi::Function::New(env, AlgorithmsNapi::checksumImage));
+  obj.Set("checksumImageAsync", Napi::Function::New(env, AlgorithmsNapi::checksumImageAsync));
+  obj.Set("polygonize", Napi::Function::New(env, AlgorithmsNapi::polygonize));
+  obj.Set("polygonizeAsync", Napi::Function::New(env, AlgorithmsNapi::polygonizeAsync));
 
   exports.Set("Algorithms", obj);
+  // Also register at top level for backward compatibility
+  exports.Set("fillNodata", obj.Get("fillNodata"));
+  exports.Set("fillNodataAsync", obj.Get("fillNodataAsync"));
+  exports.Set("contourGenerate", obj.Get("contourGenerate"));
+  exports.Set("contourGenerateAsync", obj.Get("contourGenerateAsync"));
+  exports.Set("sieveFilter", obj.Get("sieveFilter"));
+  exports.Set("sieveFilterAsync", obj.Get("sieveFilterAsync"));
+  exports.Set("checksumImage", obj.Get("checksumImage"));
+  exports.Set("checksumImageAsync", obj.Get("checksumImageAsync"));
+  exports.Set("polygonize", obj.Get("polygonize"));
+  exports.Set("polygonizeAsync", obj.Get("polygonizeAsync"));
   return exports;
 }
 
