@@ -1922,7 +1922,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
       return ds;
     };
     job.rval = [](Napi::Env env, GDALDataset *ds) { return DatasetNapi::New(env, ds); };
-    return job.run(info, true, 3);
+    return job.run(info, true, static_cast<int>(info.Length()) - 1);
   }, "openAsync"));
   exports.Set("setConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
     std::string name; NAPI_ARG_STR(0, "name", name);

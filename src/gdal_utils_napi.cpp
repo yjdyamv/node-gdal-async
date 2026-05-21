@@ -8,47 +8,52 @@ namespace node_gdal {
 
 Napi::Object UtilsNapi::Init(Napi::Env env, Napi::Object exports) {
   auto obj = Napi::Object::New(env);
+  // Helper: register function on both obj and exports
+  auto reg = [&](const char *name, Napi::Function f) {
+    obj.Set(name, f);
+    exports.Set(name, f);  // also at gdal.{name} level (NAN compat)
+  };
 
-  obj.Set("info", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("info", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::gdalInfo_do(i, false);
   }));
-  obj.Set("infoAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("infoAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::gdalInfo_do(i, true);
   }));
-  obj.Set("translate", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("translate", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::translate_do(i, false);
   }));
-  obj.Set("translateAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("translateAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::translate_do(i, true);
   }));
-  obj.Set("vectorTranslate", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("vectorTranslate", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::vectorTranslate_do(i, false);
   }));
-  obj.Set("vectorTranslateAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("vectorTranslateAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::vectorTranslate_do(i, true);
   }));
-  obj.Set("warp", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("warp", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::warp_do(i, false);
   }));
-  obj.Set("warpAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("warpAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::warp_do(i, true);
   }));
-  obj.Set("buildVRT", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("buildVRT", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::buildVRT_do(i, false);
   }));
-  obj.Set("buildVRTAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("buildVRTAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::buildVRT_do(i, true);
   }));
-  obj.Set("rasterize", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("rasterize", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::rasterize_do(i, false);
   }));
-  obj.Set("rasterizeAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("rasterizeAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::rasterize_do(i, true);
   }));
-  obj.Set("dem", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("dem", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::dem_do(i, false);
   }));
-  obj.Set("demAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
+  reg("demAsync", Napi::Function::New(env, [](const Napi::CallbackInfo &i) {
     return UtilsNapi::dem_do(i, true);
   }));
 
