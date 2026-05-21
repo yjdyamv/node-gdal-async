@@ -43,7 +43,7 @@ static Napi::Value dispatch(const Napi::CallbackInfo &cb, bool async, int cbIdx,
 template <typename F>
 static Napi::Value unary(const Napi::CallbackInfo &cb, bool async, F op) {
   GDALRasterBand *r = unwrapBand(cb[0]);
-  if (!r) { Napi::TypeError::New(cb.Env(), "Argument must be a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  if (!r) { Napi::TypeError::New(cb.Env(), "Argument must be an instance of RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   return dispatch(cb, async, 1, [r, op]() { return new GDALComputedRasterBand(op(*r)); });
 }
 
@@ -111,7 +111,7 @@ static Napi::Value variadic(const Napi::CallbackInfo &cb, bool async, F fn) {
   std::vector<GDALRasterBandH> handles;
   for (int i = 0; i < (int)cb.Length() && !cb[i].IsFunction(); i++) {
     GDALRasterBand *r = unwrapBand(cb[i]);
-    if (!r) { Napi::TypeError::New(cb.Env(), "All arguments must be RasterBands").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+    if (!r) { Napi::TypeError::New(cb.Env(), "Argument must be an instance of RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
     handles.push_back(GDALRasterBand::ToHandle(r));
   }
   if (handles.size() < 2) { Napi::Error::New(cb.Env(),"Need >=2 bands").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
@@ -135,11 +135,11 @@ static Napi::Value algebra_meanAsync(const Napi::CallbackInfo &cb){return variad
 static Napi::Value algebra_ifThenElse(const Napi::CallbackInfo &cb) {
   GDALRasterBand *r1=nullptr,*r2=nullptr,*r3=nullptr; double n1=NAN,n2=NAN,n3=NAN;
   if (isBand(cb[0])) r1=unwrapBand(cb[0]); else if (cb[0].IsNumber()) n1=cb[0].As<Napi::Number>().DoubleValue();
-  else { Napi::Error::New(cb.Env(),"Bad args").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  else { Napi::Error::New(cb.Env(),"Argument must be either a number or a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   if (isBand(cb[1])) r2=unwrapBand(cb[1]); else if (cb[1].IsNumber()) n2=cb[1].As<Napi::Number>().DoubleValue();
-  else { Napi::Error::New(cb.Env(),"Bad args").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  else { Napi::Error::New(cb.Env(),"Argument must be either a number or a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   if (isBand(cb[2])) r3=unwrapBand(cb[2]); else if (cb[2].IsNumber()) n3=cb[2].As<Napi::Number>().DoubleValue();
-  else { Napi::Error::New(cb.Env(),"Bad args").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  else { Napi::Error::New(cb.Env(),"Argument must be either a number or a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
 
   AlgebraMain m;
   if (r1&&r2&&r3) { m=[r1,r2,r3](){return new GDALComputedRasterBand(gdal::IfThenElse(*r1,*r2,*r3));}; }
@@ -154,10 +154,10 @@ static Napi::Value algebra_ifThenElseAsync(const Napi::CallbackInfo &cb){ return
 
 static Napi::Value algebra_asType(const Napi::CallbackInfo &cb) {
   GDALRasterBand *r = unwrapBand(cb[0]);
-  if (!r) { Napi::TypeError::New(cb.Env(),"Argument must be a RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  if (!r) { Napi::TypeError::New(cb.Env(),"Argument must be an instance of RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   std::string tn = cb[1].As<Napi::String>().Utf8Value();
   GDALDataType t = GDALGetDataTypeByName(tn.c_str());
-  if (t == GDT_Unknown) { Napi::Error::New(cb.Env(),"Unknown type").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  if (t == GDT_Unknown) { Napi::Error::New(cb.Env(),"Invalid data type").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   return dispatch(cb, false, 2, [r,t](){ return new GDALComputedRasterBand(r->AsType(t)); });
 }
 static Napi::Value algebra_asTypeAsync(const Napi::CallbackInfo &cb){ return algebra_asType(cb); }
