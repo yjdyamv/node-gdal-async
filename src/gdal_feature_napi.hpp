@@ -26,6 +26,8 @@ class FeatureNapi : public Napi::ObjectWrap<FeatureNapi> {
   Napi::Value getStyleString(const Napi::CallbackInfo &info);
   Napi::Value setStyleString(const Napi::CallbackInfo &info);
   Napi::Value fieldsGetter(const Napi::CallbackInfo &info);
+  Napi::Value getGeometry(const Napi::CallbackInfo &info);
+  Napi::Value setGeometry(const Napi::CallbackInfo &info);
 
   Napi::Value fidGetter(const Napi::CallbackInfo &info);
   Napi::Value defnGetter(const Napi::CallbackInfo &info);
