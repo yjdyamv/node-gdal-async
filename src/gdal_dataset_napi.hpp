@@ -25,6 +25,9 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
 
   GDAL_ASYNCABLE_DECLARE_NAPI(flush);
   GDAL_ASYNCABLE_DECLARE_NAPI(getMetadata);
+  GDAL_ASYNCABLE_DECLARE_NAPI(buildOverviews);
+  GDAL_ASYNCABLE_DECLARE_NAPI(executeSQL);
+  GDAL_ASYNCABLE_DECLARE_NAPI(setMetadata);
 
   Napi::Value getFileList(const Napi::CallbackInfo &info);
   Napi::Value testCapability(const Napi::CallbackInfo &info);

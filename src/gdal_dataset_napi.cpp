@@ -2,6 +2,7 @@
 #include "gdal_dataset_napi.hpp"
 #include "gdal_driver_napi.hpp"
 #include "gdal_spatial_reference_napi.hpp"
+#include "gdal_layer_napi.hpp"
 #include "utils/napi_object_store.hpp"
 #include "collections/collections_napi.hpp"
 
@@ -20,6 +21,12 @@ Napi::Object DatasetNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("flushAsync", &DatasetNapi::flushAsync),
       InstanceMethod("getMetadata", &DatasetNapi::getMetadata),
       InstanceMethod("getMetadataAsync", &DatasetNapi::getMetadataAsync),
+      InstanceMethod("setMetadata", &DatasetNapi::setMetadata),
+      InstanceMethod("setMetadataAsync", &DatasetNapi::setMetadataAsync),
+      InstanceMethod("buildOverviews", &DatasetNapi::buildOverviews),
+      InstanceMethod("buildOverviewsAsync", &DatasetNapi::buildOverviewsAsync),
+      InstanceMethod("executeSQL", &DatasetNapi::executeSQL),
+      InstanceMethod("executeSQLAsync", &DatasetNapi::executeSQLAsync),
       InstanceMethod("getFileList", &DatasetNapi::getFileList),
       InstanceMethod("testCapability", &DatasetNapi::testCapability),
       InstanceAccessor<&DatasetNapi::descriptionGetter>("description"),
@@ -341,6 +348,97 @@ Napi::Value DatasetNapi::layersGetter(const Napi::CallbackInfo &info) {
   Napi::Object layers = DatasetLayersNapi::constructor.New({Napi::External<GDALDataset>::New(info.Env(), ds->this_dataset)});
   layers.Set("_parent", thiz);  // parent reference for collection operations
   thiz.Set("__layers", layers); return layers;
+}
+
+// =========================================================================
+// buildOverviews
+// =========================================================================
+GDAL_ASYNCABLE_DEFINE_NAPI(DatasetNapi, buildOverviews) {
+  NAPI_UNWRAP_THIS(DatasetNapi, ds);
+  std::string resampling;
+  NAPI_ARG_STR(0, "resampling", resampling);
+  Napi::Array overview_arr;
+  NAPI_ARG_ARRAY_OPT(1, "overviews", overview_arr);
+  std::vector<int> overviews;
+  if (info.Length() > 1 && overview_arr.Length() > 0) {
+    for (uint32_t i = 0; i < overview_arr.Length(); i++)
+      overviews.push_back(overview_arr.Get(i).As<Napi::Number>().Int32Value());
+  }
+  Napi::Array bands_arr;
+  NAPI_ARG_ARRAY_OPT(2, "bands", bands_arr);
+  std::vector<int> band_list;
+  if (info.Length() > 2 && bands_arr.Length() > 0) {
+    for (uint32_t i = 0; i < bands_arr.Length(); i++)
+      band_list.push_back(bands_arr.Get(i).As<Napi::Number>().Int32Value());
+  }
+
+  GDALDataset *raw = ds->this_dataset;
+  GDALAsyncableJobNapi<CPLErr> job;
+  if (info.Length() > 3 && info[3].IsObject()) {
+    NAPI_CB_FROM_OBJ_OPT(info[3].As<Napi::Object>(), "progress_cb", job.progress_cb_);
+  }
+  job.main = [raw, resampling, overviews, band_list, &job]() -> CPLErr {
+    CPLErrorReset();
+    CPLErr err = raw->BuildOverviews(resampling.c_str(),
+      (int)overviews.size(), overviews.empty() ? nullptr : overviews.data(),
+      (int)band_list.size(), band_list.empty() ? nullptr : band_list.data(),
+      job.progressFunc(), job.progressArg());
+    if (err != CE_None) throw CPLGetLastErrorMsg();
+    return err;
+  };
+  job.rval = [](Napi::Env env, CPLErr) { return env.Undefined(); };
+  return job.run(info, async, 4);
+}
+
+// =========================================================================
+// executeSQL
+// =========================================================================
+GDAL_ASYNCABLE_DEFINE_NAPI(DatasetNapi, executeSQL) {
+  NAPI_UNWRAP_THIS(DatasetNapi, ds);
+  std::string sql;
+  NAPI_ARG_STR(0, "sql", sql);
+  std::string dialect;
+  NAPI_ARG_OPT_STR(1, "dialect", dialect);
+  GDALDataset *raw = ds->this_dataset;
+  GDALAsyncableJobNapi<OGRLayer *> job;
+  job.main = [raw, sql, dialect]() -> OGRLayer * {
+    CPLErrorReset();
+    OGRLayer *layer = raw->ExecuteSQL(sql.c_str(), nullptr, dialect.empty() ? nullptr : dialect.c_str());
+    if (!layer) throw CPLGetLastErrorMsg();
+    return layer;
+  };
+  job.rval = [](Napi::Env env, OGRLayer *l) { return LayerNapi::New(env, l); };
+  return job.run(info, async, 2);
+}
+
+// =========================================================================
+// setMetadata
+// =========================================================================
+GDAL_ASYNCABLE_DEFINE_NAPI(DatasetNapi, setMetadata) {
+  NAPI_UNWRAP_THIS(DatasetNapi, ds);
+  Napi::Object meta;
+  NAPI_ARG_OBJECT(0, "metadata", meta);
+  std::string domain;
+  NAPI_ARG_OPT_STR(1, "domain", domain);
+  GDALDataset *raw = ds->this_dataset;
+  GDALAsyncableJobNapi<CPLErr> job;
+  Napi::Object m = meta;
+  std::string d = domain;
+  job.main = [raw, m, d]() -> CPLErr {
+    Napi::Array keys = m.GetPropertyNames();
+    std::vector<std::string> strs; std::vector<char *> list;
+    for (uint32_t i = 0; i < keys.Length(); i++) {
+      std::string k = keys.Get(i).As<Napi::String>().Utf8Value();
+      std::string v = m.Get(k).As<Napi::String>().Utf8Value();
+      strs.push_back(k + "=" + v); list.push_back((char *)strs.back().c_str());
+    }
+    list.push_back(nullptr);
+    CPLErr err = raw->SetMetadata(list.data(), d.empty() ? nullptr : d.c_str());
+    if (err != CE_None) throw CPLGetLastErrorMsg();
+    return err;
+  };
+  job.rval = [](Napi::Env, CPLErr) { return Napi::Value(); };
+  return job.run(info, async, 2);
 }
 
 } // namespace node_gdal
