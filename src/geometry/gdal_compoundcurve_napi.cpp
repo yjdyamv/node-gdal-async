@@ -13,6 +13,7 @@ Napi::Object CompoundCurveNapi::Init(Napi::Env env, Napi::Object exports) {
     {
       InstanceMethod("toString", &CompoundCurveNapi::toString),
       InstanceAccessor<&CompoundCurveNapi::pointsGetter>("points"),
+      InstanceAccessor<&CompoundCurveNapi::pointsGetter>("curves"),
     });
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, SimpleCurveNapi::constructor.Value());
