@@ -42,7 +42,7 @@ Napi::Object RasterBandPixelsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 RasterBandPixelsNapi::RasterBandPixelsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<RasterBandPixelsNapi>(info), band_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) band_ = info[0].As<Napi::External<GDALRasterBand>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { band_ = info[0].As<Napi::External<GDALRasterBand>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value RasterBandPixelsNapi::getPixel(const Napi::CallbackInfo &info) {
   if (!band_) return info.Env().Null();
@@ -146,7 +146,7 @@ Napi::Object FeatureFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 FeatureFieldsNapi::FeatureFieldsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<FeatureFieldsNapi>(info), feat_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) feat_ = info[0].As<Napi::External<OGRFeature>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { feat_ = info[0].As<Napi::External<OGRFeature>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value FeatureFieldsNapi::get(const Napi::CallbackInfo &info) {
   if (!feat_) return info.Env().Null();
@@ -199,7 +199,7 @@ Napi::Object LayerFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 LayerFieldsNapi::LayerFieldsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<LayerFieldsNapi>(info), layer_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) layer_ = info[0].As<Napi::External<OGRLayer>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { layer_ = info[0].As<Napi::External<OGRLayer>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value LayerFieldsNapi::get(const Napi::CallbackInfo &info) {
   if (!layer_) return info.Env().Null();
@@ -247,7 +247,7 @@ Napi::Object FeatureDefnFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 FeatureDefnFieldsNapi::FeatureDefnFieldsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<FeatureDefnFieldsNapi>(info), defn_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) defn_ = info[0].As<Napi::External<OGRFeatureDefn>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { defn_ = info[0].As<Napi::External<OGRFeatureDefn>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value FeatureDefnFieldsNapi::get(const Napi::CallbackInfo &info) {
   if (!defn_) return info.Env().Null();
@@ -285,7 +285,7 @@ Napi::Object RasterBandOverviewsNapi::Init(Napi::Env env, Napi::Object exports) 
 }
 RasterBandOverviewsNapi::RasterBandOverviewsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<RasterBandOverviewsNapi>(info), band_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) band_ = info[0].As<Napi::External<GDALRasterBand>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { band_ = info[0].As<Napi::External<GDALRasterBand>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 GDAL_ASYNCABLE_DEFINE_NAPI(RasterBandOverviewsNapi, get) {
   if (!band_) return info.Env().Null();
@@ -322,7 +322,7 @@ Napi::Object GeometryCollectionChildrenNapi::Init(Napi::Env env, Napi::Object ex
 }
 GeometryCollectionChildrenNapi::GeometryCollectionChildrenNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<GeometryCollectionChildrenNapi>(info), geom_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRGeometryCollection>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { geom_ = info[0].As<Napi::External<OGRGeometryCollection>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value GeometryCollectionChildrenNapi::get(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
@@ -355,7 +355,7 @@ Napi::Object PolygonRingsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 PolygonRingsNapi::PolygonRingsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<PolygonRingsNapi>(info), geom_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRPolygon>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { geom_ = info[0].As<Napi::External<OGRPolygon>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value PolygonRingsNapi::get(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
@@ -418,7 +418,7 @@ Napi::Object LineStringPointsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 LineStringPointsNapi::LineStringPointsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<LineStringPointsNapi>(info), geom_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRLineString>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { geom_ = info[0].As<Napi::External<OGRLineString>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value LineStringPointsNapi::get(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
@@ -467,7 +467,7 @@ Napi::Object CompoundCurveCurvesNapi::Init(Napi::Env env, Napi::Object exports) 
 }
 CompoundCurveCurvesNapi::CompoundCurveCurvesNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<CompoundCurveCurvesNapi>(info), geom_(nullptr) {
-  if (info.Length() > 0 && info[0].IsExternal()) geom_ = info[0].As<Napi::External<OGRCompoundCurve>>().Data();
+  if (info.Length() > 0 && info[0].IsExternal()) { geom_ = info[0].As<Napi::External<OGRCompoundCurve>>().Data(); } else { Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return; }
 }
 Napi::Value CompoundCurveCurvesNapi::get(const Napi::CallbackInfo &info) {
   if (!geom_) return info.Env().Null();
