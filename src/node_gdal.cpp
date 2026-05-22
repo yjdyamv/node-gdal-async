@@ -12,7 +12,6 @@
 #include <gdal.h>
 
 // node-gdal
-#include "gdal_algorithms.hpp"
 #include "gdal_algorithms_napi.hpp"
 #include "gdal_common.hpp"
 #include "gdal_dataset.hpp"
