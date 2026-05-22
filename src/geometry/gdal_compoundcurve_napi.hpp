@@ -16,6 +16,7 @@ class CompoundCurveNapi
   CompoundCurveNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value pointsGetter(const Napi::CallbackInfo &info);
+  Napi::Value curvesGetter(const Napi::CallbackInfo &info);
 };
 
 } // namespace node_gdal

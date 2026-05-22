@@ -13,7 +13,7 @@ Napi::Object CompoundCurveNapi::Init(Napi::Env env, Napi::Object exports) {
     {
       InstanceMethod("toString", &CompoundCurveNapi::toString),
       InstanceAccessor<&CompoundCurveNapi::pointsGetter>("points"),
-      InstanceAccessor<&CompoundCurveNapi::pointsGetter>("curves"),
+      InstanceAccessor<&CompoundCurveNapi::curvesGetter>("curves"),
     });
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, SimpleCurveNapi::constructor.Value());
@@ -58,6 +58,15 @@ Napi::Value CompoundCurveNapi::pointsGetter(const Napi::CallbackInfo &info) {
     Napi::External<OGRLineString>::New(info.Env(), reinterpret_cast<OGRLineString *>(self->this_))
   });
   thiz.Set("__points", pts); return pts;
+}
+Napi::Value CompoundCurveNapi::curvesGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(CompoundCurveNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__curves")) { Napi::Value c = thiz.Get("__curves"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object curves = CompoundCurveCurvesNapi::constructor.New({
+    Napi::External<OGRCompoundCurve>::New(info.Env(), self->this_)
+  });
+  thiz.Set("__curves", curves); return curves;
 }
 
 } // namespace node_gdal
