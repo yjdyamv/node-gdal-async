@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        linux-version: [ debian:bullseye ]
+        linux-version: [ debian:bookworm ]
 
     steps:
     - uses: actions/checkout@v6
