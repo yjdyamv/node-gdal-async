@@ -27,7 +27,10 @@ DatasetBandsNapi::DatasetBandsNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<DatasetBandsNapi>(info) {
   if (!info.IsConstructCall()) {
     Napi::Error::New(info.Env(), "Cannot call constructor as function, use 'new' keyword")
-      .ThrowAsJavaScriptException();
+      .ThrowAsJavaScriptException(); return;
+  }
+  if (info.Length() == 0 || !info[0].IsExternal()) {
+    Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return;
   }
 }
 
@@ -97,7 +100,10 @@ DatasetLayersNapi::DatasetLayersNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<DatasetLayersNapi>(info) {
   if (!info.IsConstructCall()) {
     Napi::Error::New(info.Env(), "Cannot call constructor as function, use 'new' keyword")
-      .ThrowAsJavaScriptException();
+      .ThrowAsJavaScriptException(); return;
+  }
+  if (info.Length() == 0 || !info[0].IsExternal()) {
+    Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return;
   }
 }
 
@@ -172,7 +178,10 @@ LayerFeaturesNapi::LayerFeaturesNapi(const Napi::CallbackInfo &info)
   : Napi::ObjectWrap<LayerFeaturesNapi>(info) {
   if (!info.IsConstructCall()) {
     Napi::Error::New(info.Env(), "Cannot call constructor as function, use 'new' keyword")
-      .ThrowAsJavaScriptException();
+      .ThrowAsJavaScriptException(); return;
+  }
+  if (info.Length() == 0 || !info[0].IsExternal()) {
+    Napi::Error::New(info.Env(), "Cannot create directly").ThrowAsJavaScriptException(); return;
   }
 }
 
