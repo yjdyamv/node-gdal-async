@@ -95,10 +95,14 @@ Napi::Value DatasetNapi::toString(const Napi::CallbackInfo &info) {
 
 Napi::Value DatasetNapi::close(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(DatasetNapi, ds);
-  if (ds->this_dataset && ds->owned_) {
-    // Invalidate child layers before closing to prevent dangling pointers
-    ds->invalidateLayers(info.Env());
-    GDALClose(ds->this_dataset);
+  if (ds->this_dataset) {
+    // Remove from object store so reopening same ptr returns fresh wrapper
+    GDALDataset *old = ds->this_dataset;
+    if (ds->owned_) {
+      ds->invalidateLayers(info.Env());
+      GDALClose(old);
+    }
+    napi_obj_store_remove<GDALDataset *>(old);
   }
   ds->this_dataset = nullptr;
   return info.Env().Undefined();
