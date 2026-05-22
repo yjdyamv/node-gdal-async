@@ -361,11 +361,11 @@ Napi::Value AlgorithmsNapi::fillNodata_do(const Napi::CallbackInfo &info, bool a
 
   GDALAsyncableJobNapi<CPLErr> job;
   NAPI_CB_FROM_OBJ_OPT(options, "progress_cb", job.progress_cb_);
-  GDALProgressFunc pf = job.progressFunc(); void *pa = job.progressArg();
-  job.main = [gdal_src, gdal_mask, search_dist, smooth_iterations, pf, pa]() -> CPLErr {
+  
+  job.main = [gdal_src, gdal_mask, search_dist, smooth_iterations, &job]() -> CPLErr {
     CPLErrorReset();
     CPLErr err = GDALFillNodata(gdal_src, gdal_mask, search_dist, 0, smooth_iterations,
-                                NULL, pf, pa);
+                                NULL, job.progressFunc(), job.progressArg());
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
@@ -435,13 +435,13 @@ Napi::Value AlgorithmsNapi::contourGenerate_do(const Napi::CallbackInfo &info, b
 
   GDALAsyncableJobNapi<CPLErr> job;
   NAPI_CB_FROM_OBJ_OPT(options, "progress_cb", job.progress_cb_);
-  GDALProgressFunc pf = job.progressFunc(); void *pa = job.progressArg();
+  
   job.main = [gdal_src, interval, base, n_fixed_levels, fixed_levels, use_nodata, nodata,
-              gdal_dst, id_field, elev_field, pf, pa]() -> CPLErr {
+              gdal_dst, id_field, elev_field, &job]() -> CPLErr {
     CPLErrorReset();
     CPLErr err = GDALContourGenerate(gdal_src, interval, base, n_fixed_levels, fixed_levels,
                                      use_nodata, nodata, gdal_dst, id_field, elev_field,
-                                     pf, pa);
+                                     job.progressFunc(), job.progressArg());
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
@@ -492,11 +492,11 @@ Napi::Value AlgorithmsNapi::sieveFilter_do(const Napi::CallbackInfo &info, bool 
 
   GDALAsyncableJobNapi<CPLErr> job;
   NAPI_CB_FROM_OBJ_OPT(options, "progress_cb", job.progress_cb_);
-  GDALProgressFunc pf = job.progressFunc(); void *pa = job.progressArg();
-  job.main = [gdal_src, gdal_dst, gdal_mask, threshold, connectedness, pf, pa]() -> CPLErr {
+  
+  job.main = [gdal_src, gdal_dst, gdal_mask, threshold, connectedness, &job]() -> CPLErr {
     CPLErrorReset();
     CPLErr err = GDALSieveFilter(gdal_src, gdal_mask, gdal_dst, threshold, connectedness,
-                                 NULL, pf, pa);
+                                 NULL, job.progressFunc(), job.progressArg());
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
@@ -611,21 +611,21 @@ Napi::Value AlgorithmsNapi::polygonize_do(const Napi::CallbackInfo &info, bool a
 
   GDALAsyncableJobNapi<CPLErr> job;
   NAPI_CB_FROM_OBJ_OPT(options, "progress_cb", job.progress_cb_);
-  GDALProgressFunc pf = job.progressFunc(); void *pa = job.progressArg();
+  
   if (useFloats) {
-    job.main = [gdal_src, gdal_mask, gdal_dst, pix_val_field, papszOptions, pf, pa]() -> CPLErr {
+    job.main = [gdal_src, gdal_mask, gdal_dst, pix_val_field, papszOptions, &job]() -> CPLErr {
       CPLErrorReset();
       CPLErr err = GDALFPolygonize(gdal_src, gdal_mask, reinterpret_cast<OGRLayerH>(gdal_dst),
-                                    pix_val_field, papszOptions, pf, pa);
+                                    pix_val_field, papszOptions, job.progressFunc(), job.progressArg());
       CSLDestroy(papszOptions);
       if (err) throw CPLGetLastErrorMsg();
       return err;
     };
   } else {
-    job.main = [gdal_src, gdal_mask, gdal_dst, pix_val_field, papszOptions, pf, pa]() -> CPLErr {
+    job.main = [gdal_src, gdal_mask, gdal_dst, pix_val_field, papszOptions, &job]() -> CPLErr {
       CPLErrorReset();
       CPLErr err = GDALPolygonize(gdal_src, gdal_mask, reinterpret_cast<OGRLayerH>(gdal_dst),
-                                   pix_val_field, papszOptions, pf, pa);
+                                   pix_val_field, papszOptions, job.progressFunc(), job.progressArg());
       CSLDestroy(papszOptions);
       if (err) throw CPLGetLastErrorMsg();
       return err;
