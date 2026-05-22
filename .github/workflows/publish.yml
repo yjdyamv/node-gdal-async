@@ -4,10 +4,7 @@ on: workflow_dispatch
 
 jobs:
   publish_linux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        linux-version: [ debian:bookworm ]
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v6
@@ -15,9 +12,29 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - run: npm run container publish ${{ matrix.linux-version }} 24
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+    - name: Setup Conan
+      run: |
+        pip install conan
+        conan profile detect
+    - name: Install Conan dependencies
+      run: conan install . -of=conan/install --build=missing
+    - run: npm install --ignore-scripts
+    - name: Build
+      run: npx cmake-js compile -j max
       env:
-        NODE_PRE_GYP_GITHUB_TOKEN: ${{ secrets.NODE_PRE_GYP_GITHUB_TOKEN }}
+        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
+    - run: npm test
+    - name: Package binary
+      run: npx @mapbox/node-pre-gyp package
+    - name: Publish to GitHub Release
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish_macos:
     runs-on: macos-15
@@ -43,10 +60,12 @@ jobs:
       env:
         CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - run: npm test
-    - run: npx @mapbox/node-pre-gyp package
+    - name: Package binary
+      run: npx @mapbox/node-pre-gyp package
     - name: Publish to GitHub Release
       run: |
-        gh release upload v$npm_package_version build/stage/**/*.tar.gz --clobber
+        VERSION=$(node -p "require('./package.json').version")
+        gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -74,9 +93,11 @@ jobs:
       env:
         CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
     - run: npm test
-    - run: npx @mapbox/node-pre-gyp package
+    - name: Package binary
+      run: npx @mapbox/node-pre-gyp package
     - name: Publish to GitHub Release
       run: |
-        gh release upload v$env:npm_package_version build/stage/**/*.tar.gz --clobber
+        $VERSION = (node -p "require('./package.json').version")
+        gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
