@@ -295,6 +295,27 @@ Napi::Object AlgorithmsNapi::Init(Napi::Env env, Napi::Object exports) {
 }
 
 // =========================================================================
+// Helper: extract wrapped object from options object
+// =========================================================================
+template<typename T>
+static T *unwrapFromObj(Napi::Object obj, const char *key, Napi::Env env) {
+  Napi::Value val = obj.Get(key);
+  if (val.IsNull() || val.IsUndefined() || !val.IsObject() ||
+      !val.As<Napi::Object>().InstanceOf(T::constructor.Value())) {
+    return nullptr;
+  }
+  T *wrapped = T::Unwrap(val.As<Napi::Object>());
+  return (wrapped && wrapped->isAlive()) ? wrapped : nullptr;
+}
+
+#define NAPI_ARG_WRAPPED_FROM_OBJ(obj, key_js, type, var) \
+  var = unwrapFromObj<type>(obj, key_js, env); \
+  if (!var) { \
+    Napi::TypeError::New(env, "options." key_js " must be an instance of " #type).ThrowAsJavaScriptException(); \
+    return env.Undefined(); \
+  }
+
+// =========================================================================
 // fillNodata
 // =========================================================================
 
@@ -319,11 +340,11 @@ Napi::Value AlgorithmsNapi::fillNodata_do(const Napi::CallbackInfo &info, bool a
   Napi::Value srcVal;
   if (!getObjProp("src", srcVal)) return env.Undefined();
   RasterBandNapi *src = nullptr;
-  NAPI_ARG_WRAPPED(0, "options.src", RasterBandNapi, src);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "src", RasterBandNapi, src);
 
   RasterBandNapi *mask = nullptr;
   if (options.Has("mask") && !options.Get("mask").IsNull() && !options.Get("mask").IsUndefined()) {
-    NAPI_ARG_WRAPPED(0, "options.mask", RasterBandNapi, mask);
+    NAPI_ARG_WRAPPED_FROM_OBJ(options, "mask", RasterBandNapi, mask);
   }
 
   Napi::Value searchDistVal;
@@ -369,8 +390,8 @@ Napi::Value AlgorithmsNapi::contourGenerate_do(const Napi::CallbackInfo &info, b
   RasterBandNapi *src = nullptr;
   LayerNapi *dst = nullptr;
 
-  NAPI_ARG_WRAPPED(0, "options.src", RasterBandNapi, src);
-  NAPI_ARG_WRAPPED(0, "options.dst", LayerNapi, dst);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "src", RasterBandNapi, src);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "dst", LayerNapi, dst);
 
   int id_field = -1, elev_field = -1;
   NAPI_INT_FROM_OBJ(options, "idField", id_field);
@@ -445,11 +466,11 @@ Napi::Value AlgorithmsNapi::sieveFilter_do(const Napi::CallbackInfo &info, bool 
   RasterBandNapi *dst = nullptr;
   RasterBandNapi *mask = nullptr;
 
-  NAPI_ARG_WRAPPED(0, "options.src", RasterBandNapi, src);
-  NAPI_ARG_WRAPPED(0, "options.dst", RasterBandNapi, dst);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "src", RasterBandNapi, src);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "dst", RasterBandNapi, dst);
 
   if (options.Has("mask") && !options.Get("mask").IsNull() && !options.Get("mask").IsUndefined()) {
-    NAPI_ARG_WRAPPED(0, "options.mask", RasterBandNapi, mask);
+    NAPI_ARG_WRAPPED_FROM_OBJ(options, "mask", RasterBandNapi, mask);
   }
 
   int threshold;
@@ -550,11 +571,11 @@ Napi::Value AlgorithmsNapi::polygonize_do(const Napi::CallbackInfo &info, bool a
   LayerNapi *dst = nullptr;
   RasterBandNapi *mask = nullptr;
 
-  NAPI_ARG_WRAPPED(0, "options.src", RasterBandNapi, src);
-  NAPI_ARG_WRAPPED(0, "options.dst", LayerNapi, dst);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "src", RasterBandNapi, src);
+  NAPI_ARG_WRAPPED_FROM_OBJ(options, "dst", LayerNapi, dst);
 
   if (options.Has("mask") && !options.Get("mask").IsNull() && !options.Get("mask").IsUndefined()) {
-    NAPI_ARG_WRAPPED(0, "options.mask", RasterBandNapi, mask);
+    NAPI_ARG_WRAPPED_FROM_OBJ(options, "mask", RasterBandNapi, mask);
   }
 
   int connectedness = 4;
