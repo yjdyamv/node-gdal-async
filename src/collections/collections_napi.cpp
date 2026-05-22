@@ -18,6 +18,9 @@ Napi::Object DatasetBandsNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("countAsync", &DatasetBandsNapi::countAsync),
       InstanceMethod("get", &DatasetBandsNapi::get),
       InstanceMethod("getAsync", &DatasetBandsNapi::getAsync),
+      InstanceMethod("create", &DatasetBandsNapi::create),
+      InstanceMethod("createAsync", &DatasetBandsNapi::createAsync),
+      InstanceMethod("getEnvelope", &DatasetBandsNapi::getEnvelope),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
   exports.Set("DatasetBands", func); return exports;
@@ -72,6 +75,48 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetBandsNapi, get) {
         return RasterBandNapi::New(env, b);
       };
       return job.run(info, async, 1);
+    }
+  }
+  return info.Env().Null();
+}
+
+GDAL_ASYNCABLE_DEFINE_NAPI(DatasetBandsNapi, create) {
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  if (priv.IsObject()) {
+    auto *ds = DatasetNapi::Unwrap(priv.As<Napi::Object>());
+    if (ds && ds->isAlive()) {
+      int type = GDT_Byte;
+      if (info.Length() > 0 && info[0].IsNumber()) type = info[0].As<Napi::Number>().Int32Value();
+      GDALDataset *raw = ds->get();
+      GDALAsyncableJobNapi<GDALRasterBand *> job;
+      job.main = [raw, type]() -> GDALRasterBand * {
+        CPLErr err = raw->AddBand(static_cast<GDALDataType>(type), nullptr);
+        if (err != CE_None) throw CPLGetLastErrorMsg();
+        return raw->GetRasterBand(raw->GetRasterCount());
+      };
+      job.rval = [](Napi::Env env, GDALRasterBand *b) { return RasterBandNapi::New(env, b); };
+      return job.run(info, async, 1);
+    }
+  }
+  return info.Env().Null();
+}
+
+Napi::Value DatasetBandsNapi::getEnvelope(const Napi::CallbackInfo &info) {
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  if (priv.IsObject()) {
+    auto *ds = DatasetNapi::Unwrap(priv.As<Napi::Object>());
+    if (ds && ds->isAlive()) {
+      GDALDataset *raw = ds->get();
+      double gt[6]; if (raw->GetGeoTransform(gt) != CE_None) return info.Env().Null();
+      double minX = gt[0], maxY = gt[3];
+      double maxX = minX + gt[1] * raw->GetRasterXSize();
+      double minY = maxY + gt[5] * raw->GetRasterYSize();
+      Napi::Object result = Napi::Object::New(info.Env());
+      result.Set("minX", Napi::Number::New(info.Env(), minX));
+      result.Set("maxX", Napi::Number::New(info.Env(), maxX));
+      result.Set("minY", Napi::Number::New(info.Env(), minY));
+      result.Set("maxY", Napi::Number::New(info.Env(), maxY));
+      return result;
     }
   }
   return info.Env().Null();

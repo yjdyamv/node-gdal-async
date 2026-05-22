@@ -16,6 +16,8 @@ class DatasetBandsNapi : public Napi::ObjectWrap<DatasetBandsNapi> {
   Napi::Value toString(const Napi::CallbackInfo &info);
   GDAL_ASYNCABLE_DECLARE_NAPI(get);
   GDAL_ASYNCABLE_DECLARE_NAPI(count);
+  GDAL_ASYNCABLE_DECLARE_NAPI(create);
+  Napi::Value getEnvelope(const Napi::CallbackInfo &info);
 };
 
 class DatasetLayersNapi : public Napi::ObjectWrap<DatasetLayersNapi> {
