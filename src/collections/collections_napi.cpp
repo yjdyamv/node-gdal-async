@@ -3,6 +3,7 @@
 #include "../gdal_rasterband_napi.hpp"
 #include "../gdal_layer_napi.hpp"
 #include "../gdal_feature_napi.hpp"
+#include "../gdal_spatial_reference_napi.hpp"
 
 namespace node_gdal {
 
@@ -258,10 +259,21 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, create) {
     if (ds && ds->isAlive()) {
       std::string name;
       NAPI_ARG_STR(0, "layer name", name);
+      OGRSpatialReference *srs = nullptr;
+      OGRwkbGeometryType geomType = wkbUnknown;
+      auto cOpts = std::make_shared<NapiStringList>();
+      if (info.Length() > 1 && !info[1].IsNull() && !info[1].IsUndefined()) {
+        if (info[1].IsObject() && info[1].As<Napi::Object>().InstanceOf(SpatialReferenceNapi::constructor.Value())) {
+          auto *sr = SpatialReferenceNapi::Unwrap(info[1].As<Napi::Object>());
+          if (sr && sr->isAlive()) srs = sr->get();
+        }
+      }
+      if (info.Length() > 2 && info[2].IsNumber()) geomType = (OGRwkbGeometryType)info[2].As<Napi::Number>().Int32Value();
+      if (info.Length() > 3 && !cOpts->parse(info[3])) { Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
       GDALDataset *raw = ds->get();
       GDALAsyncableJobNapi<OGRLayer *> job;
-      job.main = [raw, name]() -> OGRLayer * {
-        OGRLayer *layer = raw->CreateLayer(name.c_str());
+      job.main = [raw, name, srs, geomType, cOpts]() -> OGRLayer * {
+        OGRLayer *layer = raw->CreateLayer(name.c_str(), srs, geomType, cOpts->get());
         if (!layer) throw CPLGetLastErrorMsg();
         return layer;
       };
@@ -270,7 +282,7 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, create) {
         if (result.IsObject()) result.As<Napi::Object>().Set("_ds", priv);
         return result;
       };
-      return job.run(info, async, 1);
+      return job.run(info, async, 4);
     }
   }
   return info.Env().Null();
