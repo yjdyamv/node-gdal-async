@@ -664,78 +664,50 @@ void GeometryNapi::coordinateDimensionSetter(const Napi::CallbackInfo &info, con
 // which fails for subclass objects (PointNapi, LineStringNapi, etc.).
 // Instead, we attach the same logic as raw Napi::Function lambdas that use
 // GetGeometryFromObject(), which handles all geometry types correctly.
+static void setProtoMethod(Napi::Env env, napi_value proto, const char *name, Napi::Function fn) {
+  napi_property_descriptor desc = {};
+  desc.utf8name = name;
+  desc.method = nullptr;  // We use value instead of method for instance methods
+  desc.value = static_cast<napi_value>(fn);
+  desc.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
+  napi_define_properties(env, proto, 1, &desc);
+}
+
 void GeometryNapi::AddInheritedMethods(Napi::Env env, Napi::Function ctor) {
   napi_value proto_nv;
   napi_get_named_property(env, ctor, "prototype", &proto_nv);
   Napi::Object proto = Napi::Object(env, proto_nv);
 
-  // isValid
-  proto.Set("isValid", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    return Napi::Boolean::New(info.Env(), geom->IsValid());
-  }, "isValid"));
+#define GEO_METHOD(name, body) \
+  setProtoMethod(env, proto_nv, name, Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value { \
+    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>()); \
+    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); } \
+    body \
+  }, name))
 
-  // isSimple
-  proto.Set("isSimple", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    return Napi::Boolean::New(info.Env(), geom->IsSimple());
-  }, "isSimple"));
-
-  // swapXY
-  proto.Set("swapXY", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    geom->swapXY();
-    return info.Env().Undefined();
-  }, "swapXY"));
-
-  // isEmpty
-  proto.Set("isEmpty", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    return Napi::Boolean::New(info.Env(), geom->IsEmpty());
-  }, "isEmpty"));
-
-  // clone
-  proto.Set("clone", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    return GeometryNapi::New(info.Env(), geom->clone());
-  }, "clone"));
-
-  // exportToWKT
-  proto.Set("exportToWKT", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    char *wkt = nullptr;
-    geom->exportToWkt(&wkt);
-    if (!wkt) return info.Env().Null();
-    Napi::String result = Napi::String::New(info.Env(), wkt);
-    CPLFree(wkt);
-    return result;
-  }, "exportToWKT"));
-
-  // exportToJSON
-  proto.Set("exportToJSON", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) { Napi::Error::New(info.Env(), "Geometry destroyed").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
-    char *json = geom->exportToJson(nullptr);
-    if (!json) return info.Env().Null();
-    Napi::String result = Napi::String::New(info.Env(), json);
-    CPLFree(json);
-    return result;
-  }, "exportToJSON"));
-
-  // toString
-  proto.Set("toString", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
-    OGRGeometry *geom = GetGeometryFromObject(info.This().As<Napi::Object>());
-    if (!geom) return Napi::String::New(info.Env(), "Null geometry");
+  GEO_METHOD("isValid", return Napi::Boolean::New(info.Env(), geom->IsValid()); );
+  GEO_METHOD("isSimple", return Napi::Boolean::New(info.Env(), geom->IsSimple()); );
+  GEO_METHOD("isEmpty", return Napi::Boolean::New(info.Env(), geom->IsEmpty()); );
+  GEO_METHOD("swapXY", geom->swapXY(); return info.Env().Undefined(); );
+  GEO_METHOD("clone", return GeometryNapi::New(info.Env(), geom->clone()); );
+  GEO_METHOD("toString",
     std::ostringstream ss;
     ss << "Geometry (" << geom->getGeometryName() << ")";
     return Napi::String::New(info.Env(), ss.str());
-  }, "toString"));
+  );
+  GEO_METHOD("exportToWKT",
+    char *wkt = nullptr; geom->exportToWkt(&wkt);
+    if (!wkt) return info.Env().Null();
+    Napi::String result = Napi::String::New(info.Env(), wkt); CPLFree(wkt);
+    return result;
+  );
+  GEO_METHOD("exportToJSON",
+    char *json = geom->exportToJson(nullptr);
+    if (!json) return info.Env().Null();
+    Napi::String result = Napi::String::New(info.Env(), json); CPLFree(json);
+    return result;
+  );
+#undef GEO_METHOD
 }
 
 } // namespace node_gdal

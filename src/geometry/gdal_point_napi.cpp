@@ -22,6 +22,7 @@ Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
 
   constructor = Napi::Persistent(func);
   NapiSetPrototypeChain(env, func, GeometryNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
 
   exports.Set("Point", func);
