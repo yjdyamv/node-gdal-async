@@ -237,7 +237,11 @@ GDAL_ASYNCABLE_GETTER_DEFINE_NAPI(RasterBandNapi, blockSizeGetter) {
 RB_DOUBLE_GETTER(minimumGetter, GetMinimum)
 RB_DOUBLE_GETTER(maximumGetter, GetMaximum)
 RB_SIMPLE_GETTER(readOnlyGetter, GetAccess, Napi::Number) // 0=readOnly
-RB_SIMPLE_GETTER(dataTypeGetter, GetRasterDataType, Napi::Number)
+GDAL_ASYNCABLE_GETTER_DEFINE_NAPI(RasterBandNapi, dataTypeGetter) {
+  NAPI_UNWRAP_THIS(RasterBandNapi, band);
+  GDALDataType type = band->this_->GetRasterDataType();
+  return SafeStringNapi(info.Env(), GDALGetDataTypeName(type));
+}
 RB_SIMPLE_GETTER(hasArbitraryOverviewsGetter, HasArbitraryOverviews, Napi::Boolean)
 RB_STR_GETTER(unitTypeGetter, GetUnitType)
 RB_DOUBLE_GETTER(scaleGetter, GetScale)

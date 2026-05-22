@@ -114,7 +114,7 @@ static Napi::Value variadic(const Napi::CallbackInfo &cb, bool async, F fn) {
     if (!r) { Napi::TypeError::New(cb.Env(), "Argument must be an instance of RasterBand").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
     handles.push_back(GDALRasterBand::ToHandle(r));
   }
-  if (handles.size() < 2) { Napi::Error::New(cb.Env(),"Need >=2 bands").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
+  if (handles.size() < 2) { Napi::Error::New(cb.Env(),"At least two arguments must be given").ThrowAsJavaScriptException(); return cb.Env().Undefined(); }
   int n = (int)handles.size();
   auto *h = new GDALRasterBandH[n]; std::copy(handles.begin(), handles.end(), h);
   GDALAsyncableJobNapi<GDALRasterBand *> job;
