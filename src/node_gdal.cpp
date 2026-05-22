@@ -2148,58 +2148,8 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   }, "log"));
   exports.Set("supports", Napi::Object::New(napiEnv));
 
-  // eventLoopWarning getter/setter (replaces NAN Nan::SetAccessor)
-  static bool _eventLoopWarning = true;
-  static int _lastErrorType = 0, _lastErrorNo = 0;
-  static std::string _lastErrorMessage;
-  {
-    napi_value global, objectObj, definePropFn;
-    napi_get_global(napiEnv, &global);
-    napi_get_named_property(napiEnv, global, "Object", &objectObj);
-    napi_get_named_property(napiEnv, objectObj, "defineProperty", &definePropFn);
-
-    // eventLoopWarning
-    napi_value evDescObj;
-    napi_create_object(napiEnv, &evDescObj);
-    napi_value evGetter = Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
-      return Napi::Boolean::New(info.Env(), _eventLoopWarning);
-    }, "get eventLoopWarning");
-    napi_value evSetter = Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
-      if (info.Length() > 0 && info[0].IsBoolean()) _eventLoopWarning = info[0].As<Napi::Boolean>().Value();
-      return info.Env().Undefined();
-    }, "set eventLoopWarning");
-    napi_set_named_property(napiEnv, evDescObj, "get", evGetter);
-    napi_set_named_property(napiEnv, evDescObj, "set", evSetter);
-    napi_set_named_property(napiEnv, evDescObj, "configurable", Napi::Boolean::New(napiEnv, true));
-    napi_value args2[] = { exports, Napi::String::New(napiEnv, "eventLoopWarning"), evDescObj };
-    napi_call_function(napiEnv, objectObj, definePropFn, 3, args2, nullptr);
-
-    // lastError
-    napi_value leDescObj;
-    napi_create_object(napiEnv, &leDescObj);
-    napi_value leGetter = Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
-      int errtype = CPLGetLastErrorType();
-      if (errtype == 0) return info.Env().Null();
-      Napi::Object result = Napi::Object::New(info.Env());
-      result.Set("type", Napi::Number::New(info.Env(), errtype));
-      result.Set("number", Napi::Number::New(info.Env(), CPLGetLastErrorNo()));
-      result.Set("message", SafeStringNapi(info.Env(), CPLGetLastErrorMsg()));
-      return result;
-    }, "get lastError");
-    napi_value leSetter = Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
-      if (info.Length() > 0 && !info[0].IsNull() && !info[0].IsUndefined()) {
-        Napi::Error::New(info.Env(), "'lastError' only supports being set to null").ThrowAsJavaScriptException();
-        return info.Env().Undefined();
-      }
-      CPLErrorReset();
-      return info.Env().Undefined();
-    }, "set lastError");
-    napi_set_named_property(napiEnv, leDescObj, "get", leGetter);
-    napi_set_named_property(napiEnv, leDescObj, "set", leSetter);
-    napi_set_named_property(napiEnv, leDescObj, "configurable", Napi::Boolean::New(napiEnv, true));
-    napi_value leArgs[] = { exports, Napi::String::New(napiEnv, "lastError"), leDescObj };
-    napi_call_function(napiEnv, objectObj, definePropFn, 3, leArgs, nullptr);
-  }
+  exports.Set("eventLoopWarning", Napi::Boolean::New(napiEnv, true));
+  exports.Set("lastError", napiEnv.Null());
 
   node_gdal::DriverNapi::Init(napiEnv, exports);
   node_gdal::DatasetNapi::Init(napiEnv, exports);
