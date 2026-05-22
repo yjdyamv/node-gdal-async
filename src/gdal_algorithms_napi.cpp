@@ -183,8 +183,8 @@ Napi::Value AlgorithmsNapi::addPixelFunc(const Napi::CallbackInfo &info) {
   std::string name;
   NAPI_ARG_STR(0, "name", name);
 
-  if (info.Length() < 2 || info[1].IsNull() || info[1].IsUndefined()) {
-    Napi::TypeError::New(env, "pixelFn must be given").ThrowAsJavaScriptException();
+  if (info.Length() < 2 || info[1].IsNull() || info[1].IsUndefined() || !info[1].IsTypedArray()) {
+    Napi::TypeError::New(env, "pixelFn must be an object").ThrowAsJavaScriptException();
     return env.Undefined();
   }
 
