@@ -341,10 +341,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, createCopy) {
     Napi::Object progObj = info[4].As<Napi::Object>();
     NAPI_CB_FROM_OBJ_OPT(progObj, "progress_cb", job.progress_cb_);
   }
-  job.main = [raw, filename, src_ds, strict, options, &job]() {
+  GDALProgressFunc pf = job.progressFunc(); void *pa = job.progressArg();
+  job.main = [raw, filename, src_ds, strict, options, pf, pa, &job]() {
     CPLErrorReset();
     GDALDataset *ds = raw->CreateCopy(
-      filename.c_str(), src_ds, strict, options->get(), job.progressFunc(), job.progressArg());
+      filename.c_str(), src_ds, strict, options->get(), pf, pa);
     if (!job.progress_error_.empty()) throw job.progress_error_.c_str();
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;

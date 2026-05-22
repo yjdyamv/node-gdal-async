@@ -377,12 +377,13 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetNapi, buildOverviews) {
   if (info.Length() > 3 && info[3].IsObject()) {
     NAPI_CB_FROM_OBJ_OPT(info[3].As<Napi::Object>(), "progress_cb", job.progress_cb_);
   }
-  job.main = [raw, resampling, overviews, band_list, &job]() -> CPLErr {
+  GDALProgressFunc pf = job.progressFunc(); void *pa = job.progressArg();
+  job.main = [raw, resampling, overviews, band_list, pf, pa]() -> CPLErr {
     CPLErrorReset();
     CPLErr err = raw->BuildOverviews(resampling.c_str(),
       (int)overviews.size(), overviews.empty() ? nullptr : overviews.data(),
       (int)band_list.size(), band_list.empty() ? nullptr : band_list.data(),
-      job.progressFunc(), job.progressArg());
+      pf, pa);
     if (err != CE_None) throw CPLGetLastErrorMsg();
     return err;
   };
