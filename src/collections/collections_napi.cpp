@@ -86,6 +86,8 @@ Napi::Object DatasetLayersNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("getAsync", &DatasetLayersNapi::getAsync),
       InstanceMethod("count", &DatasetLayersNapi::count),
       InstanceMethod("countAsync", &DatasetLayersNapi::countAsync),
+      InstanceMethod("create", &DatasetLayersNapi::create),
+      InstanceMethod("createAsync", &DatasetLayersNapi::createAsync),
     });
   constructor = Napi::Persistent(func); constructor.SuppressDestruct();
   exports.Set("DatasetLayers", func); return exports;
@@ -186,6 +188,29 @@ GDAL_ASYNCABLE_DEFINE_NAPI(LayerFeaturesNapi, count) {
         return Napi::Number::New(env, static_cast<double>(c));
       };
       return job.run(info, async, 0);
+    }
+  }
+  return info.Env().Null();
+}
+
+GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, create) {
+  auto priv = info.This().As<Napi::Object>().Get("_parent");
+  if (priv.IsObject()) {
+    auto *ds = DatasetNapi::Unwrap(priv.As<Napi::Object>());
+    if (ds && ds->isAlive()) {
+      std::string name;
+      NAPI_ARG_STR(0, "layer name", name);
+      GDALDataset *raw = ds->get();
+      GDALAsyncableJobNapi<OGRLayer *> job;
+      job.main = [raw, name]() -> OGRLayer * {
+        OGRLayer *layer = raw->CreateLayer(name.c_str());
+        if (!layer) throw CPLGetLastErrorMsg();
+        return layer;
+      };
+      job.rval = [](Napi::Env env, OGRLayer *l) {
+        return LayerNapi::New(env, l);
+      };
+      return job.run(info, async, 1);
     }
   }
   return info.Env().Null();

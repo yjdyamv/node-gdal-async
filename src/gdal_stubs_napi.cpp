@@ -1,6 +1,7 @@
 #include "gdal_stubs_napi.hpp"
 #include "gdal_rasterband_napi.hpp"
 #include "gdal_multi_napi.hpp"
+#include "gdal_field_defn_napi.hpp"
 #include "geometry/gdal_geometry_napi.hpp"
 #include "geometry/gdal_linearring_napi.hpp"
 #include "geometry/gdal_point_napi.hpp"
@@ -191,6 +192,7 @@ Napi::Object LayerFieldsNapi::Init(Napi::Env env, Napi::Object exports) {
     InstanceMethod("get", &LayerFieldsNapi::get),
     InstanceMethod("count", &LayerFieldsNapi::count),
     InstanceMethod("getNames", &LayerFieldsNapi::getNames),
+    InstanceMethod("add", &LayerFieldsNapi::add),
   });
   constructor = Napi::Persistent(f); constructor.SuppressDestruct();
   exports.Set("LayerFields", f); return exports;
@@ -222,6 +224,14 @@ Napi::Value LayerFieldsNapi::getNames(const Napi::CallbackInfo &info) {
   int n = defn->GetFieldCount(); Napi::Array names = Napi::Array::New(info.Env(), n);
   for (int i = 0; i < n; i++) names.Set(i, SafeStringNapi(info.Env(), defn->GetFieldDefn(i)->GetNameRef()));
   return names;
+}
+Napi::Value LayerFieldsNapi::add(const Napi::CallbackInfo &info) {
+  if (!layer_) return info.Env().Null();
+  FieldDefnNapi *fdefn;
+  NAPI_ARG_WRAPPED(0, "field definition", FieldDefnNapi, fdefn);
+  OGRErr err = layer_->CreateField(fdefn->get());
+  if (err != OGRERR_NONE) NAPI_THROW_LAST_CPLERR;
+  return info.Env().Undefined();
 }
 
 // ===================== FeatureDefnFieldsNapi =====================

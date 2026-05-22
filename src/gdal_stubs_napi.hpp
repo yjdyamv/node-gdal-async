@@ -41,6 +41,7 @@ class LayerFieldsNapi : public Napi::ObjectWrap<LayerFieldsNapi> {
   Napi::Value get(const Napi::CallbackInfo &i);
   Napi::Value count(const Napi::CallbackInfo &i);
   Napi::Value getNames(const Napi::CallbackInfo &i);
+  Napi::Value add(const Napi::CallbackInfo &i);
     private: OGRLayer *layer_;
 };
 
