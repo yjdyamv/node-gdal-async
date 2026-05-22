@@ -207,8 +207,10 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, create) {
         if (!layer) throw CPLGetLastErrorMsg();
         return layer;
       };
-      job.rval = [](Napi::Env env, OGRLayer *l) {
-        return LayerNapi::New(env, l);
+      job.rval = [priv](Napi::Env env, OGRLayer *l) {
+        Napi::Value result = LayerNapi::New(env, l);
+        if (result.IsObject()) result.As<Napi::Object>().Set("_ds", priv);
+        return result;
       };
       return job.run(info, async, 1);
     }
