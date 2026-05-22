@@ -70,11 +70,9 @@ describe('Class semantics', () => {
       let o
       if (typeof create[name] === 'function') {
         o = ((create as Record<string, () => unknown>)[name])()
-        try {
+        assert.throws(() => {
           new ((gdal as Record<string, unknown>)[name] as new () => unknown)()
-        } catch (err) {
-          assert.match((err as Error).message, /Cannot create|doesnt have a constructor|abstract/)
-        }
+        }, /Cannot create .* directly|doesnt have a constructor|abstract/)
       } else if (Array.isArray(create[name])) {
         // This is a technique for calling apply on the new operator, it is ugly enough in JS, but TS transforms it into a modern art piece
         o = new (Function.prototype.bind.apply(((gdal as Record<string, unknown>)[name] as new () => unknown), [ null, ...(create[name] as unknown[]) ]))()
