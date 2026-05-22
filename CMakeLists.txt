@@ -177,13 +177,7 @@ else()
 endif()
 
 # --- Post-build: copy to lib/binding ---
-# Determine the node ABI and platform for the binding directory
-execute_process(
-  COMMAND node -p "process.versions.modules"
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE NODE_ABI
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+# N-API is ABI-stable across Node versions, so we only need platform + arch
 execute_process(
   COMMAND node -p "process.platform"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -196,7 +190,7 @@ execute_process(
   OUTPUT_VARIABLE NODE_ARCH
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-set(BINDING_DIR "lib/binding/node-v${NODE_ABI}-${NODE_PLATFORM}-${NODE_ARCH}")
+set(BINDING_DIR "lib/binding/${NODE_PLATFORM}-${NODE_ARCH}")
 
 # Collect shared libs from all Conan packages (CONAN_RUNTIME_LIB_DIRS set by toolchain)
 set(CONAN_SHARED_LIBS "")
