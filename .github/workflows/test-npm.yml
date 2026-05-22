@@ -9,81 +9,50 @@ on:
 
 jobs:
   test_npm_binaries:
-
     runs-on: ${{ matrix.platform }}
-
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - ubuntu-22.04
-          - ubuntu-24.04
-          - windows-2022
-          - macos-14
-          - macos-15-intel
-          - macos-15
-        node-version: [ 20, 22, 24 ]
-        include:
-          - platform: ubuntu-24.04
-            node-version: 25
+        platform: [ ubuntu-24.04, windows-2022, macos-15 ]
 
     steps:
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 24.x
     - uses: actions/setup-python@v6
       with:
         python-version: "3.11"
-    - name: Set up the unit tests
-      run: |
-        curl https://codeload.github.com/mmomtchev/node-gdal-async/zip/refs/tags/v${{ github.event.inputs.version }} --output repo.zip
-        unzip repo.zip
-        mv node-gdal-async-${{ github.event.inputs.version }}/package.json .
-        mv node-gdal-async-${{ github.event.inputs.version }}/test .
-        mv node-gdal-async-${{ github.event.inputs.version }}/scripts .
-        npm install
+    - uses: actions/checkout@v6
+    - run: npm install
     - name: Install from npm
-      run:  npm install --force gdal-async@${{ github.event.inputs.version }}
-    - name: Run the unit tests
+      run: npm install --force @yjdyamv/gdal-async@${{ github.event.inputs.version }}
+    - name: Run unit tests
       run: |
         cd test
         npx tsc -p tsconfig.test.json --noEmit
         npx mocha --v8-expose-gc --reporter=tap -r tsx -r _common.ts -r _hooks.ts --timeout 20000 *.test.ts
 
-
   test_npm_rebuild:
-
     runs-on: ${{ matrix.platform }}
-
     strategy:
       fail-fast: false
       matrix:
-        platform: [ ubuntu-22.04, ubuntu-24.04, windows-2022, macos-15-intel, macos-15 ]
-        node-version: [ 20, 22, 24 ]
-        include:
-          - platform: ubuntu-24.04
-            node-version: 25
+        platform: [ ubuntu-24.04, windows-2022, macos-15 ]
 
     steps:
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 24.x
     - uses: actions/setup-python@v6
       with:
         python-version: "3.11"
-    - name: Set up the unit tests
-      run: |
-        curl https://codeload.github.com/mmomtchev/node-gdal-async/zip/refs/tags/v${{ github.event.inputs.version }} --output repo.zip
-        unzip repo.zip
-        mv node-gdal-async-${{ github.event.inputs.version }}/package.json .
-        mv node-gdal-async-${{ github.event.inputs.version }}/test .
-        mv node-gdal-async-${{ github.event.inputs.version }}/scripts .
-        npm install
-    - name: Rebuild with npm
-      run: npm install --verbose --force gdal-async@${{ github.event.inputs.version }} --build-from-source
-    - name: Run the unit tests
+    - uses: actions/checkout@v6
+    - run: npm install
+    - name: Rebuild from source
+      run: npm install --verbose --force @yjdyamv/gdal-async@${{ github.event.inputs.version }} --build-from-source
+    - name: Run unit tests
       run: |
         cd test
         npx tsc -p tsconfig.test.json --noEmit
