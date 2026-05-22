@@ -67,7 +67,7 @@ find_package(muparser CONFIG REQUIRED)
 
 # --- Sources ---
 # All NAN .cpp files replaced by *_napi.cpp equivalents
-# node_gdal.cpp still uses InitNan() for legacy compat (lastError, eventLoopWarning)
+# node_gdal.cpp fully migrated to N-API (InitNan removed)
 set(SOURCES
   src/node_gdal.cpp
   # N-API modules
