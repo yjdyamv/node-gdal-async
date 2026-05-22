@@ -524,10 +524,11 @@ Napi::Value AlgorithmsNapi::checksumImage_do(const Napi::CallbackInfo &info, boo
   int bandh = gdal_src->GetYSize();
 
   int x = 0, y = 0, w = bandw, h = bandh;
-  NAPI_ARG_INT_OPT(1, "x", x);
-  NAPI_ARG_INT_OPT(2, "y", y);
-  NAPI_ARG_INT_OPT(3, "xSize", w);
-  NAPI_ARG_INT_OPT(4, "ySize", h);
+  // Don't use NAPI_ARG_INT_OPT — it resets to 0 and loses defaults
+  if (info.Length() > 1 && info[1].IsNumber()) x = info[1].As<Napi::Number>().Int32Value();
+  if (info.Length() > 2 && info[2].IsNumber()) y = info[2].As<Napi::Number>().Int32Value();
+  if (info.Length() > 3 && info[3].IsNumber()) w = info[3].As<Napi::Number>().Int32Value();
+  if (info.Length() > 4 && info[4].IsNumber()) h = info[4].As<Napi::Number>().Int32Value();
 
   if (x < 0 || y < 0 || x >= bandw || y >= bandh) {
     Napi::RangeError::New(env, "offset invalid for given band").ThrowAsJavaScriptException();
