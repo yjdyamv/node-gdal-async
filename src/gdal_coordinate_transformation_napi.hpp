@@ -6,8 +6,6 @@
 #include <gdalwarper.h>
 
 #include "gdal_common_napi.hpp"
-// GeoTransformTransformer is defined in the nan header
-#include "gdal_coordinate_transformation.hpp"
 
 namespace node_gdal {
 

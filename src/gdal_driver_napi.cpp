@@ -2,7 +2,7 @@
 #include <string>
 #include "gdal_driver_napi.hpp"
 #include "gdal_dataset_napi.hpp"
-#include "gdal_common.hpp"
+#include "gdal_common_napi.hpp"
 #include "utils/napi_object_store.hpp"
 
 namespace node_gdal {

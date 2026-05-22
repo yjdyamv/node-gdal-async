@@ -7,8 +7,15 @@
 #pragma warning(pop)
 
 #include <cpl_error.h>
+#include <cpl_progress.h>
+#include <cpl_string.h>
+#include <cpl_vsi.h>
 #include <gdal_version.h>
 #include <string>
+#include <vector>
+
+// No-op logging macro (was in gdal_common.hpp via NAN)
+#define LOG(fmt, ...)
 
 // ---------------------------------------------------------------------------
 // SafeString equivalent – returns null for nullptr strings

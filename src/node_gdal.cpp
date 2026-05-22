@@ -67,7 +67,7 @@
 #include "gdal_spatial_reference_napi.hpp"
 #include "gdal_memfile.hpp"
 #include "gdal_memfile_napi.hpp"
-#include "gdal_fs.hpp"
+
 
 #include "utils/field_types.hpp"
 
