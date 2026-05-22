@@ -382,7 +382,7 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
     return;
   }
   initialized = true;
-  mainV8ThreadId = std::this_thread::get_id();
+  // mainV8ThreadId now set in InitNapi
 
   // Top-level functions now in N-API (registered before InitNan call)
   // Nan__SetAsyncableMethod(target, "open", gdal_open);
@@ -1883,6 +1883,8 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
 
 // N-API public init – bridges nan registrations + registers N-API classes
 Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
+  mainV8ThreadId = std::this_thread::get_id();
+
   napi_value nv = static_cast<napi_value>(exports);
   v8::Local<v8::Object> target;
   memcpy(&target, &nv, sizeof(nv));
@@ -1957,7 +1959,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     return info.Env().Undefined();
   }, "_triggerCPLError"));
 
-  InitNan(target, v8::Local<v8::Value>(), nullptr);
+  // InitNan disabled
 
   // --- N-API overrides for InitNan() functionality ---
   // These override NAN registrations with N-API equivalents.
@@ -2044,6 +2046,11 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   exports.Set("GDT_UInt64", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_UInt64)));
   exports.Set("GDT_CInt16", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_CInt16)));
   exports.Set("GDT_CInt32", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_CInt32)));
+  exports.Set("GDT_Unknown", napiEnv.Null());
+  exports.Set("GDT_Float32", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_Float32)));
+  exports.Set("GDT_Float64", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_Float64)));
+  exports.Set("GDT_CFloat32", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_CFloat32)));
+  exports.Set("GDT_CFloat64", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_CFloat64)));
   exports.Set("wkb25DBit", Napi::Number::New(napiEnv, wkb25DBit));
   exports.Set("wkbUnknown", Napi::Number::New(napiEnv, wkbUnknown));
   exports.Set("wkbPoint", Napi::Number::New(napiEnv, wkbPoint));
