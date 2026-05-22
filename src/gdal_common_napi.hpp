@@ -7,8 +7,15 @@
 #pragma warning(pop)
 
 #include <cpl_error.h>
+#include <cpl_progress.h>
+#include <cpl_string.h>
+#include <cpl_vsi.h>
 #include <gdal_version.h>
 #include <string>
+#include <vector>
+
+// No-op logging macro (was in gdal_common.hpp via NAN)
+#define LOG(fmt, ...)
 
 // ---------------------------------------------------------------------------
 // SafeString equivalent – returns null for nullptr strings
@@ -257,22 +264,6 @@ inline Napi::Value SafeStringNapi(Napi::Env env, const char *data) {
 // ---------------------------------------------------------------------------
 // Unwrap with type and alive check
 // ---------------------------------------------------------------------------
-#define NAPI_UNWRAP_CHECK(type, obj, var)                                                     \
-  do {                                                                                         \
-    if (!obj.IsObject() || obj.IsNull() ||                                                     \
-        !obj.As<Napi::Object>().InstanceOf(type::constructor.Value())) {                       \
-      Napi::TypeError::New(obj.Env(), "Object must be a " #type " object")                     \
-        .ThrowAsJavaScriptException();                                                         \
-      return info.Env().Undefined();                                                            \
-    }                                                                                           \
-    type *var = type::Unwrap(obj.As<Napi::Object>());                                           \
-    if (!var || !var->isAlive()) {                                                              \
-      Napi::Error::New(obj.Env(), #type " object has already been destroyed")                  \
-        .ThrowAsJavaScriptException();                                                         \
-      return info.Env().Undefined();                                                            \
-    }                                                                                           \
-  } while (0)
-
 #define NAPI_UNWRAP_CHECK(type, obj, var)                                                     \
   do {                                                                                         \
     if (!obj.IsObject() || obj.IsNull() ||                                                     \

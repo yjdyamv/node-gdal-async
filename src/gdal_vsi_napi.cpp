@@ -1,5 +1,5 @@
 #include "gdal_vsi_napi.hpp"
-#include "gdal_common.hpp"
+#include "gdal_common_napi.hpp"
 #include "async_napi.hpp"
 
 namespace node_gdal {
