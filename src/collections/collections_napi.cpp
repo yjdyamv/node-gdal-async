@@ -136,7 +136,11 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetLayersNapi, get) {
       };
       job.rval = [priv](Napi::Env env, OGRLayer *l) {
         Napi::Value result = LayerNapi::New(env, l);
-        if (result.IsObject()) result.As<Napi::Object>().Set("_ds", priv);
+        if (result.IsObject()) {
+          result.As<Napi::Object>().Set("_ds", priv);
+          auto *dsWrap = DatasetNapi::Unwrap(priv.As<Napi::Object>());
+          if (dsWrap) dsWrap->addLayerRef(result.As<Napi::Object>());
+        }
         return result;
       };
       return job.run(info, async, 1);

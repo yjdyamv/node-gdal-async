@@ -38,7 +38,7 @@ class LayerNapi : public Napi::ObjectWrap<LayerNapi> {
   bool isAlive() {
     return this_ != nullptr;
   }
-  void setParentDataset(Napi::Object ds) { parent_ds_.Reset(ds, 1); }
+  void invalidate() { this_ = nullptr; }
 
     private:
   OGRLayer *this_;

@@ -96,6 +96,8 @@ Napi::Value DatasetNapi::toString(const Napi::CallbackInfo &info) {
 Napi::Value DatasetNapi::close(const Napi::CallbackInfo &info) {
   NAPI_UNWRAP_THIS(DatasetNapi, ds);
   if (ds->this_dataset && ds->owned_) {
+    // Invalidate child layers before closing to prevent dangling pointers
+    ds->invalidateLayers(info.Env());
     GDALClose(ds->this_dataset);
   }
   ds->this_dataset = nullptr;
@@ -442,6 +444,17 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetNapi, setMetadata) {
   };
   job.rval = [](Napi::Env, CPLErr) { return Napi::Value(); };
   return job.run(info, async, 2);
+}
+
+void DatasetNapi::invalidateLayers(Napi::Env env) {
+  for (auto &ref : layerRefs_) {
+    Napi::Object obj = ref.Value();
+    if (!obj.IsEmpty()) {
+      auto *layer = Napi::ObjectWrap<LayerNapi>::Unwrap(obj);
+      if (layer) layer->invalidate();
+    }
+  }
+  layerRefs_.clear();
 }
 
 } // namespace node_gdal

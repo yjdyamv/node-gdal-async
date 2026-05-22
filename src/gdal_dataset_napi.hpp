@@ -51,10 +51,13 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
   bool isAlive() {
     return this_dataset != nullptr;
   }
+  void addLayerRef(Napi::Object layerObj) { layerRefs_.push_back(Napi::Persistent(layerObj)); }
+  void invalidateLayers(Napi::Env env);
 
     private:
   GDALDataset *this_dataset;
   bool owned_ = true;
+  std::vector<Napi::Reference<Napi::Object>> layerRefs_;
 };
 
 } // namespace node_gdal
