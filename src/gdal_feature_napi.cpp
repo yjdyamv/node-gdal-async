@@ -1,5 +1,7 @@
 #include "gdal_feature_napi.hpp"
 #include "gdal_feature_defn_napi.hpp"
+#include "gdal_stubs_napi.hpp"
+#include "geometry/gdal_geometry_napi.hpp"
 
 namespace node_gdal {
 
@@ -8,7 +10,7 @@ Napi::FunctionReference FeatureNapi::constructor;
 Napi::Object FeatureNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "FeatureNapi",
+    "Feature",
     {
       InstanceMethod("toString", &FeatureNapi::toString),
       InstanceMethod("clone", &FeatureNapi::clone),
@@ -16,14 +18,17 @@ Napi::Object FeatureNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceMethod("destroy", &FeatureNapi::destroy),
       InstanceMethod("getStyleString", &FeatureNapi::getStyleString),
       InstanceMethod("setStyleString", &FeatureNapi::setStyleString),
+      InstanceMethod("getGeometry", &FeatureNapi::getGeometry),
+      InstanceMethod("setGeometry", &FeatureNapi::setGeometry),
       InstanceAccessor<&FeatureNapi::fidGetter, &FeatureNapi::fidSetter>("fid"),
       InstanceAccessor<&FeatureNapi::defnGetter>("defn"),
+      InstanceAccessor<&FeatureNapi::fieldsGetter>("fields"),
     });
 
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("FeatureNapi", func);
+  exports.Set("Feature", func);
   return exports;
 }
 
@@ -241,6 +246,28 @@ void FeatureNapi::fidSetter(const Napi::CallbackInfo &info, const Napi::Value &v
     return;
   }
   feature->this_->SetFID(value.As<Napi::Number>().Int64Value());
+}
+
+Napi::Value FeatureNapi::getGeometry(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(FeatureNapi, self);
+  OGRGeometry *geom = self->this_->GetGeometryRef();
+  if (!geom) return info.Env().Null();
+  return GeometryNapi::New(info.Env(), geom, false);
+}
+Napi::Value FeatureNapi::setGeometry(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(FeatureNapi, self);
+  GeometryNapi *geom;
+  NAPI_ARG_WRAPPED(0, "geometry", GeometryNapi, geom);
+  self->this_->SetGeometry(geom->this_);
+  return info.Env().Undefined();
+}
+
+Napi::Value FeatureNapi::fieldsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(FeatureNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__fields")) { Napi::Value c = thiz.Get("__fields"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object f = FeatureFieldsNapi::constructor.New({Napi::External<OGRFeature>::New(info.Env(), self->this_)});
+  f.Set("_parent", thiz); thiz.Set("__fields", f); return f;
 }
 
 } // namespace node_gdal

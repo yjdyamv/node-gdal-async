@@ -11,7 +11,7 @@ Napi::FunctionReference FieldDefnNapi::constructor;
 Napi::Object FieldDefnNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "FieldDefnNapi",
+    "FieldDefn",
     {
       InstanceMethod("toString", &FieldDefnNapi::toString),
       InstanceAccessor<&FieldDefnNapi::nameGetter, &FieldDefnNapi::nameSetter>("name"),
@@ -27,7 +27,7 @@ Napi::Object FieldDefnNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("FieldDefnNapi", func);
+  exports.Set("FieldDefn", func);
   return exports;
 }
 

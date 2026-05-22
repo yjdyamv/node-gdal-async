@@ -1,3 +1,4 @@
+#include "gdal_geometry_napi.hpp"
 #include "gdal_point_napi.hpp"
 
 namespace node_gdal {
@@ -7,18 +8,24 @@ Napi::FunctionReference PointNapi::constructor;
 Napi::Object PointNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "PointNapi",
+    "Point",
     {
       InstanceMethod("toString", &PointNapi::toString),
+      InstanceMethod("toJSON", &PointNapi::toJSON),
+      InstanceMethod("isValid", &PointNapi::isValid),
+      InstanceMethod("isSimple", &PointNapi::isSimple),
+      InstanceMethod("swapXY", &PointNapi::swapXY),
       InstanceAccessor<&PointNapi::xGetter, &PointNapi::xSetter>("x"),
       InstanceAccessor<&PointNapi::yGetter, &PointNapi::ySetter>("y"),
       InstanceAccessor<&PointNapi::zGetter, &PointNapi::zSetter>("z"),
     });
 
   constructor = Napi::Persistent(func);
+  NapiSetPrototypeChain(env, func, GeometryNapi::constructor.Value());
+  GeometryNapi::AddInheritedMethods(env, func);
   constructor.SuppressDestruct();
 
-  exports.Set("PointNapi", func);
+  exports.Set("Point", func);
   return exports;
 }
 
@@ -134,6 +141,32 @@ void PointNapi::zSetter(const Napi::CallbackInfo &info, const Napi::Value &value
     return;
   }
   self->this_->setZ(value.As<Napi::Number>().DoubleValue());
+}
+
+Napi::Value PointNapi::toJSON(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  Napi::Object obj = Napi::Object::New(info.Env());
+  obj.Set("type", Napi::String::New(info.Env(), "Point"));
+  Napi::Array coords = Napi::Array::New(info.Env());
+  coords.Set(uint32_t(0), Napi::Number::New(info.Env(), self->this_->getX()));
+  coords.Set(uint32_t(1), Napi::Number::New(info.Env(), self->this_->getY()));
+  coords.Set(uint32_t(2), Napi::Number::New(info.Env(), self->this_->getZ()));
+  obj.Set("coordinates", coords);
+  return obj;
+}
+
+Napi::Value PointNapi::isValid(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  return Napi::Boolean::New(info.Env(), self->this_->IsValid());
+}
+Napi::Value PointNapi::isSimple(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  return Napi::Boolean::New(info.Env(), self->this_->IsSimple());
+}
+Napi::Value PointNapi::swapXY(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(PointNapi, self);
+  self->this_->swapXY();
+  return info.Env().Undefined();
 }
 
 } // namespace node_gdal

@@ -15,6 +15,10 @@ class GroupNapi : public Napi::ObjectWrap<GroupNapi> {
   GroupNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value descriptionGetter(const Napi::CallbackInfo &info);
+  Napi::Value groupsGetter(const Napi::CallbackInfo &info);
+  Napi::Value arraysGetter(const Napi::CallbackInfo &info);
+  Napi::Value dimensionsGetter(const Napi::CallbackInfo &info);
+  Napi::Value attributesGetter(const Napi::CallbackInfo &info);
   GDALGroup *get() { return this_; }
   bool isAlive() { return this_ != nullptr; }
     private:
@@ -30,6 +34,8 @@ class MDArrayNapi : public Napi::ObjectWrap<MDArrayNapi> {
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value dataTypeGetter(const Napi::CallbackInfo &info);
   Napi::Value dimensionCountGetter(const Napi::CallbackInfo &info);
+  Napi::Value dimensionsGetter(const Napi::CallbackInfo &info);
+  Napi::Value attributesGetter(const Napi::CallbackInfo &info);
   GDALMDArray *get() { return this_; }
   bool isAlive() { return this_ != nullptr; }
     private:

@@ -1,4 +1,7 @@
 #include "gdal_rasterband_napi.hpp"
+#include "gdal_dataset_napi.hpp"
+#include "utils/napi_object_store.hpp"
+#include "gdal_stubs_napi.hpp"
 #include <array>
 
 namespace node_gdal {
@@ -28,7 +31,7 @@ Napi::FunctionReference RasterBandNapi::constructor;
 // ---------------------------------------------------------------------------
 Napi::Object RasterBandNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "RasterBandNapi",
+    env, "RasterBand",
     {
       InstanceMethod("toString", &RasterBandNapi::toString),
       InstanceMethod("flush", &RasterBandNapi::flush),
@@ -76,10 +79,13 @@ Napi::Object RasterBandNapi::Init(Napi::Env env, Napi::Object exports) {
       InstanceAccessor<&RasterBandNapi::hasArbitraryOverviewsGetter>("hasArbitraryOverviews"),
       InstanceAccessor<&RasterBandNapi::hasArbitraryOverviewsGetterAsync>(
         "hasArbitraryOverviewsAsync"),
+      InstanceAccessor<&RasterBandNapi::dsGetter>("ds"),
+      InstanceAccessor<&RasterBandNapi::pixelsGetter>("pixels"),
+      InstanceAccessor<&RasterBandNapi::overviewsGetter>("overviews"),
     });
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
-  exports.Set("RasterBandNapi", func);
+  exports.Set("RasterBand", func);
   return exports;
 }
 
@@ -103,7 +109,13 @@ RasterBandNapi::~RasterBandNapi() { this_ = nullptr; }
 Napi::Value RasterBandNapi::New(Napi::Env env, GDALRasterBand *band) {
   Napi::EscapableHandleScope scope(env);
   if (!band) return scope.Escape(env.Null());
-  return scope.Escape(constructor.New({Napi::External<GDALRasterBand>::New(env, band)}));
+  if (napi_obj_store_has<GDALRasterBand *>(band)) {
+    Napi::Object existing = napi_obj_store_get<GDALRasterBand *>(env, band);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
+  Napi::Object obj = constructor.New({Napi::External<GDALRasterBand>::New(env, band)});
+  napi_obj_store_add<GDALRasterBand *>(band, obj);
+  return scope.Escape(obj);
 }
 
 Napi::Value RasterBandNapi::toString(const Napi::CallbackInfo &info) {
@@ -225,7 +237,11 @@ GDAL_ASYNCABLE_GETTER_DEFINE_NAPI(RasterBandNapi, blockSizeGetter) {
 RB_DOUBLE_GETTER(minimumGetter, GetMinimum)
 RB_DOUBLE_GETTER(maximumGetter, GetMaximum)
 RB_SIMPLE_GETTER(readOnlyGetter, GetAccess, Napi::Number) // 0=readOnly
-RB_SIMPLE_GETTER(dataTypeGetter, GetRasterDataType, Napi::Number)
+GDAL_ASYNCABLE_GETTER_DEFINE_NAPI(RasterBandNapi, dataTypeGetter) {
+  NAPI_UNWRAP_THIS(RasterBandNapi, band);
+  GDALDataType type = band->this_->GetRasterDataType();
+  return SafeStringNapi(info.Env(), GDALGetDataTypeName(type));
+}
 RB_SIMPLE_GETTER(hasArbitraryOverviewsGetter, HasArbitraryOverviews, Napi::Boolean)
 RB_STR_GETTER(unitTypeGetter, GetUnitType)
 RB_DOUBLE_GETTER(scaleGetter, GetScale)
@@ -299,6 +315,32 @@ void RasterBandNapi::categoryNamesSetter(const Napi::CallbackInfo &info, const N
   names[arr.Length()] = nullptr;
   band->this_->SetCategoryNames(names);
   delete[] names;
+}
+
+Napi::Value RasterBandNapi::dsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(RasterBandNapi, band);
+  GDALDataset *ds = band->this_->GetDataset();
+  return ds ? DatasetNapi::New(info.Env(), ds) : info.Env().Null();
+}
+
+Napi::Value RasterBandNapi::pixelsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(RasterBandNapi, band);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__pixels")) { Napi::Value c = thiz.Get("__pixels"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object px = RasterBandPixelsNapi::constructor.New({
+    Napi::External<GDALRasterBand>::New(info.Env(), band->this_)
+  });
+  thiz.Set("__pixels", px); return px;
+}
+
+Napi::Value RasterBandNapi::overviewsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(RasterBandNapi, band);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__overviews")) { Napi::Value c = thiz.Get("__overviews"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object ov = RasterBandOverviewsNapi::constructor.New({
+    Napi::External<GDALRasterBand>::New(info.Env(), band->this_)
+  });
+  thiz.Set("__overviews", ov); return ov;
 }
 
 } // namespace node_gdal

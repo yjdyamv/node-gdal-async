@@ -16,6 +16,7 @@ class PolygonNapi
   PolygonNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value getArea(const Napi::CallbackInfo &info);
+  Napi::Value ringsGetter(const Napi::CallbackInfo &info);
 };
 
 } // namespace node_gdal

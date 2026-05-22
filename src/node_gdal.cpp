@@ -4,7 +4,6 @@
 #include <node_version.h>
 
 // nan
-#include "nan-wrapper.h"
 
 // napi (for module init switch)
 #include <napi.h>
@@ -14,6 +13,7 @@
 
 // node-gdal
 #include "gdal_algorithms.hpp"
+#include "gdal_algorithms_napi.hpp"
 #include "gdal_common.hpp"
 #include "gdal_dataset.hpp"
 #include "gdal_dataset_napi.hpp"
@@ -97,10 +97,12 @@
 #include "collections/collections_napi.hpp"
 #include "gdal_utils_napi.hpp"
 #include "gdal_stubs_napi.hpp"
+#include "gdal_vsi_napi.hpp"
 
 // std
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace node_gdal {
@@ -109,8 +111,9 @@ using namespace node;
 using namespace v8;
 
 FILE *log_file = NULL;
-ObjectStore object_store;
+// ObjectStore object_store; // NAN dependency removed
 bool eventLoopWarn = true;
+std::thread::id mainV8ThreadId;  // moved from async.cpp
 
 static NAN_GETTER(LastErrorGetter) {
 
@@ -226,53 +229,53 @@ static NAN_METHOD(Log) {
 /*
  * Common code for sync and async opening.
  */
-GDAL_ASYNCABLE_GLOBAL(gdal_open);
-GDAL_ASYNCABLE_DEFINE(gdal_open) {
-
-  std::string path;
-  std::string mode = "r";
-
-  NODE_ARG_STR(0, "path", path);
-  NODE_ARG_OPT_STR(1, "mode", mode);
-
-  unsigned int flags = 0;
-  for (unsigned i = 0; i < mode.length(); i++) {
-    if (mode[i] == 'r') {
-      if (i < mode.length() - 1 && mode[i + 1] == '+') {
-        flags |= GDAL_OF_UPDATE;
-        i++;
-      } else {
-        flags |= GDAL_OF_READONLY;
-      }
-    } else if (mode[i] == 'm') {
-#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-      flags |= GDAL_OF_MULTIDIM_RASTER;
-#else
-      Nan::ThrowError("Multidimensional support requires GDAL 3.1");
-#endif
-    } else if (mode[i] == 't') {
-#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 10)
-      flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
-#else
-      Nan::ThrowError("Thread-safe read-only reading requires GDAL 3.10");
-      return;
-#endif
-    } else {
-      Nan::ThrowError("Invalid open mode. Must contain only \"r\" or \"r+\" and \"m\" or \"t\" ");
-      return;
-    }
-  }
-  flags |= GDAL_OF_VERBOSE_ERROR;
-
-  GDALAsyncableJob<GDALDataset *> job(0);
-  job.rval = [](GDALDataset *ds, const GetFromPersistentFunc &) { return Dataset::New(ds); };
-  job.main = [path, flags](const GDALExecutionProgress &) {
-    GDALDataset *ds = (GDALDataset *)GDALOpenEx(path.c_str(), flags, NULL, NULL, NULL);
-    if (!ds) throw CPLGetLastErrorMsg();
-    return ds;
-  };
-  job.run(info, async, 2);
-}
+// GDAL_ASYNCABLE_GLOBAL(gdal_open);
+// GDAL_ASYNCABLE_DEFINE(gdal_open) {
+// 
+//   std::string path;
+//   std::string mode = "r";
+// 
+//   NODE_ARG_STR(0, "path", path);
+//   NODE_ARG_OPT_STR(1, "mode", mode);
+// 
+//   unsigned int flags = 0;
+//   for (unsigned i = 0; i < mode.length(); i++) {
+//     if (mode[i] == 'r') {
+//       if (i < mode.length() - 1 && mode[i + 1] == '+') {
+//         flags |= GDAL_OF_UPDATE;
+//         i++;
+//       } else {
+//         flags |= GDAL_OF_READONLY;
+//       }
+//     } else if (mode[i] == 'm') {
+// #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
+//       flags |= GDAL_OF_MULTIDIM_RASTER;
+// #else
+//       Nan::ThrowError("Multidimensional support requires GDAL 3.1");
+// #endif
+//     } else if (mode[i] == 't') {
+// #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 10)
+//       flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
+// #else
+//       Nan::ThrowError("Thread-safe read-only reading requires GDAL 3.10");
+//       return;
+// #endif
+//     } else {
+//       Nan::ThrowError("Invalid open mode. Must contain only \"r\" or \"r+\" and \"m\" or \"t\" ");
+//       return;
+//     }
+//   }
+//   flags |= GDAL_OF_VERBOSE_ERROR;
+// 
+//   GDALAsyncableJob<GDALDataset *> job(0);
+//   job.rval = [](GDALDataset *ds, const GetFromPersistentFunc &) { return Dataset::New(ds); };
+//   job.main = [path, flags](const GDALExecutionProgress &) {
+//     GDALDataset *ds = (GDALDataset *)GDALOpenEx(path.c_str(), flags, NULL, NULL, NULL);
+//     if (!ds) throw CPLGetLastErrorMsg();
+//     return ds;
+//   };
+//   job.run(info, async, 2);
+// }
 
 static NAN_METHOD(setConfigOption) {
 
@@ -361,17 +364,17 @@ static NAN_METHOD(ThrowDummyCPLError) {
   return;
 }
 
-static NAN_METHOD(isAlive) {
+// static NAN_METHOD(isAlive) {
+// 
+//   long uid;
+//   NODE_ARG_INT(0, "uid", uid);
+// 
+//   info.GetReturnValue().Set(Nan::New(object_store.isAlive(uid)));
+// }
 
-  long uid;
-  NODE_ARG_INT(0, "uid", uid);
-
-  info.GetReturnValue().Set(Nan::New(object_store.isAlive(uid)));
-}
-
-void Cleanup(void *) {
-  object_store.cleanup();
-}
+// void Cleanup(void *) {
+//   object_store.cleanup();
+// }
 
 static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   static bool initialized = false;
@@ -382,77 +385,78 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   initialized = true;
   mainV8ThreadId = std::this_thread::get_id();
 
-  Nan__SetAsyncableMethod(target, "open", gdal_open);
-  Nan::SetMethod(target, "setConfigOption", setConfigOption);
-  Nan::SetMethod(target, "getConfigOption", getConfigOption);
-  Nan::SetMethod(target, "decToDMS", decToDMS);
-  Nan::SetMethod(target, "setPROJSearchPath", setPROJSearchPath);
-  Nan::SetMethod(target, "_triggerCPLError", ThrowDummyCPLError); // for tests
-  Nan::SetMethod(target, "_isAlive", isAlive);                    // for tests
+  // Top-level functions now in N-API (registered before InitNan call)
+  // Nan__SetAsyncableMethod(target, "open", gdal_open);
+  // Nan::SetMethod(target, "setConfigOption", setConfigOption);
+  // Nan::SetMethod(target, "getConfigOption", getConfigOption);
+  // Nan::SetMethod(target, "decToDMS", decToDMS);
+  // Nan::SetMethod(target, "setPROJSearchPath", setPROJSearchPath);
+  // Nan::SetMethod(target, "_triggerCPLError", ThrowDummyCPLError);
+  // Nan::SetMethod(target, "_isAlive", isAlive);
 
-  Warper::Initialize(target);
-  Algorithms::Initialize(target);
+//   Warper::Initialize(target);
+//   Algorithms::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 12)
-  Algebra::Initialize(target);
+//   Algebra::Initialize(target);
 #endif
 
-  Driver::Initialize(target);
+//   Driver::Initialize(target);
   // TODO Phase 7: DriverNapi::Init(env, target) replaces Driver::Initialize
   // N-API bridge will be activated when module switches to NODE_API_MODULE
-  Dataset::Initialize(target);
-  RasterBand::Initialize(target);
+//   Dataset::Initialize(target);
+//   RasterBand::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-  Group::Initialize(target);
-  MDArray::Initialize(target);
-  Dimension::Initialize(target);
-  Attribute::Initialize(target);
+//   Group::Initialize(target);
+//   MDArray::Initialize(target);
+//   Dimension::Initialize(target);
+//   Attribute::Initialize(target);
 #endif
 
-  Layer::Initialize(target);
-  Feature::Initialize(target);
-  FeatureDefn::Initialize(target);
-  FieldDefn::Initialize(target);
-  Geometry::Initialize(target);
-  Point::Initialize(target);
-  SimpleCurve::Initialize(target);
-  LineString::Initialize(target);
-  LinearRing::Initialize(target);
-  Polygon::Initialize(target);
-  GeometryCollection::Initialize(target);
-  MultiPoint::Initialize(target);
-  MultiLineString::Initialize(target);
-  MultiPolygon::Initialize(target);
-  CircularString::Initialize(target);
-  CompoundCurve::Initialize(target);
-  MultiCurve::Initialize(target);
+//   Layer::Initialize(target);
+//   Feature::Initialize(target);
+//   FeatureDefn::Initialize(target);
+//   FieldDefn::Initialize(target);
+//   Geometry::Initialize(target);
+//   Point::Initialize(target);
+//   SimpleCurve::Initialize(target);
+//   LineString::Initialize(target);
+//   LinearRing::Initialize(target);
+//   Polygon::Initialize(target);
+//   GeometryCollection::Initialize(target);
+//   MultiPoint::Initialize(target);
+//   MultiLineString::Initialize(target);
+//   MultiPolygon::Initialize(target);
+//   CircularString::Initialize(target);
+//   CompoundCurve::Initialize(target);
+//   MultiCurve::Initialize(target);
 
-  SpatialReference::Initialize(target);
-  CoordinateTransformation::Initialize(target);
-  ColorTable::Initialize(target);
+//   SpatialReference::Initialize(target);
+//   CoordinateTransformation::Initialize(target);
+//   ColorTable::Initialize(target);
 
-  DatasetBands::Initialize(target);
-  DatasetLayers::Initialize(target);
+//   DatasetBands::Initialize(target);
+//   DatasetLayers::Initialize(target);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-  GroupGroups::Initialize(target);
-  GroupArrays::Initialize(target);
-  GroupDimensions::Initialize(target);
-  GroupAttributes::Initialize(target);
-  ArrayDimensions::Initialize(target);
-  ArrayAttributes::Initialize(target);
+//   GroupGroups::Initialize(target);
+//   GroupArrays::Initialize(target);
+//   GroupDimensions::Initialize(target);
+//   GroupAttributes::Initialize(target);
+//   ArrayDimensions::Initialize(target);
+//   ArrayAttributes::Initialize(target);
 #endif
-  LayerFeatures::Initialize(target);
-  FeatureFields::Initialize(target);
-  LayerFields::Initialize(target);
-  FeatureDefnFields::Initialize(target);
-  GeometryCollectionChildren::Initialize(target);
-  PolygonRings::Initialize(target);
-  LineStringPoints::Initialize(target);
-  CompoundCurveCurves::Initialize(target);
-  RasterBandOverviews::Initialize(target);
-  RasterBandPixels::Initialize(target);
-  Memfile::Initialize(target);
-  Utils::Initialize(target);
-  VSI::Initialize(target);
+//   LayerFeatures::Initialize(target);
+//   FeatureFields::Initialize(target);
+//   LayerFields::Initialize(target);
+//   FeatureDefnFields::Initialize(target);
+//   GeometryCollectionChildren::Initialize(target);
+//   PolygonRings::Initialize(target);
+//   LineStringPoints::Initialize(target);
+//   CompoundCurveCurves::Initialize(target);
+//   RasterBandOverviews::Initialize(target);
+//   RasterBandPixels::Initialize(target);
+//   Memfile::Initialize(target);
+//   Utils::Initialize(target);
+//   VSI::Initialize(target);
 
   /**
    * The collection of all drivers registered with GDAL
@@ -463,8 +467,8 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
    * @name drivers
    * @type {GDALDrivers}
    */
-  GDALDrivers::Initialize(target); // calls GDALRegisterAll()
-  Nan::Set(target, Nan::New("drivers").ToLocalChecked(), GDALDrivers::New());
+  // GDALDrivers::Initialize(target); // N-API: GDALDriversNapi::Init handles GDALAllRegister
+  // gdal.drivers set by GDALDriversNapi::New() in InitNapi()
 
   /*
    * DMD Constants
@@ -1874,7 +1878,7 @@ static void InitNan(Local<Object> target, Local<v8::Value>, void *) {
   NODE_DEFINE_CONSTANT(target, CPLE_UserInterrupt);
 
   auto *env = GetCurrentEnvironment(target->GetIsolate()->GetCurrentContext());
-  AtExit(env, Cleanup, nullptr);
+//   AtExit(env, Cleanup, nullptr);
 }
 }
 
@@ -1892,6 +1896,7 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     unsigned int flags = GDAL_OF_VERBOSE_ERROR;
     for (size_t i = 0; i < mode.length(); i++) {
       if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 'm') { flags |= GDAL_OF_MULTIDIM_RASTER; }
       else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
       else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
     }
@@ -1899,6 +1904,29 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
     if (!ds) NAPI_THROW_LAST_CPLERR;
     return DatasetNapi::New(info.Env(), ds);
   }, "open"));
+  // openAsync – async variant using GDALAsyncableJobNapi
+  exports.Set("openAsync", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string path, mode = "r";
+    NAPI_ARG_STR(0, "path", path);
+    NAPI_ARG_OPT_STR(1, "mode", mode);
+    unsigned int flags = GDAL_OF_VERBOSE_ERROR;
+    for (size_t i = 0; i < mode.length(); i++) {
+      if (mode[i] == 'r') { flags |= (i+1<mode.length()&&mode[i+1]=='+') ? (i++, GDAL_OF_UPDATE) : GDAL_OF_READONLY; }
+      else if (mode[i] == 'm') { flags |= GDAL_OF_MULTIDIM_RASTER; }
+      else if (mode[i] == 't') flags |= GDAL_OF_THREAD_SAFE | GDAL_OF_RASTER;
+      else { Napi::Error::New(info.Env(), "Invalid open mode").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    }
+    GDALAsyncableJobNapi<GDALDataset *> job;
+    std::string p = path; unsigned int f = flags;
+    job.main = [p, f]() -> GDALDataset * {
+      CPLErrorReset();
+      GDALDataset *ds = (GDALDataset *)GDALOpenEx(p.c_str(), f, nullptr, nullptr, nullptr);
+      if (!ds) throw CPLGetLastErrorMsg();
+      return ds;
+    };
+    job.rval = [](Napi::Env env, GDALDataset *ds) { return DatasetNapi::New(env, ds); };
+    return job.run(info, true, static_cast<int>(info.Length()) - 1);
+  }, "openAsync"));
   exports.Set("setConfigOption", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
     std::string name; NAPI_ARG_STR(0, "name", name);
     if (info.Length() < 2) { Napi::Error::New(info.Env(), "value required").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
@@ -1932,6 +1960,197 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
 
   InitNan(target, v8::Local<v8::Value>(), nullptr);
 
+  // --- N-API overrides for InitNan() functionality ---
+  // These override NAN registrations with N-API equivalents.
+  // Once all overrides are complete, InitNan() can be removed.
+
+  exports.Set("quiet", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    CPLSetErrorHandler(CPLQuietErrorHandler);
+    return info.Env().Undefined();
+  }, "quiet"));
+  exports.Set("verbose", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    CPLSetErrorHandler(CPLDefaultErrorHandler);
+    return info.Env().Undefined();
+  }, "verbose"));
+  exports.Set("startLogging", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+#ifdef ENABLE_LOGGING
+    std::string filename; NAPI_ARG_STR(0, "filename", filename);
+    if (filename.empty()) { Napi::Error::New(info.Env(), "Invalid filename").ThrowAsJavaScriptException(); return info.Env().Undefined(); }
+    if (log_file) fclose(log_file);
+    log_file = fopen(filename.c_str(), "w");
+    if (!log_file) { Napi::Error::New(info.Env(), "Error creating log file").ThrowAsJavaScriptException(); }
+#else
+    Napi::Error::New(info.Env(), "Logging requires node-gdal be compiled with --enable_logging=true").ThrowAsJavaScriptException();
+#endif
+    return info.Env().Undefined();
+  }, "startLogging"));
+  exports.Set("stopLogging", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+#ifdef ENABLE_LOGGING
+    if (log_file) { fclose(log_file); log_file = NULL; }
+#endif
+    return info.Env().Undefined();
+  }, "stopLogging"));
+
+  // --- N-API constants (migrated from InitNan) ---
+  exports.Set("DMD_LONGNAME", Napi::String::New(napiEnv, GDAL_DMD_LONGNAME));
+  exports.Set("DMD_MIMETYPE", Napi::String::New(napiEnv, GDAL_DMD_MIMETYPE));
+  exports.Set("DMD_HELPTOPIC", Napi::String::New(napiEnv, GDAL_DMD_HELPTOPIC));
+  exports.Set("DMD_EXTENSION", Napi::String::New(napiEnv, GDAL_DMD_EXTENSION));
+  exports.Set("DMD_CREATIONOPTIONLIST", Napi::String::New(napiEnv, GDAL_DMD_CREATIONOPTIONLIST));
+  exports.Set("DMD_CREATIONDATATYPES", Napi::String::New(napiEnv, GDAL_DMD_CREATIONDATATYPES));
+  exports.Set("CE_None", Napi::Number::New(napiEnv, CE_None));
+  exports.Set("CE_Debug", Napi::Number::New(napiEnv, CE_Debug));
+  exports.Set("CE_Warning", Napi::Number::New(napiEnv, CE_Warning));
+  exports.Set("CE_Failure", Napi::Number::New(napiEnv, CE_Failure));
+  exports.Set("CE_Fatal", Napi::Number::New(napiEnv, CE_Fatal));
+  exports.Set("CPLE_None", Napi::Number::New(napiEnv, CPLE_None));
+  exports.Set("CPLE_AppDefined", Napi::Number::New(napiEnv, CPLE_AppDefined));
+  exports.Set("CPLE_OutOfMemory", Napi::Number::New(napiEnv, CPLE_OutOfMemory));
+  exports.Set("CPLE_FileIO", Napi::Number::New(napiEnv, CPLE_FileIO));
+  exports.Set("CPLE_OpenFailed", Napi::Number::New(napiEnv, CPLE_OpenFailed));
+  exports.Set("CPLE_IllegalArg", Napi::Number::New(napiEnv, CPLE_IllegalArg));
+  exports.Set("CPLE_NotSupported", Napi::Number::New(napiEnv, CPLE_NotSupported));
+  exports.Set("CPLE_AssertionFailed", Napi::Number::New(napiEnv, CPLE_AssertionFailed));
+  exports.Set("CPLE_NoWriteAccess", Napi::Number::New(napiEnv, CPLE_NoWriteAccess));
+  exports.Set("CPLE_UserInterrupt", Napi::Number::New(napiEnv, CPLE_UserInterrupt));
+  exports.Set("CPLE_ObjectNull", Napi::Number::New(napiEnv, CPLE_ObjectNull));
+  exports.Set("DCAP_CREATE", Napi::String::New(napiEnv, GDAL_DCAP_CREATE));
+  exports.Set("DCAP_CREATECOPY", Napi::String::New(napiEnv, GDAL_DCAP_CREATECOPY));
+  exports.Set("DCAP_VIRTUALIO", Napi::String::New(napiEnv, GDAL_DCAP_VIRTUALIO));
+  exports.Set("OLCRandomRead", Napi::String::New(napiEnv, OLCRandomRead));
+  exports.Set("OLCSequentialWrite", Napi::String::New(napiEnv, OLCSequentialWrite));
+  exports.Set("OLCRandomWrite", Napi::String::New(napiEnv, OLCRandomWrite));
+  exports.Set("OLCFastSpatialFilter", Napi::String::New(napiEnv, OLCFastSpatialFilter));
+  exports.Set("OLCFastFeatureCount", Napi::String::New(napiEnv, OLCFastFeatureCount));
+  exports.Set("OLCFastGetExtent", Napi::String::New(napiEnv, OLCFastGetExtent));
+  exports.Set("OLCCreateField", Napi::String::New(napiEnv, OLCCreateField));
+  exports.Set("OLCDeleteField", Napi::String::New(napiEnv, OLCDeleteField));
+  exports.Set("OLCReorderFields", Napi::String::New(napiEnv, OLCReorderFields));
+  exports.Set("OLCAlterFieldDefn", Napi::String::New(napiEnv, OLCAlterFieldDefn));
+  exports.Set("OLCTransactions", Napi::String::New(napiEnv, OLCTransactions));
+  exports.Set("OLCDeleteFeature", Napi::String::New(napiEnv, OLCDeleteFeature));
+  exports.Set("OLCStringsAsUTF8", Napi::String::New(napiEnv, OLCStringsAsUTF8));
+  exports.Set("OLCIgnoreFields", Napi::String::New(napiEnv, OLCIgnoreFields));
+  exports.Set("OLCCreateGeomField", Napi::String::New(napiEnv, OLCCreateGeomField));
+  exports.Set("ODsCCreateLayer", Napi::String::New(napiEnv, ODsCCreateLayer));
+  exports.Set("ODsCDeleteLayer", Napi::String::New(napiEnv, ODsCDeleteLayer));
+  exports.Set("ODrCCreateDataSource", Napi::String::New(napiEnv, ODrCCreateDataSource));
+  exports.Set("ODrCDeleteDataSource", Napi::String::New(napiEnv, ODrCDeleteDataSource));
+  exports.Set("GDT_Byte", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_Byte)));
+  exports.Set("GDT_UInt16", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_UInt16)));
+  exports.Set("GDT_Int16", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_Int16)));
+  exports.Set("GDT_UInt32", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_UInt32)));
+  exports.Set("GDT_Int32", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_Int32)));
+  exports.Set("GDT_Int64", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_Int64)));
+  exports.Set("GDT_UInt64", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_UInt64)));
+  exports.Set("GDT_CInt16", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_CInt16)));
+  exports.Set("GDT_CInt32", Napi::String::New(napiEnv, GDALGetDataTypeName(GDT_CInt32)));
+  exports.Set("wkb25DBit", Napi::Number::New(napiEnv, wkb25DBit));
+  exports.Set("wkbUnknown", Napi::Number::New(napiEnv, wkbUnknown));
+  exports.Set("wkbPoint", Napi::Number::New(napiEnv, wkbPoint));
+  exports.Set("wkbLineString", Napi::Number::New(napiEnv, wkbLineString));
+  exports.Set("wkbCircularString", Napi::Number::New(napiEnv, wkbCircularString));
+  exports.Set("wkbCompoundCurve", Napi::Number::New(napiEnv, wkbCompoundCurve));
+  exports.Set("wkbMultiCurve", Napi::Number::New(napiEnv, wkbMultiCurve));
+  exports.Set("wkbPolygon", Napi::Number::New(napiEnv, wkbPolygon));
+  exports.Set("wkbMultiPoint", Napi::Number::New(napiEnv, wkbMultiPoint));
+  exports.Set("wkbMultiLineString", Napi::Number::New(napiEnv, wkbMultiLineString));
+  exports.Set("wkbMultiPolygon", Napi::Number::New(napiEnv, wkbMultiPolygon));
+  exports.Set("wkbGeometryCollection", Napi::Number::New(napiEnv, wkbGeometryCollection));
+  exports.Set("wkbNone", Napi::Number::New(napiEnv, wkbNone));
+  exports.Set("wkbLinearRing", Napi::Number::New(napiEnv, wkbLinearRing));
+  exports.Set("wkbPoint25D", Napi::Number::New(napiEnv, wkbPoint25D));
+  exports.Set("wkbLineString25D", Napi::Number::New(napiEnv, wkbLineString25D));
+  exports.Set("wkbPolygon25D", Napi::Number::New(napiEnv, wkbPolygon25D));
+  exports.Set("wkbMultiPoint25D", Napi::Number::New(napiEnv, wkbMultiPoint25D));
+  exports.Set("wkbMultiLineString25D", Napi::Number::New(napiEnv, wkbMultiLineString25D));
+  exports.Set("wkbMultiPolygon25D", Napi::Number::New(napiEnv, wkbMultiPolygon25D));
+  exports.Set("wkbGeometryCollection25D", Napi::Number::New(napiEnv, wkbGeometryCollection25D));
+  exports.Set("wkbLinearRing25D", Napi::Number::New(napiEnv, wkbLinearRing | wkb25DBit));
+  exports.Set("OFTInteger", Napi::String::New(napiEnv, getFieldTypeName(OFTInteger)));
+  exports.Set("OFTReal", Napi::String::New(napiEnv, getFieldTypeName(OFTReal)));
+  exports.Set("OFTRealList", Napi::String::New(napiEnv, getFieldTypeName(OFTRealList)));
+  exports.Set("OFTString", Napi::String::New(napiEnv, getFieldTypeName(OFTString)));
+  exports.Set("OFTBinary", Napi::String::New(napiEnv, getFieldTypeName(OFTBinary)));
+  exports.Set("OFTDate", Napi::String::New(napiEnv, getFieldTypeName(OFTDate)));
+  exports.Set("OFTTime", Napi::String::New(napiEnv, getFieldTypeName(OFTTime)));
+  exports.Set("OFTDateTime", Napi::String::New(napiEnv, getFieldTypeName(OFTDateTime)));
+  exports.Set("DIM_VERTICAL", Napi::String::New(napiEnv, GDAL_DIM_TYPE_VERTICAL));
+  exports.Set("DIM_TEMPORAL", Napi::String::New(napiEnv, GDAL_DIM_TYPE_TEMPORAL));
+  exports.Set("DIM_PARAMETRIC", Napi::String::New(napiEnv, GDAL_DIM_TYPE_PARAMETRIC));
+  exports.Set("OFTIntegerList", Napi::String::New(napiEnv, getFieldTypeName(OFTIntegerList)));
+  exports.Set("OFTStringList", Napi::String::New(napiEnv, getFieldTypeName(OFTStringList)));
+  exports.Set("OFTWideString", Napi::String::New(napiEnv, getFieldTypeName(OFTWideString)));
+  exports.Set("OFTWideStringList", Napi::String::New(napiEnv, getFieldTypeName(OFTWideStringList)));
+  exports.Set("GRA_NearestNeighbor", Napi::String::New(napiEnv, "NearestNeighbor"));
+  exports.Set("GRA_Bilinear", Napi::String::New(napiEnv, "Bilinear"));
+  exports.Set("GRA_Cubic", Napi::String::New(napiEnv, "Cubic"));
+  exports.Set("GRA_CubicSpline", Napi::String::New(napiEnv, "CubicSpline"));
+  exports.Set("GRA_Lanczos", Napi::String::New(napiEnv, "Lanczos"));
+  exports.Set("GRA_Average", Napi::String::New(napiEnv, "Average"));
+  exports.Set("GRA_Mode", Napi::String::New(napiEnv, "Mode"));
+  exports.Set("GRA_Min", Napi::String::New(napiEnv, "Min"));
+  exports.Set("GRA_Max", Napi::String::New(napiEnv, "Max"));
+  exports.Set("GRA_Med", Napi::String::New(napiEnv, "Med"));
+  exports.Set("GRA_Q1", Napi::String::New(napiEnv, "Q1"));
+  exports.Set("GRA_Q3", Napi::String::New(napiEnv, "Q3"));
+  exports.Set("GCI_Undefined", Napi::Number::New(napiEnv, GCI_Undefined));
+  exports.Set("GCI_GrayIndex", Napi::Number::New(napiEnv, GCI_GrayIndex));
+  exports.Set("GCI_PaletteIndex", Napi::Number::New(napiEnv, GCI_PaletteIndex));
+  exports.Set("GCI_RedBand", Napi::Number::New(napiEnv, GCI_RedBand));
+  exports.Set("GCI_GreenBand", Napi::Number::New(napiEnv, GCI_GreenBand));
+  exports.Set("GCI_BlueBand", Napi::Number::New(napiEnv, GCI_BlueBand));
+  exports.Set("GCI_AlphaBand", Napi::Number::New(napiEnv, GCI_AlphaBand));
+  exports.Set("GCI_HueBand", Napi::Number::New(napiEnv, GCI_HueBand));
+  exports.Set("GCI_SaturationBand", Napi::Number::New(napiEnv, GCI_SaturationBand));
+  exports.Set("GCI_LightnessBand", Napi::Number::New(napiEnv, GCI_LightnessBand));
+  exports.Set("GCI_CyanBand", Napi::Number::New(napiEnv, GCI_CyanBand));
+  exports.Set("GCI_MagentaBand", Napi::Number::New(napiEnv, GCI_MagentaBand));
+  exports.Set("GCI_YellowBand", Napi::Number::New(napiEnv, GCI_YellowBand));
+  exports.Set("GCI_BlackBand", Napi::Number::New(napiEnv, GCI_BlackBand));
+  exports.Set("GPI_RGB", Napi::Number::New(napiEnv, GPI_RGB));
+  exports.Set("GPI_CMYK", Napi::Number::New(napiEnv, GPI_CMYK));
+  exports.Set("GPI_HLS", Napi::Number::New(napiEnv, GPI_HLS));
+  exports.Set("GA_ReadOnly", Napi::Number::New(napiEnv, GA_ReadOnly));
+  exports.Set("GA_Update", Napi::Number::New(napiEnv, GA_Update));
+  exports.Set("GF_READ", Napi::Number::New(napiEnv, GF_Read));
+  exports.Set("GF_WRITE", Napi::Number::New(napiEnv, GF_Write));
+  exports.Set("GDAL_OF_READONLY", Napi::Number::New(napiEnv, GDAL_OF_READONLY));
+  exports.Set("GDAL_OF_UPDATE", Napi::Number::New(napiEnv, GDAL_OF_UPDATE));
+  exports.Set("GDAL_OF_ALL", Napi::Number::New(napiEnv, GDAL_OF_ALL));
+  exports.Set("GDAL_OF_RASTER", Napi::Number::New(napiEnv, GDAL_OF_RASTER));
+  exports.Set("GDAL_OF_VECTOR", Napi::Number::New(napiEnv, GDAL_OF_VECTOR));
+  exports.Set("GDAL_OF_VERBOSE_ERROR", Napi::Number::New(napiEnv, GDAL_OF_VERBOSE_ERROR));
+  exports.Set("GDAL_OF_THREAD_SAFE", Napi::Number::New(napiEnv, GDAL_OF_THREAD_SAFE));
+  exports.Set("GDAL_OF_SHARED", Napi::Number::New(napiEnv, GDAL_OF_SHARED));
+  exports.Set("OJ_LEFT", Napi::String::New(napiEnv, "LEFT"));
+  exports.Set("OJ_RIGHT", Napi::String::New(napiEnv, "RIGHT"));
+  exports.Set("OJ_UNDEFINED", Napi::String::New(napiEnv, "UNDEFINED"));
+  exports.Set("CPLS_DEBUG", Napi::String::New(napiEnv, "CPL_DEBUG"));
+  exports.Set("VSISTDIN", Napi::String::New(napiEnv, "/vsistdin/"));
+  exports.Set("VSISTDOUT", Napi::String::New(napiEnv, "/vsistdout/"));
+  exports.Set("GEDTC_String", Napi::String::New(napiEnv, "String"));
+  exports.Set("GEDTC_Compound", Napi::String::New(napiEnv, "Compound"));
+  exports.Set("DIR_PAST", Napi::String::New(napiEnv, "PAST"));
+  exports.Set("version", Napi::String::New(napiEnv, GDAL_RELEASE_NAME));
+#ifdef BUNDLED_GDAL
+  exports.Set("bundled", Napi::Boolean::New(napiEnv, true));
+#else
+  exports.Set("bundled", Napi::Boolean::New(napiEnv, false));
+#endif
+  exports.Set("log", Napi::Function::New(napiEnv, [](const Napi::CallbackInfo &info) -> Napi::Value {
+    std::string msg; NAPI_ARG_STR(0, "message", msg);
+    msg = msg + "\n";
+#ifdef ENABLE_LOGGING
+    if (log_file) { fputs(msg.c_str(), log_file); fflush(log_file); }
+#endif
+    return info.Env().Undefined();
+  }, "log"));
+  exports.Set("supports", Napi::Object::New(napiEnv));
+
+  exports.Set("eventLoopWarning", Napi::Boolean::New(napiEnv, true));
+  exports.Set("lastError", napiEnv.Null());
+
   node_gdal::DriverNapi::Init(napiEnv, exports);
   node_gdal::DatasetNapi::Init(napiEnv, exports);
   node_gdal::RasterBandNapi::Init(napiEnv, exports);
@@ -1943,6 +2162,8 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::CoordinateTransformationNapi::Init(napiEnv, exports);
   node_gdal::ColorTableNapi::Init(napiEnv, exports);
   node_gdal::GDALDriversNapi::Init(napiEnv, exports);
+  node_gdal::GeometryNapi::Init(napiEnv, exports);       // base class: must be first
+  node_gdal::GeometryCollectionNapi::Init(napiEnv, exports);
   node_gdal::PointNapi::Init(napiEnv, exports);
   node_gdal::SimpleCurveNapi::Init(napiEnv, exports);
   node_gdal::LineStringNapi::Init(napiEnv, exports);
@@ -1950,12 +2171,10 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::PolygonNapi::Init(napiEnv, exports);
   node_gdal::CircularStringNapi::Init(napiEnv, exports);
   node_gdal::CompoundCurveNapi::Init(napiEnv, exports);
-  node_gdal::GeometryCollectionNapi::Init(napiEnv, exports);
   node_gdal::MultiPointNapi::Init(napiEnv, exports);
   node_gdal::MultiLineStringNapi::Init(napiEnv, exports);
   node_gdal::MultiPolygonNapi::Init(napiEnv, exports);
   node_gdal::MultiCurveNapi::Init(napiEnv, exports);
-  node_gdal::GeometryNapi::Init(napiEnv, exports);
   node_gdal::GroupNapi::Init(napiEnv, exports);
   node_gdal::MDArrayNapi::Init(napiEnv, exports);
   node_gdal::DimensionNapi::Init(napiEnv, exports);
@@ -1984,6 +2203,9 @@ Napi::Object InitNapi(Napi::Env napiEnv, Napi::Object exports) {
   node_gdal::VsiNapi::Init(napiEnv, exports);
   node_gdal::AlgebraNapi::Init(napiEnv, exports);
   node_gdal::MemfileNapi::Init(napiEnv, exports);
+
+  // Replace NAN GDALDrivers with N-API version
+  exports.Set("drivers", GDALDriversNapi::New(napiEnv));
 
   return exports;
 }

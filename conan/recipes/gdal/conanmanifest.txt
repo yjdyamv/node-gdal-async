@@ -1,0 +1,7 @@
+1770222870
+conandata.yml: de692ef025b3817ba9a39daee1f1624b
+conanfile.py: 9bdcd888fc23afe2283823462219612c
+export_source/CMakeLists.txt: 81816b83dfaf219c5d947cbdafc3765d
+export_source/patches/3.12.x/0-replace-find-package.patch: 0e75a91559772245e9caf1f6d6fe94db
+export_source/patches/3.12.x/2-allow-cycles-in-cmake-targets.patch: 612454cfbe18ce386fc9205be3531541
+export_source/src/cmake/helpers/ConanFindPackage.cmake: 2483c2b439e629fe43c01287ed9d7c15

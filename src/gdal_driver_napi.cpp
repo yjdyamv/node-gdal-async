@@ -1,7 +1,9 @@
 #include <memory>
 #include <string>
 #include "gdal_driver_napi.hpp"
+#include "gdal_dataset_napi.hpp"
 #include "gdal_common.hpp"
+#include "utils/napi_object_store.hpp"
 
 namespace node_gdal {
 
@@ -16,7 +18,7 @@ Napi::FunctionReference DriverNapi::constructor;
 Napi::Object DriverNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "DriverNapi",
+    "Driver",
     {
       InstanceMethod("toString", &DriverNapi::toString),
       InstanceMethod("open", &DriverNapi::open),
@@ -35,7 +37,7 @@ Napi::Object DriverNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("DriverNapi", func);
+  exports.Set("Driver", func);
   return exports;
 }
 
@@ -76,8 +78,13 @@ Napi::Value DriverNapi::New(Napi::Env env, GDALDriver *driver) {
   Napi::EscapableHandleScope scope(env);
 
   if (!driver) { return scope.Escape(env.Null()); }
+  if (napi_obj_store_has<GDALDriver *>(driver)) {
+    Napi::Object existing = napi_obj_store_get<GDALDriver *>(env, driver);
+    if (!existing.IsEmpty()) return scope.Escape(existing);
+  }
 
   Napi::Object obj = constructor.New({Napi::External<GDALDriver>::New(env, driver)});
+  napi_obj_store_add<GDALDriver *>(driver, obj);
 
   DriverNapi *wrapped = DriverNapi::Unwrap(obj);
   if (wrapped) { wrapped->uid = 0; }
@@ -198,6 +205,7 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, open) {
 
   NAPI_ARG_STR(0, "path", path);
   NAPI_ARG_OPT_STR(1, "mode", mode);
+  if (mode.empty()) mode = "r";
 
   if (mode == "r+") {
     access = GA_Update;
@@ -224,9 +232,8 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, open) {
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };
-  job.rval = [](Napi::Env env, GDALDataset *) -> Napi::Value {
-    // TODO: return Dataset object once ported to N-API
-    return env.Null();
+  job.rval = [](Napi::Env env, GDALDataset *ds) -> Napi::Value {
+    return DatasetNapi::New(env, ds);
   };
 
   return job.run(info, async, 3);
@@ -282,8 +289,8 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, create) {
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };
-  job.rval = [](Napi::Env env, GDALDataset *) -> Napi::Value {
-    return env.Null(); // TODO: return Dataset
+  job.rval = [](Napi::Env env, GDALDataset *ds) -> Napi::Value {
+    return DatasetNapi::New(env, ds);
   };
 
   return job.run(info, async, 6);
@@ -310,6 +317,14 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, createCopy) {
     return info.Env().Undefined();
   }
 
+  // Extract source dataset
+  GDALDataset *src_ds = nullptr;
+  if (info[1].IsObject() &&
+      info[1].As<Napi::Object>().InstanceOf(DatasetNapi::constructor.Value())) {
+    DatasetNapi *src = DatasetNapi::Unwrap(info[1].As<Napi::Object>());
+    if (src && src->isAlive()) src_ds = src->get();
+  }
+
   auto options = std::make_shared<NapiStringList>();
   if (info.Length() > 2 && !options->parse(info[2])) {
     Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException();
@@ -322,16 +337,20 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DriverNapi, createCopy) {
   GDALDriver *raw = driver->getGDALDriver();
 
   GDALAsyncableJobNapi<GDALDataset *> job;
-  job.main = [raw, filename, strict, options]() {
-    // TODO: accept Dataset parameter once ported
+  // Extract progress callback from options at index 4
+  if (info.Length() > 4 && info[4].IsObject()) {
+    Napi::Object progObj = info[4].As<Napi::Object>();
+    NAPI_CB_FROM_OBJ_OPT(progObj, "progress_cb", job.progress_cb_);
+  }
+  job.main = [raw, filename, src_ds, strict, options, &job]() {
     CPLErrorReset();
     GDALDataset *ds = raw->CreateCopy(
-      filename.c_str(), nullptr, strict, options->get(), nullptr, nullptr);
+      filename.c_str(), src_ds, strict, options->get(), job.progressFunc(), job.progressArg());
     if (!ds) throw CPLGetLastErrorMsg();
     return ds;
   };
-  job.rval = [](Napi::Env env, GDALDataset *) -> Napi::Value {
-    return env.Null(); // TODO: return Dataset
+  job.rval = [](Napi::Env env, GDALDataset *ds) -> Napi::Value {
+    return DatasetNapi::New(env, ds);
   };
 
   return job.run(info, async, 5);

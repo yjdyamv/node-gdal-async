@@ -7,7 +7,7 @@ Napi::FunctionReference CoordinateTransformationNapi::constructor;
 Napi::Object CoordinateTransformationNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "CoordinateTransformationNapi",
+    "CoordinateTransformation",
     {
       InstanceMethod("toString", &CoordinateTransformationNapi::toString),
       InstanceMethod("transformPoint", &CoordinateTransformationNapi::transformPoint),
@@ -16,7 +16,7 @@ Napi::Object CoordinateTransformationNapi::Init(Napi::Env env, Napi::Object expo
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("CoordinateTransformationNapi", func);
+  exports.Set("CoordinateTransformation", func);
   return exports;
 }
 

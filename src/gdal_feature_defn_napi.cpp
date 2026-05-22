@@ -1,4 +1,5 @@
 #include "gdal_feature_defn_napi.hpp"
+#include "gdal_stubs_napi.hpp"
 
 namespace node_gdal {
 
@@ -7,7 +8,7 @@ Napi::FunctionReference FeatureDefnNapi::constructor;
 Napi::Object FeatureDefnNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
     env,
-    "FeatureDefnNapi",
+    "FeatureDefn",
     {
       InstanceMethod("toString", &FeatureDefnNapi::toString),
       InstanceMethod("clone", &FeatureDefnNapi::clone),
@@ -16,6 +17,7 @@ Napi::Object FeatureDefnNapi::Init(Napi::Env env, Napi::Object exports) {
                         &FeatureDefnNapi::geomTypeSetter>("geomType"),
       InstanceAccessor<&FeatureDefnNapi::geomIgnoredGetter,
                         &FeatureDefnNapi::geomIgnoredSetter>("geomIgnored"),
+      InstanceAccessor<&FeatureDefnNapi::fieldsGetter>("fields"),
       InstanceAccessor<&FeatureDefnNapi::styleIgnoredGetter,
                         &FeatureDefnNapi::styleIgnoredSetter>("styleIgnored"),
     });
@@ -23,7 +25,7 @@ Napi::Object FeatureDefnNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor = Napi::Persistent(func);
   constructor.SuppressDestruct();
 
-  exports.Set("FeatureDefnNapi", func);
+  exports.Set("FeatureDefn", func);
   return exports;
 }
 
@@ -167,6 +169,14 @@ void FeatureDefnNapi::styleIgnoredSetter(const Napi::CallbackInfo &info, const N
     return;
   }
   def->this_->SetStyleIgnored(value.As<Napi::Boolean>().Value());
+}
+
+Napi::Value FeatureDefnNapi::fieldsGetter(const Napi::CallbackInfo &info) {
+  NAPI_UNWRAP_THIS(FeatureDefnNapi, self);
+  Napi::Object thiz = info.This().As<Napi::Object>();
+  if (thiz.Has("__fields")) { Napi::Value c = thiz.Get("__fields"); if (!c.IsNull() && !c.IsUndefined()) return c; }
+  Napi::Object f = FeatureDefnFieldsNapi::constructor.New({Napi::External<OGRFeatureDefn>::New(info.Env(), self->this_)});
+  thiz.Set("__fields", f); return f;
 }
 
 } // namespace node_gdal

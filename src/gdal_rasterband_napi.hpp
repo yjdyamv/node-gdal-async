@@ -48,6 +48,10 @@ class RasterBandNapi : public Napi::ObjectWrap<RasterBandNapi> {
   void noDataValueSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
   void categoryNamesSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 
+  Napi::Value dsGetter(const Napi::CallbackInfo &info);
+  Napi::Value pixelsGetter(const Napi::CallbackInfo &info);
+  Napi::Value overviewsGetter(const Napi::CallbackInfo &info);
+
   GDALRasterBand *get() { return this_; }
   bool isAlive() { return this_ != nullptr; }
 

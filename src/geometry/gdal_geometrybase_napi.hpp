@@ -8,10 +8,18 @@
 
 namespace node_gdal {
 
+// Common non-template base so geometry methods (isValid/swapXY/etc.) can
+// extract the OGRGeometry* from any subclass without knowing the concrete type.
+class GeometryCommonNapi {
+    public:
+  virtual OGRGeometry *getGeometry() = 0;
+  virtual ~GeometryCommonNapi() = default;
+};
+
 // CRTP data/utility base for geometry wrappers.
 // Does NOT inherit from ObjectWrap – the derived class inherits ObjectWrap.
 template <class T, class OGRT>
-class GeometryBaseNapi {
+class GeometryBaseNapi : public GeometryCommonNapi {
     public:
   static Napi::Value New(Napi::Env env, OGRT *geom);
   static Napi::Value New(Napi::Env env, OGRT *geom, bool owned);
@@ -21,6 +29,9 @@ class GeometryBaseNapi {
   }
   bool isAlive() {
     return this_ != nullptr;
+  }
+  OGRGeometry *getGeometry() override {
+    return this_;
   }
 
   // Geometry state – public so free functions can access

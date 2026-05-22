@@ -29,6 +29,8 @@ class LayerNapi : public Napi::ObjectWrap<LayerNapi> {
   Napi::Value geomTypeGetter(const Napi::CallbackInfo &info);
   Napi::Value geomColumnGetter(const Napi::CallbackInfo &info);
   Napi::Value fidColumnGetter(const Napi::CallbackInfo &info);
+  Napi::Value featuresGetter(const Napi::CallbackInfo &info);
+  Napi::Value fieldsGetter(const Napi::CallbackInfo &info);
 
   OGRLayer *get() {
     return this_;
@@ -36,9 +38,11 @@ class LayerNapi : public Napi::ObjectWrap<LayerNapi> {
   bool isAlive() {
     return this_ != nullptr;
   }
+  void invalidate() { this_ = nullptr; }
 
     private:
   OGRLayer *this_;
+  Napi::Reference<Napi::Object> parent_ds_;
 };
 
 } // namespace node_gdal

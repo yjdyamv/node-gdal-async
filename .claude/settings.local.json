@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npx yatag *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebFetch(domain:conan.io)",
+      "Bash(conan install *)",
+      "Bash(rm -rf build)",
+      "Bash(npx cmake-js *)",
+      "Bash(cd *)"
     ]
   }
 }

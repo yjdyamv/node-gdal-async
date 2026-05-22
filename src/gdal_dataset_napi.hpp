@@ -13,16 +13,21 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
     public:
   static Napi::FunctionReference constructor;
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
-  static Napi::Value New(Napi::Env env, GDALDataset *ds);
+  static Napi::Value New(Napi::Env env, GDALDataset *ds, bool owned = true);
 
   DatasetNapi(const Napi::CallbackInfo &info);
   ~DatasetNapi();
+
+  void setOwned(bool owned) { owned_ = owned; }
 
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value close(const Napi::CallbackInfo &info);
 
   GDAL_ASYNCABLE_DECLARE_NAPI(flush);
   GDAL_ASYNCABLE_DECLARE_NAPI(getMetadata);
+  GDAL_ASYNCABLE_DECLARE_NAPI(buildOverviews);
+  GDAL_ASYNCABLE_DECLARE_NAPI(executeSQL);
+  GDAL_ASYNCABLE_DECLARE_NAPI(setMetadata);
 
   Napi::Value getFileList(const Napi::CallbackInfo &info);
   Napi::Value testCapability(const Napi::CallbackInfo &info);
@@ -34,6 +39,9 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
   GDAL_ASYNCABLE_GETTER_DECLARE_NAPI(srsGetter);
   GDAL_ASYNCABLE_GETTER_DECLARE_NAPI(geoTransformGetter);
 
+  Napi::Value bandsGetter(const Napi::CallbackInfo &info);
+  Napi::Value layersGetter(const Napi::CallbackInfo &info);
+
   void srsSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
   void geoTransformSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 
@@ -43,9 +51,13 @@ class DatasetNapi : public Napi::ObjectWrap<DatasetNapi> {
   bool isAlive() {
     return this_dataset != nullptr;
   }
+  void addLayerRef(Napi::Object layerObj) { layerRefs_.push_back(Napi::Persistent(layerObj)); }
+  void invalidateLayers(Napi::Env env);
 
     private:
   GDALDataset *this_dataset;
+  bool owned_ = true;
+  std::vector<Napi::Reference<Napi::Object>> layerRefs_;
 };
 
 } // namespace node_gdal

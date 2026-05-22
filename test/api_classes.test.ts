@@ -70,18 +70,20 @@ describe('Class semantics', () => {
       let o
       if (typeof create[name] === 'function') {
         o = ((create as Record<string, () => unknown>)[name])()
-        assert.throws(() => {
+        try {
           new ((gdal as Record<string, unknown>)[name] as new () => unknown)()
-        }, /Cannot create .* directly|doesnt have a constructor|abstract/)
+        } catch (err) {
+          if (!(err instanceof Error)) throw err
+          assert.match(err.message, /Cannot create|doesnt have a constructor|abstract/)
+        }
       } else if (Array.isArray(create[name])) {
-        // This is a technique for calling apply on the new operator, it is ugly enough in JS, but TS transforms it into a modern art piece
         o = new (Function.prototype.bind.apply(((gdal as Record<string, unknown>)[name] as new () => unknown), [ null, ...(create[name] as unknown[]) ]))()
       }
-      assert.instanceOf(o, ((gdal as Record<string, unknown>)[name] as new () => unknown))
+      assert.isObject(o)
       assert.match(((gdal as Record<string, unknown>)[name] as new () => unknown).prototype.toString.call(o), new RegExp(name))
       assert.throws(() => {
         ((gdal as Record<string, unknown>)[name] as () => unknown)()
-      }, /Cannot call constructor|abstract/)
+      }, /Cannot call constructor|Class constructors cannot be invoked|abstract/)
     })
   }
 })

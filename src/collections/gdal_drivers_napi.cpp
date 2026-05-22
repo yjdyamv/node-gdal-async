@@ -7,7 +7,7 @@ Napi::FunctionReference GDALDriversNapi::constructor;
 
 Napi::Object GDALDriversNapi::Init(Napi::Env env, Napi::Object exports) {
   Napi::Function func = DefineClass(
-    env, "GDALDriversNapi",
+    env, "GDALDrivers",
     {
       InstanceMethod("toString", &GDALDriversNapi::toString),
       InstanceMethod("count", &GDALDriversNapi::count),
@@ -18,7 +18,7 @@ Napi::Object GDALDriversNapi::Init(Napi::Env env, Napi::Object exports) {
   constructor.SuppressDestruct();
 
   GDALAllRegister();
-  exports.Set("GDALDriversNapi", func);
+  exports.Set("GDALDrivers", func);
   return exports;
 }
 
@@ -29,14 +29,14 @@ GDALDriversNapi::GDALDriversNapi(const Napi::CallbackInfo &info)
       .ThrowAsJavaScriptException();
     return;
   }
-  if (info.Length() == 0 || !info[0].IsExternal()) {
+  if (info.Length() == 0 || (!info[0].IsExternal() && !info[0].IsNull())) {
     Napi::Error::New(info.Env(), "Cannot create GDALDrivers directly")
       .ThrowAsJavaScriptException();
   }
 }
 
 Napi::Value GDALDriversNapi::New(Napi::Env env) {
-  return constructor.New({});
+  return constructor.New({env.Null()});
 }
 
 Napi::Value GDALDriversNapi::toString(const Napi::CallbackInfo &info) {

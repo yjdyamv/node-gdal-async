@@ -23,15 +23,6 @@ execute_process(
   OUTPUT_VARIABLE NODE_ADDON_API_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-# --- nan (still needed during transition from N-API migration) ---
-execute_process(
-  COMMAND node -p "require('nan')"
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE NAN_DIR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-include_directories(${NODE_ADDON_API_DIR})
-include_directories(${NAN_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # --- Platform settings ---
@@ -75,93 +66,46 @@ find_package(libaec CONFIG REQUIRED)
 find_package(muparser CONFIG REQUIRED)
 
 # --- Sources ---
+# NAN infrastructure (still needed during final transition)
+#   utils/ptr_manager.cpp — ObjectStore (async locks)
+#   node_gdal.cpp — N-API entry point + remaining init
+#   async.cpp — NAN async workers (used by non-NAN code)
+#   gdal_common.cpp — NAN macros (used by ptr_manager, async)
+# All class .cpp files replaced by *_napi.cpp equivalents
 set(SOURCES
-  src/utils/typed_array.cpp
-  src/utils/string_list.cpp
-  src/utils/number_list.cpp
-  src/utils/warp_options.cpp
-  src/utils/ptr_manager.cpp
+# src/utils/ptr_manager.cpp
   src/node_gdal.cpp
-  src/async.cpp
-  src/gdal_common.cpp
-  src/gdal_dataset.cpp
+# src/async.cpp
+# src/gdal_common.cpp
+  # N-API modules
   src/gdal_dataset_napi.cpp
-  src/gdal_driver.cpp
   src/gdal_driver_napi.cpp
-  src/gdal_rasterband.cpp
   src/gdal_rasterband_napi.cpp
-  src/gdal_group.cpp
-  src/gdal_mdarray.cpp
-  src/gdal_dimension.cpp
-  src/gdal_attribute.cpp
   src/gdal_multi_napi.cpp
-  src/gdal_majorobject.cpp
-  src/gdal_feature.cpp
   src/gdal_feature_napi.cpp
-  src/gdal_feature_defn.cpp
   src/gdal_feature_defn_napi.cpp
-  src/gdal_field_defn.cpp
   src/gdal_field_defn_napi.cpp
-  src/geometry/gdal_geometry.cpp
   src/geometry/gdal_geometry_napi.cpp
-  src/geometry/gdal_point.cpp
   src/geometry/gdal_point_napi.cpp
-  src/geometry/gdal_simplecurve.cpp
   src/geometry/gdal_simplecurve_napi.cpp
-  src/geometry/gdal_compoundcurve.cpp
   src/geometry/gdal_compoundcurve_napi.cpp
-  src/geometry/gdal_linestring.cpp
   src/geometry/gdal_linestring_napi.cpp
-  src/geometry/gdal_circularstring.cpp
   src/geometry/gdal_circularstring_napi.cpp
-  src/geometry/gdal_linearring.cpp
   src/geometry/gdal_linearring_napi.cpp
-  src/geometry/gdal_polygon.cpp
   src/geometry/gdal_polygon_napi.cpp
-  src/geometry/gdal_geometrycollection.cpp
   src/geometry/gdal_geometrycollection_napi.cpp
-  src/geometry/gdal_multipoint.cpp
-  src/geometry/gdal_multilinestring.cpp
-  src/geometry/gdal_multicurve.cpp
-  src/geometry/gdal_multipolygon.cpp
-  src/gdal_layer.cpp
   src/gdal_layer_napi.cpp
-  src/gdal_coordinate_transformation.cpp
   src/gdal_coordinate_transformation_napi.cpp
-  src/gdal_spatial_reference.cpp
   src/gdal_spatial_reference_napi.cpp
-  src/gdal_warper.cpp
-  src/gdal_algorithms.cpp
-  src/gdal_algebra.cpp
   src/gdal_algebra_napi.cpp
-  src/gdal_memfile.cpp
   src/gdal_memfile_napi.cpp
-  src/gdal_utils.cpp
-  src/gdal_fs.cpp
-  src/collections/dataset_bands.cpp
-  src/collections/dataset_layers.cpp
-  src/collections/layer_features.cpp
   src/collections/collections_napi.cpp
   src/gdal_utils_napi.cpp
+  src/gdal_algorithms_napi.cpp
+  src/gdal_warper_napi.cpp
+  src/gdal_vsi_napi.cpp
   src/gdal_stubs_napi.cpp
-  src/collections/layer_fields.cpp
-  src/collections/group_groups.cpp
-  src/collections/group_arrays.cpp
-  src/collections/group_attributes.cpp
-  src/collections/group_dimensions.cpp
-  src/collections/array_dimensions.cpp
-  src/collections/array_attributes.cpp
-  src/collections/feature_fields.cpp
-  src/collections/feature_defn_fields.cpp
-  src/collections/geometry_collection_children.cpp
-  src/collections/polygon_rings.cpp
-  src/collections/linestring_points.cpp
-  src/collections/compound_curves.cpp
-  src/collections/rasterband_overviews.cpp
-  src/collections/rasterband_pixels.cpp
-  src/collections/gdal_drivers.cpp
   src/collections/gdal_drivers_napi.cpp
-  src/collections/colortable.cpp
   src/collections/colortable_napi.cpp
 )
 

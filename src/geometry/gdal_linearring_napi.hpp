@@ -16,6 +16,7 @@ class LinearRingNapi
   LinearRingNapi(const Napi::CallbackInfo &info);
   Napi::Value toString(const Napi::CallbackInfo &info);
   Napi::Value getArea(const Napi::CallbackInfo &info);
+  Napi::Value pointsGetter(const Napi::CallbackInfo &info);
 };
 
 } // namespace node_gdal
