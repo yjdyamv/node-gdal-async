@@ -66,17 +66,10 @@ find_package(libaec CONFIG REQUIRED)
 find_package(muparser CONFIG REQUIRED)
 
 # --- Sources ---
-# NAN infrastructure (still needed during final transition)
-#   utils/ptr_manager.cpp — ObjectStore (async locks)
-#   node_gdal.cpp — N-API entry point + remaining init
-#   async.cpp — NAN async workers (used by non-NAN code)
-#   gdal_common.cpp — NAN macros (used by ptr_manager, async)
-# All class .cpp files replaced by *_napi.cpp equivalents
+# All NAN .cpp files replaced by *_napi.cpp equivalents
+# node_gdal.cpp still uses InitNan() for legacy compat (lastError, eventLoopWarning)
 set(SOURCES
-# src/utils/ptr_manager.cpp
   src/node_gdal.cpp
-# src/async.cpp
-# src/gdal_common.cpp
   # N-API modules
   src/gdal_dataset_napi.cpp
   src/gdal_driver_napi.cpp
