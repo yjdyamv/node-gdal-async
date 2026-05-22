@@ -423,18 +423,20 @@ GDAL_ASYNCABLE_DEFINE_NAPI(DatasetNapi, setMetadata) {
   NAPI_ARG_OPT_STR(1, "domain", domain);
   GDALDataset *raw = ds->this_dataset;
   GDALAsyncableJobNapi<CPLErr> job;
-  Napi::Object m = meta;
+  // Extract metadata pairs before lambda (Napi handles can't be used on worker threads)
+  std::vector<std::string> md_strs;
+  std::vector<char *> md_list;
+  Napi::Array keys = meta.GetPropertyNames();
+  for (uint32_t i = 0; i < keys.Length(); i++) {
+    std::string k = keys.Get(i).As<Napi::String>().Utf8Value();
+    std::string v = meta.Get(k).As<Napi::String>().Utf8Value();
+    md_strs.push_back(k + "=" + v);
+  }
+  for (auto &s : md_strs) md_list.push_back((char *)s.c_str());
+  md_list.push_back(nullptr);
   std::string d = domain;
-  job.main = [raw, m, d]() -> CPLErr {
-    Napi::Array keys = m.GetPropertyNames();
-    std::vector<std::string> strs; std::vector<char *> list;
-    for (uint32_t i = 0; i < keys.Length(); i++) {
-      std::string k = keys.Get(i).As<Napi::String>().Utf8Value();
-      std::string v = m.Get(k).As<Napi::String>().Utf8Value();
-      strs.push_back(k + "=" + v); list.push_back((char *)strs.back().c_str());
-    }
-    list.push_back(nullptr);
-    CPLErr err = raw->SetMetadata(list.data(), d.empty() ? nullptr : d.c_str());
+  job.main = [raw, md_strs, md_list, d]() -> CPLErr {
+    CPLErr err = raw->SetMetadata(const_cast<char **>(md_list.data()), d.empty() ? nullptr : d.c_str());
     if (err != CE_None) throw CPLGetLastErrorMsg();
     return err;
   };
