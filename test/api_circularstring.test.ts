@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import * as gdal from 'gdal-async'
+import * as gdal from '@yjdyamv/gdal-async'
 
 describe('gdal.CircularString', () => {
   afterEach(() => void global.gc!())

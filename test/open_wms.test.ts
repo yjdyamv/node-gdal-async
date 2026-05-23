@@ -1,4 +1,4 @@
-import * as gdal from 'gdal-async'
+import * as gdal from '@yjdyamv/gdal-async'
 import { assert } from 'chai'
 
 // https://magosm.magellium.com/aide.html © Magellium pour les flux WMS/WFS

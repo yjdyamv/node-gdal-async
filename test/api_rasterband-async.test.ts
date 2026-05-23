@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import gdal from 'gdal-async'
+import gdal from '@yjdyamv/gdal-async'
 import * as semver from 'semver'
 
 describe('gdal.RasterBandAsync', () => {

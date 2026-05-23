@@ -1,4 +1,4 @@
-import gdal from 'gdal-async'
+import gdal from '@yjdyamv/gdal-async'
 import * as os from 'os'
 
 import * as chai from 'chai'

@@ -1,4 +1,4 @@
-import * as gdal from 'gdal-async'
+import * as gdal from '@yjdyamv/gdal-async'
 import { Transform, finished as _finished } from 'stream'
 import { promisify } from 'util'
 import { assert } from 'chai'

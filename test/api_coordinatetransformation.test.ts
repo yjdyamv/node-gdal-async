@@ -1,4 +1,4 @@
-import * as gdal from 'gdal-async'
+import * as gdal from '@yjdyamv/gdal-async'
 import { assert } from 'chai'
 
 describe('gdal.CoordinateTransformation', () => {

@@ -6,7 +6,11 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "strict": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "paths": {
+      "@yjdyamv/gdal-async": [".."]
+    }
   },
   "include": [
     "."

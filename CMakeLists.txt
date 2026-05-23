@@ -23,6 +23,8 @@ execute_process(
   OUTPUT_VARIABLE NODE_ADDON_API_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+string(STRIP ${NODE_ADDON_API_DIR} NODE_ADDON_API_DIR)
+string(REPLACE "\"" "" NODE_ADDON_API_DIR ${NODE_ADDON_API_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # --- Platform settings ---
