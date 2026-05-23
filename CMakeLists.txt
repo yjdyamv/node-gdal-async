@@ -55,11 +55,10 @@ endif()
 find_package(GDAL CONFIG REQUIRED)
 find_package(PROJ CONFIG REQUIRED)
 find_package(GEOS CONFIG REQUIRED)
-find_package(CURL REQUIRED)
-find_package(expat REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(expat CONFIG REQUIRED)
 find_package(SQLite3 REQUIRED)
-# HDF5 disabled due to GDAL 3.12.1 Conan recipe incompatibility
-# find_package(HDF5 REQUIRED)
+find_package(hdf5 CONFIG REQUIRED)
 find_package(netCDF CONFIG REQUIRED)
 find_package(OpenJPEG REQUIRED)
 find_package(libaec CONFIG REQUIRED)
@@ -122,13 +121,13 @@ target_link_libraries(gdal PRIVATE
   GDAL::GDAL
   PROJ::proj
   GEOS::geos_c
-  CURL::libcurl
+  CURL::libcurl_shared
   expat::expat
-  SQLite::SQLite3
-  # HDF5::HDF5
+  SQLite3::SQLite3
+  hdf5::hdf5-shared
   netCDF::netcdf
   openjp2
-  libaec::aec
+  libaec::aec-shared
   muparser::muparser
 )
 
@@ -192,9 +191,18 @@ execute_process(
 )
 set(BINDING_DIR "lib/binding/${NODE_PLATFORM}-${NODE_ARCH}")
 
-# Collect shared libs from all Conan packages (CONAN_RUNTIME_LIB_DIRS set by toolchain)
-set(CONAN_SHARED_LIBS "")
-if(DEFINED CONAN_RUNTIME_LIB_DIRS)
+# Collect shared libs (vcpkg or Conan)
+set(RUNTIME_LIBS "")
+if(DEFINED VCPKG_INSTALLED_DIR)
+  if(WIN32)
+    file(GLOB VCPKG_RUNTIME_LIBS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/*.dll")
+  elseif(APPLE)
+    file(GLOB VCPKG_RUNTIME_LIBS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/*.dylib")
+  else()
+    file(GLOB VCPKG_RUNTIME_LIBS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/*.so")
+  endif()
+  list(APPEND RUNTIME_LIBS ${VCPKG_RUNTIME_LIBS})
+elseif(DEFINED CONAN_RUNTIME_LIB_DIRS)
   foreach(dir ${CONAN_RUNTIME_LIB_DIRS})
     if(EXISTS "${dir}")
       if(WIN32)
@@ -204,7 +212,7 @@ if(DEFINED CONAN_RUNTIME_LIB_DIRS)
       else()
         file(GLOB LIBS "${dir}/*.so")
       endif()
-      list(APPEND CONAN_SHARED_LIBS ${LIBS})
+      list(APPEND RUNTIME_LIBS ${LIBS})
     endif()
   endforeach()
 endif()
@@ -216,13 +224,12 @@ add_custom_command(TARGET gdal POST_BUILD
   COMMENT "Copying gdal.node to ${BINDING_DIR}"
 )
 
-# Copy shared libs if any (only needed when some deps are DLLs)
-list(LENGTH CONAN_SHARED_LIBS CONAN_SHLIB_COUNT)
-if(CONAN_SHLIB_COUNT GREATER 0)
+list(LENGTH RUNTIME_LIBS RUNTIME_COUNT)
+if(RUNTIME_COUNT GREATER 0)
   add_custom_command(TARGET gdal POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CONAN_SHARED_LIBS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RUNTIME_LIBS} "${CMAKE_SOURCE_DIR}/${BINDING_DIR}/"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMENT "Copying ${CONAN_SHLIB_COUNT} shared libs to ${BINDING_DIR}"
+    COMMENT "Copying ${RUNTIME_COUNT} shared libs to ${BINDING_DIR}"
   )
 endif()
 

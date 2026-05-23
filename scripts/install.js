@@ -4,6 +4,21 @@ const { execSync } = require('child_process')
 const path = require('path')
 const fs = require('fs')
 
+// Create self-referencing symlink so require('@yjdyamv/gdal-async') resolves
+const projectRoot = path.resolve(__dirname, '..')
+const scopedDir = path.join(projectRoot, 'node_modules', '@yjdyamv')
+const linkPath = path.join(scopedDir, 'gdal-async')
+if (!fs.existsSync(linkPath)) {
+  fs.mkdirSync(scopedDir, { recursive: true })
+  try {
+    if (process.platform === 'win32') {
+      require('child_process').execSync(`cmd /c mklink /J "${linkPath}" "${projectRoot}"`, { stdio: 'ignore' })
+    } else {
+      fs.symlinkSync(projectRoot, linkPath, 'junction')
+    }
+  } catch (_) { /* already exists or not supported */ }
+}
+
 const bindingDir = path.resolve(__dirname, '..', 'lib', 'binding')
 
 // Check if gdal.node already exists in lib/binding (from a previous build or prebuilt download)
@@ -39,31 +54,36 @@ try {
   console.log('[gdal-async] No prebuilt binary available, building from source...')
 }
 
-// Install Conan dependencies if available
-const conanToolchain = path.resolve(__dirname, '..', 'build', 'conan', 'conan_toolchain.cmake')
-try {
-  execSync('conan install . -of=conan/install --build=missing', {
-    stdio: 'inherit',
-    env: { ...process.env }
-  })
-  console.log('[gdal-async] Conan dependencies installed')
-} catch (err) {
-  console.log('[gdal-async] Conan not available, skipping dependency installation')
+// Find vcpkg toolchain
+function findVcpkgToolchain() {
+  const root = process.env.VCPKG_ROOT
+  if (root) {
+    const candidate = path.join(root, 'scripts', 'buildsystems', 'vcpkg.cmake')
+    if (fs.existsSync(candidate)) return candidate
+  }
+  // Common vcpkg install locations
+  const candidates = [
+    path.resolve('D:/vcpkg/scripts/buildsystems/vcpkg.cmake'),
+  ]
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c
+  }
+  return null
 }
+
+const vcpkgToolchain = findVcpkgToolchain()
 
 // Build from source with cmake-js
 const buildArgs = []
-if (process.env.npm_config_build_from_source || process.env.npm_config_build_from_source === 'true') {
-  // User explicitly requested source build
-}
 if (process.env.npm_config_j) {
   buildArgs.push('-j', process.env.npm_config_j)
 }
-
-// Pass Conan toolchain if available
 const env = { ...process.env }
-if (fs.existsSync(conanToolchain)) {
-  buildArgs.push('--CDCMAKE_TOOLCHAIN_FILE=' + conanToolchain)
+if (vcpkgToolchain) {
+  buildArgs.push('--CDCMAKE_TOOLCHAIN_FILE=' + vcpkgToolchain)
+  console.log('[gdal-async] Using vcpkg toolchain:', vcpkgToolchain)
+} else {
+  console.log('[gdal-async] vcpkg not found, assuming system-installed GDAL')
 }
 
 try {
