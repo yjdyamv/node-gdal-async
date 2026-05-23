@@ -39,7 +39,7 @@ jobs:
       with:
         node-version: 24.x
     - name: Install system deps
-      run: brew install autoconf automake libtool ninja
+      run: brew install autoconf autoconf-archive automake libtool ninja
     - name: Get vcpkg baseline
       id: baseline
       run: echo "value=$(node -p "require('./vcpkg.json')['builtin-baseline']")" >> "$GITHUB_OUTPUT"
