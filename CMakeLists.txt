@@ -57,7 +57,6 @@ find_package(PROJ CONFIG REQUIRED)
 find_package(GEOS CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
-find_package(SQLite3 REQUIRED)
 find_package(hdf5 CONFIG REQUIRED)
 find_package(netCDF CONFIG REQUIRED)
 find_package(OpenJPEG REQUIRED)
@@ -123,16 +122,22 @@ target_link_libraries(gdal PRIVATE
   GEOS::geos_c
   CURL::libcurl
   expat::expat
-  SQLite3::SQLite3
-  hdf5::hdf5
   netCDF::netcdf
   openjp2
-  libaec::aec
   muparser::muparser
 )
 
 if(WIN32)
-  target_link_libraries(gdal PRIVATE secur32 odbccp32 odbc32 crypt32 ws2_32 advapi32 wbemuuid Shlwapi)
+  target_link_libraries(gdal PRIVATE
+    hdf5::hdf5-shared
+    libaec::aec-shared
+    secur32 odbccp32 odbc32 crypt32 ws2_32 advapi32 wbemuuid Shlwapi
+  )
+else()
+  target_link_libraries(gdal PRIVATE
+    hdf5::hdf5
+    libaec::aec
+  )
 endif()
 
 if(APPLE)
