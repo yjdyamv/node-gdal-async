@@ -121,13 +121,13 @@ target_link_libraries(gdal PRIVATE
   GDAL::GDAL
   PROJ::proj
   GEOS::geos_c
-  CURL::libcurl_shared
+  CURL::libcurl
   expat::expat
   SQLite3::SQLite3
-  hdf5::hdf5-shared
+  hdf5::hdf5
   netCDF::netcdf
   openjp2
-  libaec::aec-shared
+  libaec::aec
   muparser::muparser
 )
 
