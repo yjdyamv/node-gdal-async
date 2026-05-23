@@ -41,6 +41,8 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
+    - name: Install build tools
+      run: brew install autoconf automake libtool ninja
     - name: Setup vcpkg
       run: |
         VCPKG_ROOT="$HOME/vcpkg"

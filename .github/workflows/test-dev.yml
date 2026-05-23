@@ -54,6 +54,8 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
+    - name: Install build tools
+      run: brew install autoconf automake libtool ninja
     - name: Restore vcpkg cache
       uses: actions/cache@v4
       with:
