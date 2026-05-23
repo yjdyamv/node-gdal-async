@@ -91,8 +91,8 @@ jobs:
       id: baseline
       shell: pwsh
       run: |
-        $v = (node -p "require('./vcpkg.json')['builtin-baseline']")
-        "value=$v" >> $env:GITHUB_OUTPUT
+        $v = (node -p "require('./vcpkg.json')['builtin-baseline']").Trim()
+        "value=$v" | Add-Content -Path $env:GITHUB_OUTPUT
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
@@ -100,7 +100,7 @@ jobs:
     - run: npm install --ignore-scripts
     - name: Build
       shell: pwsh
-      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
     - name: Package binary
       shell: bash

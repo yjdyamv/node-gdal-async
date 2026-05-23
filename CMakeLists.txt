@@ -127,17 +127,21 @@ target_link_libraries(gdal PRIVATE
   muparser::muparser
 )
 
-if(WIN32)
-  target_link_libraries(gdal PRIVATE
-    hdf5::hdf5-shared
-    libaec::aec-shared
-    secur32 odbccp32 odbc32 crypt32 ws2_32 advapi32 wbemuuid Shlwapi
-  )
-else()
+# Linux static triplet uses different target names (no -shared suffix)
+if(NOT WIN32 AND NOT APPLE)
   target_link_libraries(gdal PRIVATE
     hdf5::hdf5
     libaec::aec
   )
+else()
+  target_link_libraries(gdal PRIVATE
+    hdf5::hdf5-shared
+    libaec::aec-shared
+  )
+endif()
+
+if(WIN32)
+  target_link_libraries(gdal PRIVATE secur32 odbccp32 odbc32 crypt32 ws2_32 advapi32 wbemuuid Shlwapi)
 endif()
 
 if(APPLE)
