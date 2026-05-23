@@ -5,27 +5,27 @@ on: workflow_dispatch
 jobs:
   publish_linux:
     runs-on: ubuntu-24.04
-
     steps:
     - uses: actions/checkout@v6
     - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
-    - name: Setup Conan
+    - name: Install Ninja
+      run: sudo apt-get install -y ninja-build
+    - name: Setup vcpkg
       run: |
-        pip install conan
-        conan profile detect
-    - name: Install Conan dependencies
-      run: conan install . -of=conan/install --build=missing
+        VCPKG_ROOT="$HOME/vcpkg"
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+        VCPKG_BASELINE=$(node -p "require('./vcpkg.json')['builtin-baseline']")
+        if [ ! -d "$VCPKG_ROOT/.git" ]; then
+          git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+        fi
+        cd "$VCPKG_ROOT" && git fetch --quiet && git checkout "$VCPKG_BASELINE"
+        cd "$VCPKG_ROOT" && [ -f vcpkg ] || ./bootstrap-vcpkg.sh -disableMetrics
     - run: npm install --ignore-scripts
     - name: Build
-      run: npx cmake-js compile -j max
-      env:
-        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
     - name: Package binary
       run: npx @mapbox/node-pre-gyp package
@@ -38,27 +38,25 @@ jobs:
 
   publish_macos:
     runs-on: macos-15
-
     steps:
     - uses: actions/checkout@v6
     - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
-    - name: Setup Conan
+    - name: Setup vcpkg
       run: |
-        pip install conan
-        conan profile detect
-    - name: Install Conan dependencies
-      run: conan install . -of=conan/install --build=missing
+        VCPKG_ROOT="$HOME/vcpkg"
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+        VCPKG_BASELINE=$(node -p "require('./vcpkg.json')['builtin-baseline']")
+        if [ ! -d "$VCPKG_ROOT/.git" ]; then
+          git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+        fi
+        cd "$VCPKG_ROOT" && git fetch --quiet && git checkout "$VCPKG_BASELINE"
+        cd "$VCPKG_ROOT" && [ -f vcpkg ] || ./bootstrap-vcpkg.sh -disableMetrics
     - run: npm install --ignore-scripts
     - name: Build
-      run: npx cmake-js compile -j max
-      env:
-        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
     - name: Package binary
       run: npx @mapbox/node-pre-gyp package
@@ -71,31 +69,33 @@ jobs:
 
   publish_windows:
     runs-on: windows-2022
-
     steps:
     - uses: actions/checkout@v6
     - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
-    - name: Setup Conan
+    - name: Setup vcpkg
+      shell: pwsh
       run: |
-        pip install conan
-        conan profile detect
-    - name: Install Conan dependencies
-      run: conan install . -of=conan/install --build=missing
+        $VCPKG_ROOT = "$env:USERPROFILE\vcpkg"
+        "VCPKG_ROOT=$VCPKG_ROOT" >> $env:GITHUB_ENV
+        $VCPKG_BASELINE = (node -p "require('./vcpkg.json')['builtin-baseline']")
+        if (!(Test-Path "$VCPKG_ROOT\.git")) {
+          git clone --quiet https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+        }
+        cd $VCPKG_ROOT; git fetch --quiet; git checkout $VCPKG_BASELINE
+        if (!(Test-Path vcpkg.exe)) { .\bootstrap-vcpkg.bat -disableMetrics }
     - run: npm install --ignore-scripts
     - name: Build
-      run: npx cmake-js compile -j max
-      env:
-        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
+      shell: pwsh
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
     - run: npm test
     - name: Package binary
+      shell: pwsh
       run: npx @mapbox/node-pre-gyp package
     - name: Publish to GitHub Release
+      shell: pwsh
       run: |
         $VERSION = (node -p "require('./package.json').version")
         gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
