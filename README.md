@@ -11,8 +11,8 @@ Read and write raster and vector geospatial datasets straight from [Node.js](htt
 
 Key differences from upstream:
 - **N-API** — ABI-stable across Node versions, no NAN dependency
-- **Conan** — C++ dependency management via Conan 2.x
-- **Node 24+** — targets modern Node.js LTS
+- **vcpkg** — C++ dependency management via vcpkg
+- **Node 18+** — supports all active LTS versions
 
 ---
 
@@ -30,7 +30,7 @@ To build from source:
 npm install @yjdyamv/gdal-async --build-from-source
 ```
 
-Requires [Conan](https://conan.io/) 2.x and CMake.
+Requires [vcpkg](https://vcpkg.io/) and CMake.
 
 ---
 

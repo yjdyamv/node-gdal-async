@@ -171,7 +171,7 @@ execute_process(
 )
 set(BINDING_DIR "lib/binding/${NODE_PLATFORM}-${NODE_ARCH}")
 
-# Collect shared libs (vcpkg or Conan)
+# Collect shared libs from vcpkg
 set(RUNTIME_LIBS "")
 if(DEFINED VCPKG_INSTALLED_DIR)
   if(WIN32)
@@ -182,19 +182,6 @@ if(DEFINED VCPKG_INSTALLED_DIR)
     file(GLOB VCPKG_RUNTIME_LIBS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/*.so")
   endif()
   list(APPEND RUNTIME_LIBS ${VCPKG_RUNTIME_LIBS})
-elseif(DEFINED CONAN_RUNTIME_LIB_DIRS)
-  foreach(dir ${CONAN_RUNTIME_LIB_DIRS})
-    if(EXISTS "${dir}")
-      if(WIN32)
-        file(GLOB LIBS "${dir}/*.dll")
-      elseif(APPLE)
-        file(GLOB LIBS "${dir}/*.dylib")
-      else()
-        file(GLOB LIBS "${dir}/*.so")
-      endif()
-      list(APPEND RUNTIME_LIBS ${LIBS})
-    endif()
-  endforeach()
 endif()
 
 add_custom_command(TARGET gdal POST_BUILD
@@ -213,16 +200,16 @@ if(RUNTIME_COUNT GREATER 0)
   )
 endif()
 
-# RPATH for non-Windows platforms so .node finds .so/.dylib relative to itself
+# RPATH: .node finds .so/.dylib relative to itself at runtime
 if(APPLE)
   set_target_properties(gdal PROPERTIES
     INSTALL_RPATH "@loader_path"
-    BUILD_RPATH "${CONAN_RUNTIME_LIB_DIRS}"
+    BUILD_RPATH "@loader_path"
   )
 elseif(NOT WIN32)
   set_target_properties(gdal PROPERTIES
     INSTALL_RPATH "$ORIGIN"
-    BUILD_RPATH "${CONAN_RUNTIME_LIB_DIRS}"
+    BUILD_RPATH "$ORIGIN"
   )
 endif()
 

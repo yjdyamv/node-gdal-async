@@ -62,9 +62,15 @@ function findVcpkgToolchain() {
     if (fs.existsSync(candidate)) return candidate
   }
   // Common vcpkg install locations
+  const home = process.env.HOME || process.env.USERPROFILE || '.'
   const candidates = [
     path.resolve('D:/vcpkg/scripts/buildsystems/vcpkg.cmake'),
+    path.resolve(path.join(home, 'vcpkg', 'scripts', 'buildsystems', 'vcpkg.cmake')),
+    path.resolve('./vcpkg/scripts/buildsystems/vcpkg.cmake'),
   ]
+  if (process.env.LOCALAPPDATA) {
+    candidates.push(path.resolve(path.join(process.env.LOCALAPPDATA, 'vcpkg', 'scripts', 'buildsystems', 'vcpkg.cmake')))
+  }
   for (const c of candidates) {
     if (fs.existsSync(c)) return c
   }

@@ -23,7 +23,7 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgGitCommitId: ${{ steps.baseline.outputs.value }}
-    - run: npm install --ignore-scripts
+    - run: npm install
     - name: Build
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
@@ -47,7 +47,7 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgGitCommitId: ${{ steps.baseline.outputs.value }}
-    - run: npm install --ignore-scripts
+    - run: npm install
     - name: Build
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
@@ -72,7 +72,7 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgGitCommitId: ${{ steps.baseline.outputs.value }}
-    - run: npm install --ignore-scripts
+    - run: npm install
     - name: Build
       shell: pwsh
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
