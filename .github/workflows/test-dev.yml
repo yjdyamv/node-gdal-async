@@ -11,140 +11,108 @@ on:
 
 jobs:
   test_linux:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        linux-version: [ ubuntu:22.04, ubuntu:24.04, debian:bookworm, fedora:42 ]
-
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v6
     - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2
+    - name: Install Ninja
+      run: sudo apt-get install -y ninja-build
+    - name: Restore vcpkg cache
+      uses: actions/cache@v4
       with:
-        max-size: 1000M
-        key: distros-${{ matrix.linux-version }}
-    - run: npm run container dev ${{ matrix.linux-version }} 24 shared
+        path: ~/vcpkg
+        key: vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: vcpkg-
+    - name: Setup vcpkg
+      run: |
+        VCPKG_ROOT="$HOME/vcpkg"
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+        VCPKG_BASELINE=$(node -p "require('./vcpkg.json')['builtin-baseline']")
+        if [ -d "$VCPKG_ROOT/.git" ]; then
+          cd "$VCPKG_ROOT" && git fetch --quiet && git checkout "$VCPKG_BASELINE"
+        else
+          git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          cd "$VCPKG_ROOT" && git checkout "$VCPKG_BASELINE"
+        fi
+        cd "$VCPKG_ROOT" && [ -f vcpkg ] || ./bootstrap-vcpkg.sh -disableMetrics
+    - run: npm install --ignore-scripts
+    - name: Build
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+    - name: Run tests
+      run: npm test
       env:
         MOCHA_TEST_NETWORK: 1
 
   test_macos:
-    runs-on: ${{ matrix.macos-version }}
-    strategy:
-      fail-fast: false
-      matrix:
-        macos-version: [ macos-14, macos-15 ]
-
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v6
     - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
-    - name: Restore Conan cache
+    - name: Restore vcpkg cache
       uses: actions/cache@v4
       with:
-        path: ~/.conan2
-        key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-        restore-keys: conan-${{ runner.os }}-
-    - name: Setup Conan
+        path: ~/vcpkg
+        key: vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: vcpkg-
+    - name: Setup vcpkg
       run: |
-        pip install conan
-        conan profile detect
-    - name: Install Conan dependencies
-      run: conan install . -of=conan/install --build=missing
+        VCPKG_ROOT="$HOME/vcpkg"
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+        VCPKG_BASELINE=$(node -p "require('./vcpkg.json')['builtin-baseline']")
+        if [ -d "$VCPKG_ROOT/.git" ]; then
+          cd "$VCPKG_ROOT" && git fetch --quiet && git checkout "$VCPKG_BASELINE"
+        else
+          git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          cd "$VCPKG_ROOT" && git checkout "$VCPKG_BASELINE"
+        fi
+        cd "$VCPKG_ROOT" && [ -f vcpkg ] || ./bootstrap-vcpkg.sh -disableMetrics
     - run: npm install --ignore-scripts
     - name: Build
-      run: npx cmake-js compile -j max
-      env:
-        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
-    - name: Run unit tests
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+    - name: Run tests
       run: npm test
       env:
         MOCHA_TEST_NETWORK: 1
 
   test_windows:
     runs-on: windows-2022
-
     steps:
     - uses: actions/checkout@v6
     - name: Use Node.js 24.x
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
-    - name: Restore Conan cache
+    - name: Restore vcpkg cache
       uses: actions/cache@v4
       with:
-        path: ~/.conan2
-        key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-        restore-keys: conan-${{ runner.os }}-
-    - name: Setup Conan
+        path: ~/vcpkg
+        key: vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: vcpkg-
+    - name: Setup vcpkg
+      shell: pwsh
       run: |
-        pip install conan
-        conan profile detect
-    - name: Install Conan dependencies
-      run: conan install . -of=conan/install --build=missing
+        $VCPKG_ROOT = "$env:USERPROFILE\vcpkg"
+        "VCPKG_ROOT=$VCPKG_ROOT" >> $env:GITHUB_ENV
+        $VCPKG_BASELINE = (node -p "require('./vcpkg.json')['builtin-baseline']")
+        if (Test-Path "$VCPKG_ROOT\.git") {
+          cd $VCPKG_ROOT; git fetch --quiet; git checkout $VCPKG_BASELINE
+        } else {
+          git clone --quiet https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          cd $VCPKG_ROOT; git checkout $VCPKG_BASELINE
+        }
+        cd $VCPKG_ROOT
+        if (!(Test-Path vcpkg.exe)) { .\bootstrap-vcpkg.bat -disableMetrics }
     - run: npm install --ignore-scripts
     - name: Build
-      run: npx cmake-js compile -j max
-      env:
-        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
-    - name: Run unit tests
+      shell: pwsh
+      run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+    - name: Run tests
       run: npm test
       env:
         MOCHA_TEST_NETWORK: 1
-
-  coverage:
-    runs-on: ubuntu-22.04
-
-    steps:
-    - uses: actions/checkout@v6
-    - name: Use Node.js 24.x
-      uses: actions/setup-node@v6
-      with:
-        node-version: 24.x
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        max-size: 1000M
-        key: coverage
-    - name: Restore Conan cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.conan2
-        key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-        restore-keys: conan-${{ runner.os }}-
-    - name: Setup Conan
-      run: |
-        pip install conan
-        conan profile detect
-    - name: Install Conan dependencies
-      run: conan install . -of=conan/install --build=missing
-    - run: npm install --ignore-scripts
-    - name: Build
-      run: npx cmake-js compile --debug --CDENABLE_COVERAGE=ON -j max
-      env:
-        CXX: ccache g++
-        CC: ccache gcc
-        CMAKE_TOOLCHAIN_FILE: conan/install/conan_toolchain.cmake
-    - name: Run unit tests
-      run: npx c8 npm test
-      env:
-        MOCHA_TEST_NETWORK: 1
-    - name: Collect code coverage
-      run: |
-        npm run gcov
-        npm run lcov
-    - run: npm run codecov
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
