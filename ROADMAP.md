@@ -1,5 +1,17 @@
-- Find a way to keep the dependency source code out of the repository to reduce noise
-- Switch to cmake.js
-- ~~Switch from nan to N-API~~ ✅ (hybrid nan+N-API, module init switched)
-- Support aborting of GDAL operations (that allow it) through the AbortController (Node.js >= 15)
-- Support `worker_threads` (almost automatic with N-API)
+## Completed
+
+- [x] ~~Switch from nan to N-API~~ — complete ABI-stable migration, zero NAN deps
+- [x] ~~Switch to cmake-js~~ — already there
+- [x] ~~Dependency management~~ — Conan → vcpkg, no bundled source in repo
+
+## Now (v3.12.1)
+
+- [ ] CI all-green on Linux/macOS/Windows
+- [ ] Publish prebuilt binaries via GitHub Releases
+- [ ] Publish `@yjdyamv/gdal-async` to npm
+
+## Next
+
+- [ ] Support aborting GDAL operations via AbortController (Node >= 15)
+- [ ] `worker_threads` support (mostly automatic with N-API)
+- [ ] Static linking for single .node artifact (Windows & macOS)
