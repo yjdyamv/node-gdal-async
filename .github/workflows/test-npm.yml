@@ -20,9 +20,6 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
     - uses: actions/checkout@v6
     - run: npm install
     - name: Install from npm
@@ -45,9 +42,6 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.11"
     - uses: actions/checkout@v6
     - run: npm install
     - name: Rebuild from source
