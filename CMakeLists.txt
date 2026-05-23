@@ -53,15 +53,7 @@ endif()
 
 # --- Dependencies ---
 find_package(GDAL CONFIG REQUIRED)
-find_package(PROJ CONFIG REQUIRED)
-find_package(GEOS CONFIG REQUIRED)
-find_package(CURL CONFIG REQUIRED)
-find_package(expat CONFIG REQUIRED)
-find_package(hdf5 CONFIG REQUIRED)
-find_package(netCDF CONFIG REQUIRED)
-find_package(OpenJPEG REQUIRED)
-find_package(libaec CONFIG REQUIRED)
-find_package(muparser CONFIG REQUIRED)
+find_package(muparser CONFIG REQUIRED)  # our algebra module uses muparser directly
 
 # --- Sources ---
 # All NAN .cpp files replaced by *_napi.cpp equivalents
@@ -118,27 +110,8 @@ set_target_properties(gdal PROPERTIES
 
 target_link_libraries(gdal PRIVATE
   GDAL::GDAL
-  PROJ::proj
-  GEOS::geos_c
-  CURL::libcurl
-  expat::expat
-  netCDF::netcdf
-  openjp2
   muparser::muparser
 )
-
-# Linux static triplet uses different target names (no -shared suffix)
-if(NOT WIN32 AND NOT APPLE)
-  target_link_libraries(gdal PRIVATE
-    hdf5::hdf5
-    libaec::aec
-  )
-else()
-  target_link_libraries(gdal PRIVATE
-    hdf5::hdf5-shared
-    libaec::aec-shared
-  )
-endif()
 
 if(WIN32)
   target_link_libraries(gdal PRIVATE secur32 odbccp32 odbc32 crypt32 ws2_32 advapi32 wbemuuid Shlwapi)

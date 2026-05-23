@@ -21,39 +21,7 @@
       ]
     },
     {
-      "name": "proj",
-      "default-features": true
-    },
-    {
-      "name": "geos",
-      "default-features": false
-    },
-    {
       "name": "muparser",
-      "default-features": true
-    },
-    {
-      "name": "libaec",
-      "default-features": true
-    },
-    {
-      "name": "openjpeg",
-      "default-features": true
-    },
-    {
-      "name": "expat",
-      "default-features": true
-    },
-    {
-      "name": "curl",
-      "default-features": true
-    },
-    {
-      "name": "sqlite3",
-      "default-features": true
-    },
-    {
-      "name": "netcdf-c",
       "default-features": true
     }
   ],
