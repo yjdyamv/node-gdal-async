@@ -18,26 +18,15 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - name: Install build tools
+    - name: Install system deps
       run: sudo apt-get install -y build-essential autoconf autoconf-archive automake libtool ninja-build
-    - name: Restore vcpkg cache
-      uses: actions/cache@v4
-      with:
-        path: ~/vcpkg
-        key: vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-
+    - name: Get vcpkg baseline
+      id: baseline
+      run: echo "value=$(node -p "require('./vcpkg.json')['builtin-baseline']")" >> "$GITHUB_OUTPUT"
     - name: Setup vcpkg
-      run: |
-        VCPKG_ROOT="$HOME/vcpkg"
-        echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
-        VCPKG_BASELINE=$(node -p "require('./vcpkg.json')['builtin-baseline']")
-        if [ -d "$VCPKG_ROOT/.git" ]; then
-          cd "$VCPKG_ROOT" && git fetch --quiet && git checkout "$VCPKG_BASELINE"
-        else
-          git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
-          cd "$VCPKG_ROOT" && git checkout "$VCPKG_BASELINE"
-        fi
-        cd "$VCPKG_ROOT" && [ -f vcpkg ] || ./bootstrap-vcpkg.sh -disableMetrics
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: ${{ steps.baseline.outputs.value }}
     - run: npm install --ignore-scripts
     - name: Build
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
@@ -54,26 +43,15 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - name: Install build tools
+    - name: Install system deps
       run: brew install autoconf automake libtool ninja
-    - name: Restore vcpkg cache
-      uses: actions/cache@v4
-      with:
-        path: ~/vcpkg
-        key: vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-
+    - name: Get vcpkg baseline
+      id: baseline
+      run: echo "value=$(node -p "require('./vcpkg.json')['builtin-baseline']")" >> "$GITHUB_OUTPUT"
     - name: Setup vcpkg
-      run: |
-        VCPKG_ROOT="$HOME/vcpkg"
-        echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
-        VCPKG_BASELINE=$(node -p "require('./vcpkg.json')['builtin-baseline']")
-        if [ -d "$VCPKG_ROOT/.git" ]; then
-          cd "$VCPKG_ROOT" && git fetch --quiet && git checkout "$VCPKG_BASELINE"
-        else
-          git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
-          cd "$VCPKG_ROOT" && git checkout "$VCPKG_BASELINE"
-        fi
-        cd "$VCPKG_ROOT" && [ -f vcpkg ] || ./bootstrap-vcpkg.sh -disableMetrics
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: ${{ steps.baseline.outputs.value }}
     - run: npm install --ignore-scripts
     - name: Build
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
@@ -90,28 +68,16 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
-    - name: Install Ninja
-      run: pip install ninja
-    - name: Restore vcpkg cache
-      uses: actions/cache@v4
-      with:
-        path: ~/vcpkg
-        key: vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-
-    - name: Setup vcpkg
+    - name: Get vcpkg baseline
+      id: baseline
       shell: pwsh
       run: |
-        $VCPKG_ROOT = "$env:USERPROFILE\vcpkg"
-        "VCPKG_ROOT=$VCPKG_ROOT" >> $env:GITHUB_ENV
-        $VCPKG_BASELINE = (node -p "require('./vcpkg.json')['builtin-baseline']")
-        if (Test-Path "$VCPKG_ROOT\.git") {
-          cd $VCPKG_ROOT; git fetch --quiet; git checkout $VCPKG_BASELINE
-        } else {
-          git clone --quiet https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
-          cd $VCPKG_ROOT; git checkout $VCPKG_BASELINE
-        }
-        cd $VCPKG_ROOT
-        if (!(Test-Path vcpkg.exe)) { .\bootstrap-vcpkg.bat -disableMetrics }
+        $v = (node -p "require('./vcpkg.json')['builtin-baseline']")
+        "value=$v" >> $env:GITHUB_OUTPUT
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: ${{ steps.baseline.outputs.value }}
     - run: npm install --ignore-scripts
     - name: Build
       shell: pwsh
