@@ -113,10 +113,6 @@ target_link_libraries(gdal PRIVATE
   muparser::muparser
 )
 
-if(WIN32)
-  target_link_libraries(gdal PRIVATE secur32 odbccp32 odbc32 crypt32 ws2_32 advapi32 wbemuuid Shlwapi)
-endif()
-
 if(APPLE)
   target_link_libraries(gdal PRIVATE "-framework Security")
   set_target_properties(gdal PROPERTIES
