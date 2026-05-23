@@ -28,11 +28,20 @@ jobs:
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
     - name: Package binary
-      run: npx @mapbox/node-pre-gyp package
+      run: |
+        PLATFORM=$(node -p "process.platform")
+        ARCH=$(node -p "process.arch")
+        BINDING_DIR="lib/binding/${PLATFORM}-${ARCH}"
+        VERSION=$(node -p "require('./package.json').version")
+        TARBALL="${PLATFORM}-${ARCH}.tar.gz"
+        tar -czf "$TARBALL" -C "$BINDING_DIR" .
+        mkdir -p build/stage
+        mv "$TARBALL" build/stage/
+        echo "Packaged: build/stage/$TARBALL"
     - name: Publish to GitHub Release
       run: |
         VERSION=$(node -p "require('./package.json').version")
-        gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
+        gh release upload "v$VERSION" build/stage/*.tar.gz --clobber
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -59,11 +68,20 @@ jobs:
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
     - run: npm test
     - name: Package binary
-      run: npx @mapbox/node-pre-gyp package
+      run: |
+        PLATFORM=$(node -p "process.platform")
+        ARCH=$(node -p "process.arch")
+        BINDING_DIR="lib/binding/${PLATFORM}-${ARCH}"
+        VERSION=$(node -p "require('./package.json').version")
+        TARBALL="${PLATFORM}-${ARCH}.tar.gz"
+        tar -czf "$TARBALL" -C "$BINDING_DIR" .
+        mkdir -p build/stage
+        mv "$TARBALL" build/stage/
+        echo "Packaged: build/stage/$TARBALL"
     - name: Publish to GitHub Release
       run: |
         VERSION=$(node -p "require('./package.json').version")
-        gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
+        gh release upload "v$VERSION" build/stage/*.tar.gz --clobber
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -92,12 +110,21 @@ jobs:
       run: npx cmake-js compile -j max --CDCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
     - run: npm test
     - name: Package binary
-      shell: pwsh
-      run: npx @mapbox/node-pre-gyp package
+      shell: bash
+      run: |
+        PLATFORM=$(node -p "process.platform")
+        ARCH=$(node -p "process.arch")
+        BINDING_DIR="lib/binding/${PLATFORM}-${ARCH}"
+        VERSION=$(node -p "require('./package.json').version")
+        TARBALL="${PLATFORM}-${ARCH}.tar.gz"
+        tar -czf "$TARBALL" -C "$BINDING_DIR" .
+        mkdir -p build/stage
+        mv "$TARBALL" build/stage/
+        echo "Packaged: build/stage/$TARBALL"
     - name: Publish to GitHub Release
       shell: pwsh
       run: |
         $VERSION = (node -p "require('./package.json').version")
-        gh release upload "v$VERSION" build/stage/**/*.tar.gz --clobber
+        gh release upload "v$VERSION" build/stage/*.tar.gz --clobber
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
