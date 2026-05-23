@@ -58,8 +58,7 @@ find_package(GEOS CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
 find_package(SQLite3 REQUIRED)
-# HDF5 disabled due to GDAL 3.12.1 Conan recipe incompatibility
-# find_package(HDF5 REQUIRED)
+find_package(hdf5 CONFIG REQUIRED)
 find_package(netCDF CONFIG REQUIRED)
 find_package(OpenJPEG REQUIRED)
 find_package(libaec CONFIG REQUIRED)
@@ -125,7 +124,7 @@ target_link_libraries(gdal PRIVATE
   CURL::libcurl_shared
   expat::expat
   SQLite3::SQLite3
-  # HDF5::HDF5
+  hdf5::hdf5-shared
   netCDF::netcdf
   openjp2
   libaec::aec-shared
