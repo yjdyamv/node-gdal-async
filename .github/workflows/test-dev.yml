@@ -88,6 +88,8 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: 24.x
+    - name: Install Ninja
+      run: pip install ninja
     - name: Restore vcpkg cache
       uses: actions/cache@v4
       with:
