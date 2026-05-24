@@ -33,7 +33,6 @@ deps/libnetcdf/netcdf*.tar.gz
 deps/libaec/libaec*.tar.gz
 deps/muparser/muparser*.tar.gz
 lib/binding
-lib/index.d.ts
 doc
 /coverage
 yarn.lock
