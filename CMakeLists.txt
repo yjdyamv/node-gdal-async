@@ -149,7 +149,7 @@ else()
   target_compile_options(gdal PRIVATE -Wall -Wextra -Wpedantic -Wno-cast-function-type-mismatch)
   # Allow multiply-defined symbols for static libs that overlap with node's exports
   if(APPLE)
-    target_link_options(gdal PRIVATE -Wl,-force_multiple)
+    target_link_options(gdal PRIVATE -Wl,-multiply_defined,suppress)
   else()
     target_link_options(gdal PRIVATE -Wl,--allow-multiple-definition)
   endif()
