@@ -208,7 +208,7 @@ NAN_METHOD(LineStringPoints::set) {
       Napi::String z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
       if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
         Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
-        if (!z_val->IsNumber()) {
+        if (!z_val.IsNumber()) {
           Napi::Error::New(node_gdal::napi_env(), "z property must be number").ThrowAsJavaScriptException();
           return node_gdal::napi_env().Undefined();
         }
@@ -298,10 +298,10 @@ NAN_METHOD(LineStringPoints::add) {
     } else if (info[0].IsArray()) {
       // set from array of points
       Napi::Array array = info[0].As<Napi::Array>();
-      int length = array->Length();
+      int length = array.Length();
       for (int i = 0; i < length; i++) {
         Napi::Value element = array.As<Napi::Object>().Get(i);
-        if (!element->IsObject()) {
+        if (!element.IsObject()) {
           Napi::Error::New(node_gdal::napi_env(), "All points must be Point objects or objects").ThrowAsJavaScriptException();
           return node_gdal::napi_env().Undefined();
         }
@@ -319,7 +319,7 @@ NAN_METHOD(LineStringPoints::add) {
           Napi::String z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
           if (element_obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
             Napi::Value z_val = element_obj.As<Napi::Object>().Get(z_prop_name);
-            if (!z_val->IsNumber()) {
+            if (!z_val.IsNumber()) {
               Napi::Error::New(node_gdal::napi_env(), "z property must be number").ThrowAsJavaScriptException();
               return node_gdal::napi_env().Undefined();
             }
@@ -339,7 +339,7 @@ NAN_METHOD(LineStringPoints::add) {
       Napi::String z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
       if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
         Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
-        if (!z_val->IsNumber()) {
+        if (!z_val.IsNumber()) {
           Napi::Error::New(node_gdal::napi_env(), "z property must be number").ThrowAsJavaScriptException();
           return node_gdal::napi_env().Undefined();
         }

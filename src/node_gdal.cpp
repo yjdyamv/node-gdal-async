@@ -346,7 +346,7 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
   static bool initialized = false;
   if (initialized) {
     Napi::Error::New(env, "gdal-async does not yet support multiple instances per V8 isolate").ThrowAsJavaScriptException();
-    return env.Undefined();
+    return target;
   }
   initialized = true;
   mainV8ThreadId = std::this_thread::get_id();

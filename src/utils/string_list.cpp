@@ -22,20 +22,20 @@ int StringList::parse(Napi::Value value) {
     list = new char *[array.Length() + 1];
     strlist = new std::string[array.Length()];
     for (i = 0; i < array.Length(); ++i) {
-      strlist[i] = array.As<Napi::Object>().Get(i);
+      strlist[i] = array.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value();
       list[i] = (char *)strlist[i].c_str();
     }
     list[i] = NULL;
   } else if (value.IsObject()) {
     Napi::Object obj = value.As<Napi::Object>();
-    Napi::Array keys = Nan::GetOwnPropertyNames(obj);
+    Napi::Array keys = obj.GetPropertyNames();
     if (keys.Length() == 0) return 0;
 
     list = new char *[keys.Length() + 1];
     strlist = new std::string[keys.Length()];
     for (i = 0; i < keys.Length(); ++i) {
-      std::string key = keys.As<Napi::Object>().Get(i);
-      std::string val = obj.As<Napi::Object>().Get(keys.As<Napi::Object>().Get(i));
+      std::string key = keys.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value();
+      std::string val = obj.As<Napi::Object>().Get(keys.As<Napi::Object>().Get(i)).As<Napi::String>().Utf8Value();
       strlist[i] = key + "=" + val;
       list[i] = (char *)strlist[i].c_str();
     }

@@ -124,7 +124,7 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "src"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "src"));
-    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env(), Dataset::constructor)->HasInstance(prop)) {
+    if (prop.IsObject() && !prop.IsNull() && prop.As<Napi::Object>().InstanceOf(Dataset::constructor.Value())) {
       this->src_obj = prop.As<Napi::Object>();
       this->src = node_gdal::UnwrapWrapped<Dataset>(this->src_obj);
 #if GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR < 3
@@ -146,7 +146,7 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "dst"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "dst"));
-    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env(), Dataset::constructor)->HasInstance(prop)) {
+    if (prop.IsObject() && !prop.IsNull() && prop.As<Napi::Object>().InstanceOf(Dataset::constructor.Value())) {
       this->dst_obj = prop.As<Napi::Object>();
       this->dst = node_gdal::UnwrapWrapped<Dataset>(this->dst_obj);
 #if GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR < 3
@@ -213,9 +213,9 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "srcAlphaBand"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "srcAlphaBand"));
-    if (prop->IsNumber()) {
+    if (prop.IsNumber()) {
       options->nSrcAlphaBand = prop.As<Napi::Number>().Int32Value();
-    } else if (!prop->IsUndefined() && !prop->IsNull()) {
+    } else if (!prop.IsUndefined() && !prop.IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "srcAlphaBand property must be an integer").ThrowAsJavaScriptException();
       return 1;
     }

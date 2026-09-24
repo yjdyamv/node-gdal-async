@@ -37,10 +37,13 @@ RULES = [
     # value constructors
     (r"Nan::New<v8::String>\((.*?)\)\.ToLocalChecked\(\)", "Napi::String::New(%s, \\1)" % E),
     (r"Nan::New<Integer>\((.*?)\)", "Napi::Number::New(%s, \\1)" % E),
+    (r"Nan::New<String>\((.*?)\)", "Napi::String::New(%s, \\1)" % E),
     (r"Nan::New<Number>\((.*?)\)", "Napi::Number::New(%s, \\1)" % E),
     (r"Nan::New<Boolean>\((.*?)\)", "Napi::Boolean::New(%s, \\1)" % E),
     (r"Nan::New<Object>\(\)", "Napi::Object::New(%s)" % E),
     (r"Nan::New\((true|false)\)", "Napi::Boolean::New(%s, \\1)" % E),
+    (r"Nan::True\(\)", "Napi::Boolean::New(%s, true)" % E),
+    (r"Nan::False\(\)", "Napi::Boolean::New(%s, false)" % E),
     (r"Nan::New\((.*?)\)\.ToLocalChecked\(\)", "Napi::String::New(%s, \\1)" % E),
     (r"Nan::New\((.*?)\)", "Napi::Number::New(%s, \\1)" % E),
     (r"Nan::Undefined\(\)", "%s.Undefined()" % E),
