@@ -5,7 +5,7 @@
 #include <node.h>
 
 // nan
-#include "../nan-wrapper.h"
+#include "../gdal_common.hpp"
 
 using namespace v8;
 

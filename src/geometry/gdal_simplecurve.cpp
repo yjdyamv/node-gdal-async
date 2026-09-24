@@ -26,10 +26,8 @@ void SimpleCurve::Initialize(Napi::Object target) {
         ATTR(lcons, "points", pointsGetter, READ_ONLY_SETTER)
     });
 
-  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
-  Napi::Function base = Geometry::constructor.Value();
-  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
-  lcons.SetPrototypeOf(base);
+  // lcons->Inherit() has no DefineClass equivalent
+  node_gdal::Inherit(lcons, Geometry::constructor.Value());
 
   target.Set("SimpleCurve", lcons);
 
@@ -129,7 +127,7 @@ NAN_METHOD(SimpleCurve::addSubLineString) {
   int n = other->get()->getNumPoints();
 
   if (start < 0 || end < -1 || start >= n || end >= n) {
-    Nan::ThrowRangeError("Invalid start or end index for LineString");
+    Napi::RangeError::New(node_gdal::napi_env, "Invalid start or end index for LineString").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 

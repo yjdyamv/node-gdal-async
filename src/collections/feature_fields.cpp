@@ -81,9 +81,9 @@ inline bool setField(OGRFeature *f, int field_index, Napi::Value val) {
   if (val->IsInt32()) {
     f->SetField(field_index, Nan::To<int32_t>(val).ToChecked());
   } else if (val->IsNumber()) {
-    f->SetField(field_index, Nan::To<double>(val).ToChecked());
+    f->SetField(field_index, val.As<Napi::Number>().DoubleValue().ToChecked());
   } else if (val->IsString()) {
-    std::string str = *Nan::Utf8String(val);
+    std::string str = val.As<Napi::String>().Utf8Value();
     f->SetField(field_index, str.c_str());
   } else if (val->IsNull() || val->IsUndefined()) {
     f->UnsetField(field_index);

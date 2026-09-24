@@ -306,7 +306,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
     if (type_name.empty()) {
       auto exType = gdal_mdarray->GetDataType();
       if (exType.GetClass() != GEDTC_NUMERIC) {
-        Nan::ThrowTypeError("Reading of extended data types is not supported yet");
+        Napi::TypeError::New(node_gdal::napi_env, "Reading of extended data types is not supported yet").ThrowAsJavaScriptException();
         return node_gdal::napi_env.Undefined();
       }
       type = exType.GetNumericDataType();
@@ -320,7 +320,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
   }
 
   if (lowest < 0) {
-    Nan::ThrowRangeError("Will have to read before the start of the array");
+    Napi::RangeError::New(node_gdal::napi_env, "Will have to read before the start of the array").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 

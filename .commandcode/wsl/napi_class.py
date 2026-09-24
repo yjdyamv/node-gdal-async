@@ -175,10 +175,8 @@ for path in sys.argv[1:]:
     out += ["    });"]
     if base:
         out += ["",
-                "  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand",
-                "  Napi::Function base = %s::constructor.Value();" % base,
-                '  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());',
-                "  lcons.SetPrototypeOf(base);"]
+                "  // lcons->Inherit() has no DefineClass equivalent",
+                "  node_gdal::Inherit(lcons, %s::constructor.Value());" % base]
     if extra:
         out += [""] + extra
     out += ["", '  target.Set("%s", lcons);' % export_name, "",

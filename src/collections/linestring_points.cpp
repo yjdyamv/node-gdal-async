@@ -230,7 +230,7 @@ NAN_METHOD(LineStringPoints::set) {
           Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
           return node_gdal::napi_env.Undefined();
         }
-        geom->get()->setPoint(i, x, y, Nan::To<double>(z_val).ToChecked());
+        geom->get()->setPoint(i, x, y, z_val.As<Napi::Number>().DoubleValue().ToChecked());
       } else {
         geom->get()->setPoint(i, x, y);
       }
@@ -246,7 +246,7 @@ NAN_METHOD(LineStringPoints::set) {
       return node_gdal::napi_env.Undefined();
     }
     if (n == 2) {
-      geom->get()->setPoint(i, Nan::To<double>(info[1]).ToChecked(), Nan::To<double>(info[2]).ToChecked());
+      geom->get()->setPoint(i, info[1].As<Napi::Number>().DoubleValue().ToChecked(), info[2].As<Napi::Number>().DoubleValue().ToChecked());
     } else {
       if (!info[3].IsNumber()) {
         Napi::Error::New(node_gdal::napi_env, "Number expected for fourth argument").ThrowAsJavaScriptException();
@@ -255,9 +255,9 @@ NAN_METHOD(LineStringPoints::set) {
 
       geom->get()->setPoint(
         i,
-        Nan::To<double>(info[1]).ToChecked(),
-        Nan::To<double>(info[2]).ToChecked(),
-        Nan::To<double>(info[3]).ToChecked());
+        info[1].As<Napi::Number>().DoubleValue().ToChecked(),
+        info[2].As<Napi::Number>().DoubleValue().ToChecked(),
+        info[3].As<Napi::Number>().DoubleValue().ToChecked());
     }
   }
 
@@ -341,7 +341,7 @@ NAN_METHOD(LineStringPoints::add) {
               Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
               return node_gdal::napi_env.Undefined();
             }
-            geom->get()->addPoint(x, y, Nan::To<double>(z_val).ToChecked());
+            geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue().ToChecked());
           } else {
             geom->get()->addPoint(x, y);
           }
@@ -361,7 +361,7 @@ NAN_METHOD(LineStringPoints::add) {
           Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
           return node_gdal::napi_env.Undefined();
         }
-        geom->get()->addPoint(x, y, Nan::To<double>(z_val).ToChecked());
+        geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue().ToChecked());
       } else {
         geom->get()->addPoint(x, y);
       }
@@ -377,7 +377,7 @@ NAN_METHOD(LineStringPoints::add) {
       return node_gdal::napi_env.Undefined();
     }
     if (n == 2) {
-      geom->get()->addPoint(Nan::To<double>(info[0]).ToChecked(), Nan::To<double>(info[1]).ToChecked());
+      geom->get()->addPoint(info[0].As<Napi::Number>().DoubleValue().ToChecked(), info[1].As<Napi::Number>().DoubleValue().ToChecked());
     } else {
       if (!info[2].IsNumber()) {
         Napi::Error::New(node_gdal::napi_env, "Number expected for third argument").ThrowAsJavaScriptException();
@@ -385,9 +385,9 @@ NAN_METHOD(LineStringPoints::add) {
       }
 
       geom->get()->addPoint(
-        Nan::To<double>(info[0]).ToChecked(),
-        Nan::To<double>(info[1]).ToChecked(),
-        Nan::To<double>(info[2]).ToChecked());
+        info[0].As<Napi::Number>().DoubleValue().ToChecked(),
+        info[1].As<Napi::Number>().DoubleValue().ToChecked(),
+        info[2].As<Napi::Number>().DoubleValue().ToChecked());
     }
   }
 

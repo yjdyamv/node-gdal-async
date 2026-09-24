@@ -21,10 +21,8 @@ void Point::Initialize(Napi::Object target) {
         ATTR(lcons, "z", zGetter, zSetter)
     });
 
-  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
-  Napi::Function base = Geometry::constructor.Value();
-  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
-  lcons.SetPrototypeOf(base);
+  // lcons->Inherit() has no DefineClass equivalent
+  node_gdal::Inherit(lcons, Geometry::constructor.Value());
 
   // properties
 
@@ -103,9 +101,9 @@ NAN_SETTER(Point::xSetter) {
 
   if (!value->IsNumber()) {
     Napi::Error::New(node_gdal::napi_env, "y must be a number").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
-  double x = Nan::To<double>(value).ToChecked();
+  double x = value.As<Napi::Number>().DoubleValue().ToChecked();
 
   ((OGRPoint *)geom->this_)->setX(x);
 }
@@ -127,9 +125,9 @@ NAN_SETTER(Point::ySetter) {
 
   if (!value->IsNumber()) {
     Napi::Error::New(node_gdal::napi_env, "y must be a number").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
-  double y = Nan::To<double>(value).ToChecked();
+  double y = value.As<Napi::Number>().DoubleValue().ToChecked();
 
   ((OGRPoint *)geom->this_)->setY(y);
 }
@@ -151,9 +149,9 @@ NAN_SETTER(Point::zSetter) {
 
   if (!value->IsNumber()) {
     Napi::Error::New(node_gdal::napi_env, "z must be a number").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
-  double z = Nan::To<double>(value).ToChecked();
+  double z = value.As<Napi::Number>().DoubleValue().ToChecked();
 
   ((OGRPoint *)geom->this_)->setZ(z);
 }

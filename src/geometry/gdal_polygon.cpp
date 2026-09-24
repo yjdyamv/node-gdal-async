@@ -22,10 +22,8 @@ void Polygon::Initialize(Napi::Object target) {
         ATTR(lcons, "rings", ringsGetter, READ_ONLY_SETTER)
     });
 
-  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
-  Napi::Function base = Geometry::constructor.Value();
-  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
-  lcons.SetPrototypeOf(base);
+  // lcons->Inherit() has no DefineClass equivalent
+  node_gdal::Inherit(lcons, Geometry::constructor.Value());
 
   target.Set("Polygon", lcons);
 

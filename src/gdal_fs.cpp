@@ -166,9 +166,9 @@ GDAL_ASYNCABLE_DEFINE(VSI::stat) {
       result.Set( Napi::String::New(node_gdal::napi_env, "blocks"), node_gdal::napi_env.Undefined());
 #endif
 
-      result.Set( Napi::String::New(node_gdal::napi_env, "atime"), Nan::New<Date>(stat.st_atime * 1000).ToLocalChecked());
-      result.Set( Napi::String::New(node_gdal::napi_env, "mtime"), Nan::New<Date>(stat.st_mtime * 1000).ToLocalChecked());
-      result.Set( Napi::String::New(node_gdal::napi_env, "ctime"), Nan::New<Date>(stat.st_ctime * 1000).ToLocalChecked());
+      result.Set( Napi::String::New(node_gdal::napi_env, "atime"), Napi::Date::New(node_gdal::napi_env, stat.st_atime * 1000));
+      result.Set( Napi::String::New(node_gdal::napi_env, "mtime"), Napi::Date::New(node_gdal::napi_env, stat.st_mtime * 1000));
+      result.Set( Napi::String::New(node_gdal::napi_env, "ctime"), Napi::Date::New(node_gdal::napi_env, stat.st_ctime * 1000));
 
       return result;
     };
@@ -198,9 +198,9 @@ GDAL_ASYNCABLE_DEFINE(VSI::stat) {
       result.Set( Napi::String::New(node_gdal::napi_env, "blocks"), node_gdal::napi_env.Undefined());
 #endif
 
-      result.Set( Napi::String::New(node_gdal::napi_env, "atime"), Nan::New<Date>(stat.st_atime * 1000).ToLocalChecked());
-      result.Set( Napi::String::New(node_gdal::napi_env, "mtime"), Nan::New<Date>(stat.st_mtime * 1000).ToLocalChecked());
-      result.Set( Napi::String::New(node_gdal::napi_env, "ctime"), Nan::New<Date>(stat.st_ctime * 1000).ToLocalChecked());
+      result.Set( Napi::String::New(node_gdal::napi_env, "atime"), Napi::Date::New(node_gdal::napi_env, stat.st_atime * 1000));
+      result.Set( Napi::String::New(node_gdal::napi_env, "mtime"), Napi::Date::New(node_gdal::napi_env, stat.st_mtime * 1000));
+      result.Set( Napi::String::New(node_gdal::napi_env, "ctime"), Napi::Date::New(node_gdal::napi_env, stat.st_ctime * 1000));
 
       return result;
     };

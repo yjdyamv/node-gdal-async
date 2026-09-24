@@ -189,9 +189,9 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::contourGenerate) {
     prop = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "nodata")).ToLocalChecked();
     if (prop->IsNumber()) {
       use_nodata = 1;
-      nodata = Nan::To<double>(prop).ToChecked();
+      nodata = prop.As<Napi::Number>().DoubleValue().ToChecked();
     } else if (!prop->IsNull() && !prop->IsUndefined()) {
-      Nan::ThrowTypeError("nodata property must be a number");
+      Napi::TypeError::New(node_gdal::napi_env, "nodata property must be a number").ThrowAsJavaScriptException();
     }
   }
 
@@ -374,15 +374,15 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::checksumImage) {
   NODE_ARG_INT_OPT(4, "ySize", h);
 
   if (x < 0 || y < 0 || x >= bandw || y >= bandh) {
-    Nan::ThrowRangeError("offset invalid for given band");
+    Napi::RangeError::New(node_gdal::napi_env, "offset invalid for given band").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
   if (w < 0 || h < 0 || w > bandw || h > bandh) {
-    Nan::ThrowRangeError("x and y size must be smaller than band dimensions and greater than 0");
+    Napi::RangeError::New(node_gdal::napi_env, "x and y size must be smaller than band dimensions and greater than 0").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
   if (x + w - 1 >= bandw || y + h - 1 >= bandh) {
-    Nan::ThrowRangeError("given range is outside bounds of given band");
+    Napi::RangeError::New(node_gdal::napi_env, "given range is outside bounds of given band").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 
@@ -582,7 +582,7 @@ NAN_METHOD(Algorithms::addPixelFunc) {
   Nan::TypedArrayContents<uint64_t> magic(arg);
 
   if (magic.length() < 1 || **magic != NODE_GDAL_CAPI_MAGIC) {
-    Nan::ThrowTypeError("pixelFn must be a native code pixel function");
+    Napi::TypeError::New(node_gdal::napi_env, "pixelFn must be a native code pixel function").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 
@@ -666,7 +666,7 @@ static void callJSpfn(uv_async_t *async) {
   Nan::TryCatch try_catch;
   // async_hooks do not make any sense for pixel functions
   Nan::Call(*fn->fn, 5, args);
-  if (try_catch.HasCaught()) fn->call.err = new Nan::Utf8String(try_catch.Message()->Get());
+  if (try_catch.HasCaught()) fn->call.err = new try_catch.Message(.As<Napi::String>().Utf8Value()->Get());
 
   // unlock the worker thread (the function below)
   uv_sem_post(&fn->returnJS);

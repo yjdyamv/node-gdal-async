@@ -263,7 +263,7 @@ GDAL_ASYNCABLE_DEFINE(Warper::reprojectImage) {
     opts = options->get();
   }
   if (!opts->hDstDS) {
-    Nan::ThrowTypeError("dst Dataset must be provided");
+    Napi::TypeError::New(node_gdal::napi_env, "dst Dataset must be provided").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 
@@ -400,7 +400,7 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
         return node_gdal::napi_env.Undefined();
       }
     } else {
-      Nan::ThrowTypeError("src property must be a Dataset object");
+      Napi::TypeError::New(node_gdal::napi_env, "src property must be a Dataset object").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
   } else {

@@ -128,7 +128,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
   GDALAsyncableJob<OGRLayer *> job(ds->uid);
   job.persist(parent);
   if (info[0].IsString()) {
-    std::string *layer_name = new std::string(*Nan::Utf8String(info[0]));
+    std::string *layer_name = new std::string(info[0].As<Napi::String>().Utf8Value());
     job.main = [raw, layer_name](const GDALExecutionProgress &) {
       std::unique_ptr<std::string> layer_name_ptr(layer_name);
       CPLErrorReset();
@@ -145,7 +145,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
       return lyr;
     };
   } else {
-    Nan::ThrowTypeError("method must be given integer or string");
+    Napi::TypeError::New(node_gdal::napi_env, "method must be given integer or string").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 

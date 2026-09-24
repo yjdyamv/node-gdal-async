@@ -23,10 +23,8 @@ void LinearRing::Initialize(Napi::Object target) {
         METHOD(addSubLineString)
     });
 
-  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
-  Napi::Function base = LineString::constructor.Value();
-  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
-  lcons.SetPrototypeOf(base);
+  // lcons->Inherit() has no DefineClass equivalent
+  node_gdal::Inherit(lcons, LineString::constructor.Value());
 
   target.Set("LinearRing", lcons);
 
@@ -92,7 +90,7 @@ NAN_METHOD(LinearRing::addSubLineString) {
   int n = other->get()->getNumPoints();
 
   if (start < 0 || end < -1 || start >= n || end >= n) {
-    Nan::ThrowRangeError("Invalid start or end index for LineString");
+    Napi::RangeError::New(node_gdal::napi_env, "Invalid start or end index for LineString").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 

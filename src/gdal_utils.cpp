@@ -85,7 +85,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::translate) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
 
   Napi::Object options;
@@ -179,7 +179,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::vectorTranslate) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
 
   Napi::Object options;
@@ -256,7 +256,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::info) {
   NODE_ARG_ARRAY_OPT(1, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
 
   GDALAsyncableJob<std::string> job(ds->uid);
@@ -356,7 +356,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::warp) {
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
 
   Napi::Object options;
@@ -461,7 +461,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
         Napi::Error::New(node_gdal::napi_env, "All \"src_ds\" elements must have the same type").ThrowAsJavaScriptException();
         return node_gdal::napi_env.Undefined();
       }
-      aosSrcDs->AddString(*Nan::Utf8String(Nan::Get(src_ds, i).ToLocalChecked()));
+      aosSrcDs->AddString(Nan::Get(src_ds, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
     uids.push_back(0);
   } else {
@@ -479,7 +479,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
 
   Napi::Object options;
@@ -589,7 +589,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::rasterize) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
 
   Napi::Object options;
@@ -680,7 +680,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::dem) {
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty()) {
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(*Nan::Utf8String(Nan::Get(args, i).ToLocalChecked()));
+      aosOptions->AddString(Nan::Get(args, i.As<Napi::String>().Utf8Value().ToLocalChecked()));
     }
   }
 

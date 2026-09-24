@@ -77,7 +77,7 @@ NAN_METHOD(CoordinateTransformation::New) {
     NODE_ARG_WRAPPED(0, "source", SpatialReference, source);
 
     if (!info[1].IsObject() || info[1].IsNull()) {
-      Nan::ThrowTypeError("target must be a SpatialReference or Dataset object");
+      Napi::TypeError::New(node_gdal::napi_env, "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
     if (Napi::Number::New(node_gdal::napi_env, SpatialReference::constructor)->HasInstance(info[1])) {
@@ -126,7 +126,7 @@ NAN_METHOD(CoordinateTransformation::New) {
       CPLFree(src_wkt);
       CSLDestroy(papszTO);
     } else {
-      Nan::ThrowTypeError("target must be a SpatialReference or Dataset object");
+      Napi::TypeError::New(node_gdal::napi_env, "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
   }
@@ -196,9 +196,9 @@ NAN_METHOD(CoordinateTransformation::transformPoint) {
       Napi::Error::New(node_gdal::napi_env, "point must contain numerical properties x and y").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
-    x = static_cast<double>(Nan::To<double>(arg_x).ToChecked());
-    y = static_cast<double>(Nan::To<double>(arg_y).ToChecked());
-    if (arg_z->IsNumber()) { z = static_cast<double>(Nan::To<double>(arg_z).ToChecked()); }
+    x = static_cast<double>(arg_x.As<Napi::Number>().DoubleValue().ToChecked());
+    y = static_cast<double>(arg_y.As<Napi::Number>().DoubleValue().ToChecked());
+    if (arg_z->IsNumber()) { z = static_cast<double>(arg_z.As<Napi::Number>().DoubleValue().ToChecked()); }
   } else {
     NODE_ARG_DOUBLE(0, "x", x);
     NODE_ARG_DOUBLE(1, "y", y);

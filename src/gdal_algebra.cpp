@@ -62,7 +62,7 @@ void Initialize(Napi::Object target) {
     return;                                                                                                            \
   }                                                                                                                    \
   if (info[num].IsNumber()) {                                                                                         \
-    var##_number = Nan::To<double>(info[num]).ToChecked();                                                             \
+    var##_number = info[num].As<Napi::Number>().DoubleValue().ToChecked();                                                             \
     var##_band = nullptr;                                                                                              \
   } else if (info[num].IsObject() && Napi::Number::New(node_gdal::napi_env, RasterBand::constructor)->HasInstance(info[num])) {                     \
     var##_number = NAN;                                                                                                \

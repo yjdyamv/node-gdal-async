@@ -4,7 +4,7 @@
 #include <node_version.h>
 
 // nan
-#include "nan-wrapper.h"
+#include "gdal_common.hpp"
 
 // gdal
 #include <gdal.h>

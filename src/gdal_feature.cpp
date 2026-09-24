@@ -205,7 +205,7 @@ NAN_METHOD(Feature::getFieldDefn) {
   }
 
   if (field_index < 0 || field_index >= feature->this_->GetFieldCount()) {
-    Nan::ThrowRangeError("Invalid field index");
+    Napi::RangeError::New(node_gdal::napi_env, "Invalid field index").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 
@@ -456,7 +456,7 @@ NAN_METHOD(Feature::setStyleString) {
   }
 
   if (!info[0].IsString()) {
-    Nan::ThrowTypeError("style must be a string, null or undefined");
+    Napi::TypeError::New(node_gdal::napi_env, "style must be a string, null or undefined").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 
@@ -468,11 +468,11 @@ NAN_SETTER(Feature::fidSetter) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   if (!value->IsInt32()) {
     Napi::Error::New(node_gdal::napi_env, "fid must be an integer").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   feature->this_->SetFID(Nan::To<int64_t>(value).ToChecked());
 }

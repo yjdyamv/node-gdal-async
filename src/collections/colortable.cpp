@@ -84,7 +84,7 @@ NAN_METHOD(ColorTable::New) {
     else if (pi == "HLS")
       gpi = GPI_HLS;
     else {
-      Nan::ThrowRangeError("Invalid palette interpretation");
+      Napi::RangeError::New(node_gdal::napi_env, "Invalid palette interpretation").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
     f = new ColorTable(new GDALColorTable(gpi), 0);
@@ -285,7 +285,7 @@ NAN_METHOD(ColorTable::ramp) {
   NODE_ARG_INT(0, "start_index", start_index);
   NODE_ARG_INT(2, "end_index", end_index);
   if (start_index < 0 || end_index < 0 || end_index < start_index) {
-    Nan::ThrowRangeError("Invalid color interval");
+    Napi::RangeError::New(node_gdal::napi_env, "Invalid color interval").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
 

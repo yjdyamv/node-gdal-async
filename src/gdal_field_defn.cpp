@@ -205,9 +205,9 @@ NAN_SETTER(FieldDefn::nameSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsString()) {
     Napi::Error::New(node_gdal::napi_env, "Name must be string").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
-  std::string name = *Nan::Utf8String(value);
+  std::string name = value.As<Napi::String>().Utf8Value();
   def->this_->SetName(name.c_str());
 }
 
@@ -215,9 +215,9 @@ NAN_SETTER(FieldDefn::typeSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsString()) {
     Napi::Error::New(node_gdal::napi_env, "type must be a string").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
-  std::string name = *Nan::Utf8String(value);
+  std::string name = value.As<Napi::String>().Utf8Value();
   int type = getFieldTypeByName(name.c_str());
   if (type < 0) {
     Napi::Error::New(node_gdal::napi_env, "Unrecognized field type").ThrowAsJavaScriptException();
@@ -230,7 +230,7 @@ NAN_SETTER(FieldDefn::justificationSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
 
   OGRJustification justification;
-  std::string str = *Nan::Utf8String(value);
+  std::string str = value.As<Napi::String>().Utf8Value();
   if (value->IsString()) {
     if (str == "Left") {
       justification = OJLeft;
@@ -240,13 +240,13 @@ NAN_SETTER(FieldDefn::justificationSetter) {
       justification = OJUndefined;
     } else {
       Napi::Error::New(node_gdal::napi_env, "Unrecognized justification").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      return;
     }
   } else if (value->IsNull() || value->IsUndefined()) {
     justification = OJUndefined;
   } else {
     Napi::Error::New(node_gdal::napi_env, "justification must be a string or undefined").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   def->this_->SetJustify(justification);
@@ -256,7 +256,7 @@ NAN_SETTER(FieldDefn::widthSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsInt32()) {
     Napi::Error::New(node_gdal::napi_env, "width must be an integer").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   def->this_->SetWidth(Nan::To<int64_t>(value).ToChecked());
 }
@@ -265,7 +265,7 @@ NAN_SETTER(FieldDefn::precisionSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsInt32()) {
     Napi::Error::New(node_gdal::napi_env, "precision must be an integer").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   def->this_->SetPrecision(Nan::To<int64_t>(value).ToChecked());
 }
@@ -274,7 +274,7 @@ NAN_SETTER(FieldDefn::ignoredSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsBoolean()) {
     Napi::Error::New(node_gdal::napi_env, "ignored must be a boolean").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   def->this_->SetIgnored(Nan::To<int64_t>(value).ToChecked());
 }

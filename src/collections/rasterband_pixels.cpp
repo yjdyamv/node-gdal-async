@@ -206,7 +206,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBandPixels::set) {
 inline GDALRIOResampleAlg parseResamplingAlg(Napi::Value value) {
   if (value->IsUndefined() || value->IsNull()) { return GRIORA_NearestNeighbour; }
   if (!value->IsString()) { throw "resampling property must be a string"; }
-  std::string name = *Nan::Utf8String(value);
+  std::string name = value.As<Napi::String>().Utf8Value();
 
   if (name == "NearestNeighbor") { return GRIORA_NearestNeighbour; }
   if (name == "NearestNeighbour") { return GRIORA_NearestNeighbour; }

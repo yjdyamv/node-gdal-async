@@ -1612,7 +1612,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromWkb) {
   NODE_ARG_OBJECT(0, "wkb", wkb_obj);
   NODE_ARG_WRAPPED_OPT(1, "srs", SpatialReference, srs);
 
-  std::string obj_type = *Nan::Utf8String(wkb_obj->GetConstructorName());
+  std::string obj_type = wkb_obj->GetConstructorName(.As<Napi::String>().Utf8Value());
 
   if (obj_type != "Buffer" && obj_type != "Uint8Array") {
     Napi::Error::New(node_gdal::napi_env, "Argument must be a buffer object").ThrowAsJavaScriptException();
@@ -1689,7 +1689,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
     return node_gdal::napi_env.Undefined();
   }
   Local<String> stringified = result.ToLocalChecked();
-  std::string *val = new std::string(*Nan::Utf8String(stringified));
+  std::string *val = new std::string(stringified.As<Napi::String>().Utf8Value());
 
   GDALAsyncableJob<OGRGeometry *> job(0);
   job.main = [val](const GDALExecutionProgress &) {
@@ -1740,7 +1740,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJsonBuffer) {
   Napi::Object geojson_obj;
   NODE_ARG_OBJECT(0, "geojson", geojson_obj);
 
-  std::string obj_type = *Nan::Utf8String(geojson_obj->GetConstructorName());
+  std::string obj_type = geojson_obj->GetConstructorName(.As<Napi::String>().Utf8Value());
 
   if (obj_type != "Buffer" && obj_type != "Uint8Array") {
     Napi::Error::New(node_gdal::napi_env, "Argument must be a buffer object").ThrowAsJavaScriptException();
@@ -1813,7 +1813,7 @@ NAN_SETTER(Geometry::srsSetter) {
     srs = srs_obj->get();
   } else if (!value->IsNull() && !value->IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env, "srs must be SpatialReference object").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   geom->this_->assignSpatialReference(srs);
@@ -1899,12 +1899,12 @@ NAN_SETTER(Geometry::coordinateDimensionSetter) {
 
   if (!value->IsInt32()) {
     Napi::Error::New(node_gdal::napi_env, "coordinateDimension must be an integer").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   int dim = Nan::To<int64_t>(value).ToChecked();
   if (dim != 2 && dim != 3) {
     Napi::Error::New(node_gdal::napi_env, "coordinateDimension must be 2 or 3").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   geom->this_->setCoordinateDimension(dim);

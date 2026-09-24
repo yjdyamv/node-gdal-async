@@ -177,7 +177,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsString()) {
-    std::string type_name = *Nan::Utf8String(info[0]);
+    std::string type_name = info[0].As<Napi::String>().Utf8Value();
     type = GDALGetDataTypeByName(type_name.c_str());
   } else if (info[0].IsNull() || info[0].IsUndefined()) {
     type = GDT_Unknown;

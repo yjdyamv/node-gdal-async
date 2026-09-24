@@ -22,10 +22,8 @@ void LineString::Initialize(Napi::Object target) {
         METHOD(toString)
     });
 
-  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
-  Napi::Function base = SimpleCurve::constructor.Value();
-  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
-  lcons.SetPrototypeOf(base);
+  // lcons->Inherit() has no DefineClass equivalent
+  node_gdal::Inherit(lcons, SimpleCurve::constructor.Value());
 
   target.Set("LineString", lcons);
 

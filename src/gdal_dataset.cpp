@@ -953,7 +953,7 @@ NAN_SETTER(Dataset::srsSetter) {
 
   if (!ds->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   GDALDataset *raw = ds->get();
@@ -966,14 +966,14 @@ NAN_SETTER(Dataset::srsSetter) {
     char *str;
     if (srs->exportToWkt(&str)) {
       Napi::Error::New(node_gdal::napi_env, "Error exporting srs to wkt").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      return;
     }
     wkt = str; // copy string
     CPLFree(str);
 
   } else if (!value->IsNull() && !value->IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env, "srs must be SpatialReference object").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   AsyncGuard lock({ds->uid}, eventLoopWarn);
@@ -987,20 +987,20 @@ NAN_SETTER(Dataset::geoTransformSetter) {
 
   if (!ds->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   GDALDataset *raw = ds->get();
 
   if (!value->IsArray()) {
     Napi::Error::New(node_gdal::napi_env, "Transform must be an array").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   Napi::Array transform = value.As<Array>();
 
   if (transform->Length() != 6) {
     Napi::Error::New(node_gdal::napi_env, "Transform array must have 6 elements").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   double buffer[6];
@@ -1008,9 +1008,9 @@ NAN_SETTER(Dataset::geoTransformSetter) {
     Napi::Value val = Nan::Get(transform, i).ToLocalChecked();
     if (!val->IsNumber()) {
       Napi::Error::New(node_gdal::napi_env, "Transform array must only contain numbers").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      return;
     }
-    buffer[i] = Nan::To<double>(val).ToChecked();
+    buffer[i] = val.As<Napi::Number>().DoubleValue().ToChecked();
   }
 
   AsyncGuard lock({ds->uid}, eventLoopWarn);

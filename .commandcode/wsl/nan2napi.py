@@ -27,6 +27,10 @@ args = ap.parse_args()
 E = args.env
 
 RULES = [
+    # private properties - these must run BEFORE the value constructors below,
+    # otherwise the inner Nan::New("name") is rewritten first
+    (r'Nan::GetPrivate\(([^,]+),\s*Nan::New\("([^"]+)"\)\.ToLocalChecked\(\)\)', r'GDAL_GET_PRIVATE(\1, "\2")'),
+    (r'Nan::SetPrivate\(([^,]+),\s*Nan::New\("([^"]+)"\)\.ToLocalChecked\(\),\s*', r'GDAL_SET_PRIVATE(\1, "\2", '),
     # value constructors
     (r"Nan::New<v8::String>\((.*?)\)\.ToLocalChecked\(\)", "Napi::String::New(%s, \\1)" % E),
     (r"Nan::New<Integer>\((.*?)\)", "Napi::Number::New(%s, \\1)" % E),
@@ -70,6 +74,20 @@ RULES = [
     (r"Local<Value>", "Napi::Value"),
     (r"Local<Array>", "Napi::Array"),
     (r"Nan::Callback", "Napi::FunctionReference"),
+    # scalar conversions
+    (r"Nan::To<double>\((.*?)\)\.FromJust\(\)", r"\1.As<Napi::Number>().DoubleValue()"),
+    (r"Nan::To<int>\((.*?)\)\.FromJust\(\)", r"\1.As<Napi::Number>().Int32Value()"),
+    (r"Nan::To<double>\((.*?)\)", r"\1.As<Napi::Number>().DoubleValue()"),
+    (r"Nan::To<int>\((.*?)\)", r"\1.As<Napi::Number>().Int32Value()"),
+    (r"\*Nan::Utf8String\((.*?)\)", r"\1.As<Napi::String>().Utf8Value()"),
+    (r"Nan::Utf8String\((.*?)\)", r"\1.As<Napi::String>().Utf8Value()"),
+    # typed errors
+    (r"Nan::ThrowTypeError\((.*?)\);", "Napi::TypeError::New(%s, \\1).ThrowAsJavaScriptException();" % E),
+    (r"Nan::ThrowRangeError\((.*?)\);", "Napi::RangeError::New(%s, \\1).ThrowAsJavaScriptException();" % E),
+    # dates
+    (r"Nan::New<Date>\((.*?)\)\.ToLocalChecked\(\)", "Napi::Date::New(%s, \\1)" % E),
+    # the static constructor reference, when it has leading whitespace
+    (r"(?m)^(\s*)Nan::Persistent<FunctionTemplate> (\w+)::constructor;", r"\1Napi::FunctionReference \2::constructor;"),
 ]
 
 total = 0

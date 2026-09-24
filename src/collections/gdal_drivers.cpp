@@ -100,7 +100,7 @@ NAN_METHOD(GDALDrivers::get) {
     // try getting OGR driver first, and then GDAL driver if it fails
     // A driver named "VRT" exists for both GDAL and OGR, so if building
     // with <2.0 require user to specify which driver to pick
-    std::string name = *Nan::Utf8String(info[0]);
+    std::string name = info[0].As<Napi::String>().Utf8Value();
 
     if (name == "VRT:vector") { name = "VRT"; }
 

@@ -21,7 +21,6 @@ namespace node_gdal {
 extern FILE *log_file;
 extern ObjectStore object_store;
 extern bool eventLoopWarn;
-extern Napi::Env napi_env;
 } // namespace node_gdal
 
 #ifdef ENABLE_LOGGING
@@ -45,9 +44,10 @@ extern Napi::Env napi_env;
 #define NAN_GETTER(name) Napi::Value name(const Napi::CallbackInfo &info)
 #define NAN_SETTER(name) void name(const Napi::CallbackInfo &info, const Napi::Value &value)
 
-// NAN_GETTER_ARGS_TYPE / NAN_GETTER_RETURN_TYPE / NAN_SETTER_ARGS_TYPE must NOT
-// be redefined here: nan.h uses those very names for typedefs of its own, so
-// redefining them breaks nan.h itself. They are unused by this code base.
+// Older NAN spelling kept for a handful of declarations
+#define NAN_GETTER_ARGS_TYPE Napi::CallbackInfo
+#define NAN_GETTER_RETURN_TYPE Napi::Value
+#define NAN_SETTER_ARGS_TYPE Napi::CallbackInfo
 
 // Nan::New(null) used to segfault, hence this helper
 class SafeString {
@@ -55,11 +55,6 @@ class SafeString {
   static Napi::Value New(Napi::Env env, const char *data) {
     if (!data) return env.Null();
     return Napi::String::New(env, data);
-  }
-  // Convenience for the (many) call sites that run on the main thread and can
-  // use the ambient environment - same approach as v8_undefined()/v8_null()
-  static Napi::Value New(const char *data) {
-    return New(node_gdal::napi_env, data);
   }
 };
 
@@ -92,19 +87,19 @@ inline const char *getOGRErrMsg(int err) {
 //
 namespace node_gdal {
 
-template <Napi::Value (*FN)(const Napi::CallbackInfo &)> napi_value MethodTrampoline(::napi_env env, napi_callback_info info) {
+template <Napi::Value (*FN)(const Napi::CallbackInfo &)> napi_value MethodTrampoline(napi_env env, napi_callback_info info) {
   Napi::CallbackInfo ci(env, info);
   return FN(ci);
 }
 
 template <void (*FN)(const Napi::CallbackInfo &, const Napi::Value &)>
-napi_value SetterTrampoline(::napi_env env, napi_callback_info info) {
+napi_value SetterTrampoline(napi_env env, napi_callback_info info) {
   Napi::CallbackInfo ci(env, info);
   FN(ci, ci.Length() > 0 ? ci[0] : ci.Env().Undefined());
   return nullptr;
 }
 
-inline napi_value UndefinedTrampoline(::napi_env env, napi_callback_info) {
+inline napi_value UndefinedTrampoline(napi_env env, napi_callback_info) {
   return Napi::Env(env).Undefined();
 }
 
@@ -115,7 +110,7 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceMethodT(const char *name) {
   napi_property_descriptor d = {};
   d.utf8name = name;
   d.method = &node_gdal::MethodTrampoline<FN>;
-  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable);
+  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
@@ -125,7 +120,7 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceMethodHiddenT(const char *na
   napi_property_descriptor d = {};
   d.utf8name = name;
   d.method = &node_gdal::MethodTrampoline<FN>;
-  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
+  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable | napi_non_enumerable);
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
@@ -134,8 +129,7 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceAccessorT(const char *name) 
   napi_property_descriptor d = {};
   d.utf8name = name;
   d.getter = &node_gdal::MethodTrampoline<GET>;
-  d.data = (void *)name;
-  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable);
+  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
@@ -144,8 +138,7 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceAccessorHiddenT(const char *
   napi_property_descriptor d = {};
   d.utf8name = name;
   d.getter = &node_gdal::MethodTrampoline<GET>;
-  d.data = (void *)name;
-  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
+  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable | napi_non_enumerable);
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
@@ -213,8 +206,7 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceAccessorT(const char *name) 
   d.utf8name = name;
   d.getter = &node_gdal::MethodTrampoline<GET>;
   d.setter = &node_gdal::SetterTrampoline<SET>;
-  d.data = (void *)name;
-  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable);
+  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
@@ -224,11 +216,6 @@ inline Napi::Function GDALFunction(Napi::Env env, Napi::Value (*fn)(const Napi::
 }
 
 // ----- throwing / rejecting helpers -------
-
-// These are referenced from the macros below as node_gdal::..., so they must
-// live in the node_gdal namespace (node_gdal::ToNapi and the trampolines
-// already do)
-namespace node_gdal {
 
 inline void ThrowError(Napi::Env env, const char *msg) {
   Napi::Error::New(env, msg).ThrowAsJavaScriptException();
@@ -240,8 +227,6 @@ inline Napi::Value RejectPromise(const Napi::CallbackInfo &info, const char *msg
   return deferred.Promise();
 }
 
-} // namespace node_gdal
-
 #define NODE_THROW_LAST_CPLERR Napi::Error::New(info.Env(), CPLGetLastErrorMsg()).ThrowAsJavaScriptException()
 
 #define NODE_THROW_OGRERR(err) Napi::Error::New(info.Env(), getOGRErrMsg(err)).ThrowAsJavaScriptException()
@@ -249,8 +234,6 @@ inline Napi::Value RejectPromise(const Napi::CallbackInfo &info, const char *msg
 //
 // Object handle helpers
 //
-namespace node_gdal {
-
 template <typename T> inline T *UnwrapWrapped(const Napi::Object &obj) {
   return Napi::ObjectWrap<T>::Unwrap(obj);
 }
@@ -258,83 +241,6 @@ template <typename T> inline T *UnwrapWrapped(const Napi::Object &obj) {
 template <typename T> inline bool IsInstanceOf(const Napi::Value &obj) {
   return obj.IsObject() && obj.As<Napi::Object>().InstanceOf(T::constructor.Value());
 }
-
-} // namespace node_gdal
-
-// ----- object base class -------
-
-//
-// Every JS-visible class derives from this instead of Napi::ObjectWrap<T>
-// directly, for two reasons:
-//
-//  * the message thrown by a constructor called without `new` is asserted by
-//    the test suite (test/api_classes.test.ts), and node-addon-api's own
-//    wording ("Class constructors cannot be invoked without 'new'") does not
-//    match what NAN used to throw;
-//  * it gives the classes a single place for the shared constructor plumbing.
-//
-template <typename T> class GDALObject : public Napi::ObjectWrap<T> {
-    public:
-  explicit GDALObject(const Napi::CallbackInfo &info) : Napi::ObjectWrap<T>(info) {
-  }
-
-  static Napi::Value OnCalledAsFunction(const Napi::CallbackInfo &info) {
-    Napi::Error::New(info.Env(), "Cannot call constructor as function, you need to use 'new' keyword")
-      .ThrowAsJavaScriptException();
-    return info.Env().Undefined();
-  }
-};
-
-// ----- private property keys -------
-
-//
-// NAN had Nan::SetPrivate/GetPrivate, keyed by a *name* and interned by V8.
-// N-API only has napi_create_symbol, which yields a fresh symbol on every call,
-// so the keys have to be registered to keep behaving like the NAN originals.
-// gdal-async supports a single instance per V8 isolate (enforced in Init), so a
-// process-wide registry is safe; the references are never released because
-// static destruction happens after the environment is gone.
-//
-namespace node_gdal {
-
-inline Napi::Symbol PrivateKey(Napi::Env env, const char *name) {
-  static std::map<std::string, Napi::Reference<Napi::Symbol>> keys;
-  auto i = keys.find(name);
-  if (i != keys.end()) return i->second.Value();
-  Napi::Symbol s = Napi::Symbol::New(env, name);
-  Napi::Reference<Napi::Symbol> ref = Napi::Persistent(s);
-  ref.SuppressDestruct();
-  keys.emplace(name, std::move(ref));
-  return s;
-}
-
-} // namespace node_gdal
-
-#define GDAL_SET_PRIVATE(obj, name, value) obj.Set(node_gdal::PrivateKey(obj.Env(), name), value)
-#define GDAL_GET_PRIVATE(obj, name) (obj).Get(node_gdal::PrivateKey(obj.Env(), name))
-
-// ----- inheritance -------
-
-//
-// node-addon-api has no equivalent of v8::FunctionTemplate::Inherit, and the
-// stable N-API has no prototype setter (node_api_set_prototype is behind
-// NAPI_EXPERIMENTAL), so the chain is established from JS.
-//
-// Both the constructor and its `prototype` object have to be relinked:
-// `x instanceof Base` walks `Derived.prototype`, while `Derived.staticMember`
-// needs the constructor chain.
-//
-namespace node_gdal {
-
-inline void Inherit(Napi::Function derived, Napi::Function base) {
-  Napi::Env env = derived.Env();
-  Napi::Function setProtoOf =
-    env.Global().Get("Object").As<Napi::Object>().Get("setPrototypeOf").As<Napi::Function>();
-  setProtoOf.Call({derived, base});
-  setProtoOf.Call({derived.Get("prototype"), base.Get("prototype")});
-}
-
-} // namespace node_gdal
 
 // ----- object property conversion -------
 
@@ -955,8 +861,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
 // gdal-async supports a single instance per V8 isolate (enforced in Init),
 // so the environment is kept reachable for the few places (async result
 // lambdas) where NAN did not require threading it through.
-// The environment is declared near the top of this file (the trampolines above
-// need the ::napi_env type unshadowed), it is defined in node_gdal.cpp
+namespace node_gdal { extern Napi::Env napi_env; }
 inline Napi::Value v8_undefined() { return node_gdal::napi_env.Undefined(); }
 inline Napi::Value v8_null() { return node_gdal::napi_env.Null(); }
 
@@ -1369,13 +1274,6 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Env env, Napi::Array arra
 #define METHOD_ASYNCABLE(name)                                                                                         \
   GDALInstanceMethodT<SELF, &SELF::name>(#name), GDALInstanceMethodT<SELF, &SELF::name##Async>(#name "Async"),
 #define METHOD_HIDDEN(name) GDALInstanceMethodHiddenT<SELF, &SELF::name>(#name),
-
-// Same, but for the ~20 members whose JS name differs from the C++ name
-// (eg. the JS "toWKT" is Geometry::exportToWKT, and "isVectical" really is
-// spelled that way in the public API)
-#define METHOD_AS(name, method) GDALInstanceMethodT<SELF, &SELF::method>(name),
-#define METHOD_ASYNCABLE_AS(name, method)                                                                              \
-  GDALInstanceMethodT<SELF, &SELF::method>(name), GDALInstanceMethodT<SELF, &SELF::method##Async>(name "Async"),
 
 #define ATTR(t, name, get, set) GDALInstanceAccessorT<SELF, &SELF::get, &set>(name),
 #define ATTR_DONT_ENUM(t, name, get, set) GDALInstanceAccessorHiddenT<SELF, &SELF::get>(name),
