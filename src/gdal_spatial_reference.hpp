@@ -2,19 +2,14 @@
 #define __NODE_OGR_SPATIALREFERENCE_H__
 
 // node
-#include <node.h>
-#include <node_object_wrap.h>
 
 // nan
-#include "nan-wrapper.h"
+#include "gdal_common.hpp"
 
 // ogr
 #include <ogrsf_frmts.h>
 
 #include "async.hpp"
-
-using namespace v8;
-using namespace node;
 
 namespace node_gdal {
 
@@ -24,14 +19,12 @@ typedef char OGRChar;
 typedef const char OGRChar;
 #endif
 
-class SpatialReference : public Nan::ObjectWrap {
+class SpatialReference : public GDALObject<SpatialReference> {
     public:
-  static Nan::Persistent<FunctionTemplate> constructor;
-  static void Initialize(Local<Object> target);
-
-  static NAN_METHOD(New);
-  static Local<Value> New(const OGRSpatialReference *srs);
-  static Local<Value> New(OGRSpatialReference *srs, bool owned);
+  static Napi::FunctionReference constructor;
+  static void Initialize(Napi::Object target);
+  static Napi::Value New(const OGRSpatialReference *srs);
+  static Napi::Value New(OGRSpatialReference *srs, bool owned);
   static NAN_METHOD(toString);
   static NAN_METHOD(clone);
   static NAN_METHOD(cloneGeogCS);
@@ -74,8 +67,10 @@ class SpatialReference : public Nan::ObjectWrap {
   GDAL_ASYNCABLE_DECLARE(fromURL);
   static NAN_METHOD(fromMICoordSys);
 
-  SpatialReference();
-  SpatialReference(OGRSpatialReference *srs);
+  SpatialReference(const Napi::CallbackInfo &info);
+
+  // Must be accessible: ObjectWrap's finalizer deletes the instance itself
+  ~SpatialReference();
   inline OGRSpatialReference *get() {
     return this_;
   }
@@ -86,7 +81,6 @@ class SpatialReference : public Nan::ObjectWrap {
   long uid;
 
     private:
-  ~SpatialReference();
   OGRSpatialReference *this_;
   bool owned_;
 };

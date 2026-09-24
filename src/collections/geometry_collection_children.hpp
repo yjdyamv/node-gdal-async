@@ -2,29 +2,23 @@
 #define __NODE_GDAL_GEOM_COLLECTION_CHILDREN_H__
 
 // node
-#include <node.h>
-#include <node_object_wrap.h>
 
 // nan
-#include "../nan-wrapper.h"
+#include "../gdal_common.hpp"
 
 // gdal
 #include <gdal_priv.h>
-
-using namespace v8;
-using namespace node;
 
 // GeometryCollection.children
 
 namespace node_gdal {
 
-class GeometryCollectionChildren : public Nan::ObjectWrap {
+class GeometryCollectionChildren : public GDALObject<GeometryCollectionChildren> {
     public:
-  static Nan::Persistent<FunctionTemplate> constructor;
+  static Napi::FunctionReference constructor;
 
-  static void Initialize(Local<Object> target);
-  static NAN_METHOD(New);
-  static Local<Value> New(Local<Value> geom);
+  static void Initialize(Napi::Object target);
+  static Napi::Value New(Napi::Value geom);
   static NAN_METHOD(toString);
 
   static NAN_METHOD(get);
@@ -32,10 +26,11 @@ class GeometryCollectionChildren : public Nan::ObjectWrap {
   static NAN_METHOD(add);
   static NAN_METHOD(remove);
 
-  GeometryCollectionChildren();
+  GeometryCollectionChildren(const Napi::CallbackInfo &info);
 
-    private:
+  // Must be accessible: ObjectWrap's finalizer deletes the instance itself
   ~GeometryCollectionChildren();
+    private:
 };
 
 } // namespace node_gdal

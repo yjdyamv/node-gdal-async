@@ -10,21 +10,27 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> MultiPoint::constructor;
+Napi::FunctionReference MultiPoint::constructor;
 
-void MultiPoint::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void MultiPoint::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(MultiPoint);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(MultiPoint::New);
-  lcons->Inherit(Nan::New(GeometryCollection::constructor));
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("MultiPoint").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "MultiPoint",
+    {
+        METHOD(toString)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
+  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
+  Napi::Function base = GeometryCollection::constructor.Value();
+  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
+  lcons.SetPrototypeOf(base);
 
-  Nan::Set(target, Nan::New("MultiPoint").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
+  target.Set("MultiPoint", lcons);
 
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 /**
@@ -34,7 +40,7 @@ void MultiPoint::Initialize(Local<Object> target) {
  */
 
 NAN_METHOD(MultiPoint::toString) {
-  info.GetReturnValue().Set(Nan::New("MultiPoint").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "MultiPoint");
 }
 
 } // namespace node_gdal

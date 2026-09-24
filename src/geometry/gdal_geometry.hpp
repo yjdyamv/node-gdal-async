@@ -2,11 +2,9 @@
 #define __NODE_OGR_GEOMETRY_H__
 
 // node
-#include <node.h>
-#include <node_object_wrap.h>
 
 // nan
-#include "../nan-wrapper.h"
+#include "../gdal_common.hpp"
 
 // ogr
 #include <ogrsf_frmts.h>
@@ -14,20 +12,18 @@
 #include "../async.hpp"
 #include "gdal_geometrybase.hpp"
 
-using namespace v8;
-using namespace node;
 
 namespace node_gdal {
 
 class Geometry : public GeometryBase<Geometry, OGRGeometry> {
     public:
-  static Nan::Persistent<FunctionTemplate> constructor;
-  using GeometryBase<Geometry, OGRGeometry>::GeometryBase;
+  static Napi::FunctionReference constructor;
+  // Not constructible from JS: use Geometry.fromWKT()/fromWKB() or a concrete type
+  Geometry(const Napi::CallbackInfo &info);
 
-  static void Initialize(Local<Object> target);
-  static NAN_METHOD(New);
+  static void Initialize(Napi::Object target);
   using GeometryBase<Geometry, OGRGeometry>::New;
-  static Local<Value> New(OGRGeometry *geom, bool owned);
+  static Napi::Value New(OGRGeometry *geom, bool owned);
   static NAN_METHOD(toString);
   GDAL_ASYNCABLE_DECLARE(isEmpty);
   GDAL_ASYNCABLE_DECLARE(isValid);
@@ -93,7 +89,7 @@ class Geometry : public GeometryBase<Geometry, OGRGeometry> {
   static NAN_SETTER(coordinateDimensionSetter);
 
   static OGRwkbGeometryType getGeometryType_fixed(OGRGeometry *geom);
-  static Local<Value> getConstructor(OGRwkbGeometryType type);
+  static Napi::Value getConstructor(OGRwkbGeometryType type);
 };
 
 } // namespace node_gdal

@@ -11,21 +11,27 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> CircularString::constructor;
+Napi::FunctionReference CircularString::constructor;
 
-void CircularString::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void CircularString::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(CircularString);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(CircularString::New);
-  lcons->Inherit(Nan::New(SimpleCurve::constructor));
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("CircularString").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "CircularString",
+    {
+        METHOD(toString)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
+  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
+  Napi::Function base = SimpleCurve::constructor.Value();
+  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
+  lcons.SetPrototypeOf(base);
 
-  Nan::Set(target, Nan::New("CircularString").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
+  target.Set("CircularString", lcons);
 
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 /**
@@ -43,7 +49,7 @@ void CircularString::Initialize(Local<Object> target) {
  */
 
 NAN_METHOD(CircularString::toString) {
-  info.GetReturnValue().Set(Nan::New("CircularString").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "CircularString");
 }
 
 } // namespace node_gdal

@@ -5,30 +5,32 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> LayerFields::constructor;
+Napi::FunctionReference LayerFields::constructor;
 
-void LayerFields::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void LayerFields::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(LayerFields);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(LayerFields::New);
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("LayerFields").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "LayerFields",
+    {
+        METHOD(toString)
+        METHOD(count)
+        METHOD(get)
+        METHOD(remove)
+        METHOD(getNames)
+        METHOD(indexOf)
+        METHOD(reorder)
+        METHOD(add)
+        ATTR_DONT_ENUM(lcons, "layer", layerGetter, READ_ONLY_SETTER)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan::SetPrototypeMethod(lcons, "count", count);
-  Nan::SetPrototypeMethod(lcons, "get", get);
-  Nan::SetPrototypeMethod(lcons, "remove", remove);
-  Nan::SetPrototypeMethod(lcons, "getNames", getNames);
-  Nan::SetPrototypeMethod(lcons, "indexOf", indexOf);
-  Nan::SetPrototypeMethod(lcons, "reorder", reorder);
-  Nan::SetPrototypeMethod(lcons, "add", add);
   // Nan::SetPrototypeMethod(lcons, "alter", alter);
 
-  ATTR_DONT_ENUM(lcons, "layer", layerGetter, READ_ONLY_SETTER);
+  target.Set("LayerFields", lcons);
 
-  Nan::Set(target, Nan::New("LayerFields").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
-
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 LayerFields::LayerFields() : Nan::ObjectWrap() {
@@ -43,37 +45,36 @@ LayerFields::~LayerFields() {
 NAN_METHOD(LayerFields::New) {
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     LayerFields *layer = static_cast<LayerFields *>(ptr);
     layer->Wrap(info.This());
-    info.GetReturnValue().Set(info.This());
-    return;
+    return info.This();
+    return node_gdal::napi_env.Undefined();
   } else {
-    Nan::ThrowError("Cannot create LayerFields directly");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot create LayerFields directly").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 }
 
-Local<Value> LayerFields::New(Local<Value> layer_obj) {
-  Nan::EscapableHandleScope scope;
+Napi::Value LayerFields::New(Napi::Value layer_obj) {
 
   LayerFields *wrapped = new LayerFields();
 
-  v8::Local<v8::Value> ext = Nan::New<External>(wrapped);
+  Napi::Value ext = Nan::New<External>(wrapped);
   v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Nan::New(LayerFields::constructor)).ToLocalChecked(), 1, &ext).ToLocalChecked();
-  Nan::SetPrivate(obj, Nan::New("parent_").ToLocalChecked(), layer_obj);
+    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, LayerFields::constructor)), 1, &ext).ToLocalChecked();
+  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), layer_obj);
 
-  return scope.Escape(obj);
+  return obj;
 }
 
 NAN_METHOD(LayerFields::toString) {
-  info.GetReturnValue().Set(Nan::New("LayerFields").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "LayerFields");
 }
 
 /**
@@ -86,21 +87,21 @@ NAN_METHOD(LayerFields::toString) {
  */
 NAN_METHOD(LayerFields::count) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   OGRFeatureDefn *def = layer->get()->GetLayerDefn();
   if (!def) {
-    Nan::ThrowError("Layer has no layer definition set");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer has no layer definition set").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  info.GetReturnValue().Set(Nan::New<Integer>(def->GetFieldCount()));
+  return Napi::Number::New(node_gdal::napi_env, def->GetFieldCount());
 }
 
 /**
@@ -114,24 +115,24 @@ NAN_METHOD(LayerFields::count) {
  */
 NAN_METHOD(LayerFields::indexOf) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   OGRFeatureDefn *def = layer->get()->GetLayerDefn();
   if (!def) {
-    Nan::ThrowError("Layer has no layer definition set");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer has no layer definition set").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   std::string name("");
   NODE_ARG_STR(0, "field name", name);
 
-  info.GetReturnValue().Set(Nan::New<Integer>(def->GetFieldIndex(name.c_str())));
+  return Napi::Number::New(node_gdal::napi_env, def->GetFieldIndex(name.c_str()));
 }
 
 /**
@@ -146,23 +147,23 @@ NAN_METHOD(LayerFields::indexOf) {
  */
 NAN_METHOD(LayerFields::get) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   if (info.Length() < 1) {
-    Nan::ThrowError("Field index or name must be given");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Field index or name must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   OGRFeatureDefn *def = layer->get()->GetLayerDefn();
   if (!def) {
-    Nan::ThrowError("Layer has no layer definition set");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer has no layer definition set").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   int field_index;
@@ -171,9 +172,9 @@ NAN_METHOD(LayerFields::get) {
   auto r = def->GetFieldDefn(field_index);
   if (r == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return;
+    return node_gdal::napi_env.Undefined();
   }
-  info.GetReturnValue().Set(FieldDefn::New(r));
+  return FieldDefn::New(r);
 }
 
 /**
@@ -187,29 +188,29 @@ NAN_METHOD(LayerFields::get) {
  */
 NAN_METHOD(LayerFields::getNames) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   OGRFeatureDefn *def = layer->get()->GetLayerDefn();
   if (!def) {
-    Nan::ThrowError("Layer has no layer definition set");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer has no layer definition set").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   int n = def->GetFieldCount();
-  Local<Array> result = Nan::New<Array>(n);
+  Napi::Array result = Napi::Array::New(node_gdal::napi_env, n);
 
   for (int i = 0; i < n; i++) {
     OGRFieldDefn *field_def = def->GetFieldDefn(i);
-    Nan::Set(result, i, SafeString::New(field_def->GetNameRef()));
+    result.Set( i, SafeString::New(field_def->GetNameRef()));
   }
 
-  info.GetReturnValue().Set(result);
+  return result;
 }
 
 /**
@@ -223,23 +224,23 @@ NAN_METHOD(LayerFields::getNames) {
  */
 NAN_METHOD(LayerFields::remove) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   if (info.Length() < 1) {
-    Nan::ThrowError("Field index or name must be given");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Field index or name must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   OGRFeatureDefn *def = layer->get()->GetLayerDefn();
   if (!def) {
-    Nan::ThrowError("Layer has no layer definition set");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer has no layer definition set").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   int field_index;
@@ -248,10 +249,10 @@ NAN_METHOD(LayerFields::remove) {
   int err = layer->get()->DeleteField(field_index);
   if (err) {
     NODE_THROW_OGRERR(err);
-    return;
+    return node_gdal::napi_env.Undefined();
   }
 
-  return;
+  return node_gdal::napi_env.Undefined();
 }
 
 /**
@@ -267,16 +268,16 @@ NAN_METHOD(LayerFields::remove) {
  */
 NAN_METHOD(LayerFields::add) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   if (info.Length() < 1) {
-    Nan::ThrowError("field definition(s) must be given");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "field definition(s) must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   FieldDefn *field_def;
@@ -284,36 +285,36 @@ NAN_METHOD(LayerFields::add) {
   int approx = 1;
   NODE_ARG_BOOL_OPT(1, "approx", approx);
 
-  if (info[0]->IsArray()) {
-    Local<Array> array = info[0].As<Array>();
+  if (info[0].IsArray()) {
+    Napi::Array array = info[0].As<Array>();
     int n = array->Length();
     for (int i = 0; i < n; i++) {
-      Local<Value> element = Nan::Get(array, i).ToLocalChecked();
+      Napi::Value element = Nan::Get(array, i).ToLocalChecked();
       if (IS_WRAPPED(element, FieldDefn)) {
-        field_def = Nan::ObjectWrap::Unwrap<FieldDefn>(element.As<Object>());
+        field_def = node_gdal::UnwrapWrapped<FieldDefn>(element.As<Object>());
         err = layer->get()->CreateField(field_def->get(), approx);
         if (err) {
           NODE_THROW_OGRERR(err);
-          return;
+          return node_gdal::napi_env.Undefined();
         }
       } else {
-        Nan::ThrowError("All array elements must be FieldDefn objects");
-        return;
+        Napi::Error::New(node_gdal::napi_env, "All array elements must be FieldDefn objects").ThrowAsJavaScriptException();
+        return node_gdal::napi_env.Undefined();
       }
     }
   } else if (IS_WRAPPED(info[0], FieldDefn)) {
-    field_def = Nan::ObjectWrap::Unwrap<FieldDefn>(info[0].As<Object>());
+    field_def = node_gdal::UnwrapWrapped<FieldDefn>(info[0].As<Object>());
     err = layer->get()->CreateField(field_def->get(), approx);
     if (err) {
       NODE_THROW_OGRERR(err);
-      return;
+      return node_gdal::napi_env.Undefined();
     }
   } else {
-    Nan::ThrowError("field definition(s) must be a FieldDefn object or array of FieldDefn objects");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "field definition(s) must be a FieldDefn object or array of FieldDefn objects").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  return;
+  return node_gdal::napi_env.Undefined();
 }
 
 /**
@@ -332,46 +333,46 @@ NAN_METHOD(LayerFields::add) {
  */
 NAN_METHOD(LayerFields::reorder) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Layer *layer = Nan::ObjectWrap::Unwrap<Layer>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Nan::ThrowError("Layer object already destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   OGRFeatureDefn *def = layer->get()->GetLayerDefn();
   if (!def) {
-    Nan::ThrowError("Layer has no layer definition set");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Layer has no layer definition set").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  Local<Array> field_map = Nan::New<Array>(0);
+  Napi::Array field_map = Napi::Array::New(node_gdal::napi_env, 0);
   NODE_ARG_ARRAY(0, "field map", field_map);
 
   int n = def->GetFieldCount();
   OGRErr err = 0;
 
   if ((int)field_map->Length() != n) {
-    Nan::ThrowError("Array length must match field count");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Array length must match field count").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   int *field_map_array = new int[n];
 
   for (int i = 0; i < n; i++) {
-    Local<Value> val = Nan::Get(field_map, i).ToLocalChecked();
+    Napi::Value val = Nan::Get(field_map, i).ToLocalChecked();
     if (!val->IsNumber()) {
       delete[] field_map_array;
-      Nan::ThrowError("Array must only contain integers");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "Array must only contain integers").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
 
     int key = Nan::To<int64_t>(val).ToChecked();
     if (key < 0 || key >= n) {
       delete[] field_map_array;
-      Nan::ThrowError("Values must be between 0 and field count - 1");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "Values must be between 0 and field count - 1").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
 
     field_map_array[i] = key;
@@ -383,9 +384,9 @@ NAN_METHOD(LayerFields::reorder) {
 
   if (err) {
     NODE_THROW_OGRERR(err);
-    return;
+    return node_gdal::napi_env.Undefined();
   }
-  return;
+  return node_gdal::napi_env.Undefined();
 }
 
 /**
@@ -399,7 +400,7 @@ NAN_METHOD(LayerFields::reorder) {
  * @type {Layer}
  */
 NAN_GETTER(LayerFields::layerGetter) {
-  info.GetReturnValue().Set(Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked());
+  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked();
 }
 
 } // namespace node_gdal

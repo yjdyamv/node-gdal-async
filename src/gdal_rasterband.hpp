@@ -2,28 +2,22 @@
 #define __NODE_GDAL_RASTERBAND_H__
 
 // node
-#include <node.h>
-#include <node_object_wrap.h>
 
 // nan
-#include "nan-wrapper.h"
+#include "gdal_common.hpp"
 
 // gdal
 #include <gdal_priv.h>
 
 #include "gdal_dataset.hpp"
 
-using namespace v8;
-using namespace node;
-
 namespace node_gdal {
 
-class RasterBand : public Nan::ObjectWrap {
+class RasterBand : public GDALObject<RasterBand> {
     public:
-  static Nan::Persistent<FunctionTemplate> constructor;
-  static void Initialize(Local<Object> target);
-  static NAN_METHOD(New);
-  static Local<Value> New(GDALRasterBand *band, GDALDataset *parent);
+  static Napi::FunctionReference constructor;
+  static void Initialize(Napi::Object target);
+  static Napi::Value New(GDALRasterBand *band, GDALDataset *parent);
   static NAN_METHOD(toString);
   GDAL_ASYNCABLE_DECLARE(flush);
   GDAL_ASYNCABLE_DECLARE(fill);
@@ -67,8 +61,10 @@ class RasterBand : public Nan::ObjectWrap {
   static NAN_SETTER(colorInterpretationSetter);
   static NAN_SETTER(colorTableSetter);
 
-  RasterBand();
-  RasterBand(GDALRasterBand *band);
+  RasterBand(const Napi::CallbackInfo &info);
+
+  // Must be accessible: ObjectWrap's finalizer deletes the instance itself
+  ~RasterBand();
   inline bool isAlive() {
     return this_ && object_store.isAlive(uid);
   }
@@ -84,7 +80,6 @@ class RasterBand : public Nan::ObjectWrap {
   long parent_uid;
 
     private:
-  ~RasterBand();
   GDALRasterBand *this_;
   GDALDataset *parent_ds;
 };

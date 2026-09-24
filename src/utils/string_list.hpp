@@ -2,17 +2,13 @@
 #ifndef __STRING_LIST_H__
 #define __STRING_LIST_H__
 
-// node
-#include <node.h>
+#include <string>
 
-// nan
-#include "../nan-wrapper.h"
-
-using namespace v8;
+#include "../napi-wrapper.h"
 
 namespace node_gdal {
 
-// A class for parsing a V8::Value and constructing a GDAL string list
+// A class for parsing a Napi::Value and constructing a GDAL string list
 //
 // inputs:
 // {key: value, ...}, ["key=value", ...]
@@ -22,7 +18,7 @@ namespace node_gdal {
 
 class StringList {
     public:
-  int parse(Local<Value> value);
+  int parse(Napi::Value value);
 
   StringList();
   ~StringList();

@@ -6,26 +6,32 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> Point::constructor;
+Napi::FunctionReference Point::constructor;
 
-void Point::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void Point::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(Point);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(Point::New);
-  lcons->Inherit(Nan::New(Geometry::constructor));
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("Point").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "Point",
+    {
+        METHOD(toString)
+        ATTR(lcons, "x", xGetter, xSetter)
+        ATTR(lcons, "y", yGetter, ySetter)
+        ATTR(lcons, "z", zGetter, zSetter)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
+  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
+  Napi::Function base = Geometry::constructor.Value();
+  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
+  lcons.SetPrototypeOf(base);
 
   // properties
-  ATTR(lcons, "x", xGetter, xSetter);
-  ATTR(lcons, "y", yGetter, ySetter);
-  ATTR(lcons, "z", zGetter, zSetter);
 
-  Nan::Set(target, Nan::New("Point").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
+  target.Set("Point", lcons);
 
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 /**
@@ -44,11 +50,11 @@ NAN_METHOD(Point::New) {
   double x = 0, y = 0, z = 0;
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     f = static_cast<Point *>(ptr);
@@ -59,8 +65,8 @@ NAN_METHOD(Point::New) {
     NODE_ARG_DOUBLE_OPT(2, "z", z);
 
     if (info.Length() == 1) {
-      Nan::ThrowError("Point constructor must be given 0, 2, or 3 arguments");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "Point constructor must be given 0, 2, or 3 arguments").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
 
     if (info.Length() == 3) {
@@ -73,11 +79,11 @@ NAN_METHOD(Point::New) {
   }
 
   f->Wrap(info.This());
-  info.GetReturnValue().Set(info.This());
+  return info.This();
 }
 
 NAN_METHOD(Point::toString) {
-  info.GetReturnValue().Set(Nan::New("Point").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "Point");
 }
 
 /**
@@ -88,16 +94,16 @@ NAN_METHOD(Point::toString) {
  * @type {number}
  */
 NAN_GETTER(Point::xGetter) {
-  Point *geom = Nan::ObjectWrap::Unwrap<Point>(info.This());
-  info.GetReturnValue().Set(Nan::New<Number>((geom->this_)->getX()));
+  Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
+  return Napi::Number::New(node_gdal::napi_env, (geom->this_)->getX());
 }
 
 NAN_SETTER(Point::xSetter) {
-  Point *geom = Nan::ObjectWrap::Unwrap<Point>(info.This());
+  Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
 
   if (!value->IsNumber()) {
-    Nan::ThrowError("y must be a number");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "y must be a number").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   double x = Nan::To<double>(value).ToChecked();
 
@@ -112,16 +118,16 @@ NAN_SETTER(Point::xSetter) {
  * @type {number}
  */
 NAN_GETTER(Point::yGetter) {
-  Point *geom = Nan::ObjectWrap::Unwrap<Point>(info.This());
-  info.GetReturnValue().Set(Nan::New<Number>((geom->this_)->getY()));
+  Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
+  return Napi::Number::New(node_gdal::napi_env, (geom->this_)->getY());
 }
 
 NAN_SETTER(Point::ySetter) {
-  Point *geom = Nan::ObjectWrap::Unwrap<Point>(info.This());
+  Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
 
   if (!value->IsNumber()) {
-    Nan::ThrowError("y must be a number");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "y must be a number").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   double y = Nan::To<double>(value).ToChecked();
 
@@ -136,16 +142,16 @@ NAN_SETTER(Point::ySetter) {
  * @type {number}
  */
 NAN_GETTER(Point::zGetter) {
-  Point *geom = Nan::ObjectWrap::Unwrap<Point>(info.This());
-  info.GetReturnValue().Set(Nan::New<Number>((geom->this_)->getZ()));
+  Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
+  return Napi::Number::New(node_gdal::napi_env, (geom->this_)->getZ());
 }
 
 NAN_SETTER(Point::zSetter) {
-  Point *geom = Nan::ObjectWrap::Unwrap<Point>(info.This());
+  Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
 
   if (!value->IsNumber()) {
-    Nan::ThrowError("z must be a number");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "z must be a number").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   double z = Nan::To<double>(value).ToChecked();
 

@@ -9,22 +9,28 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> MultiCurve::constructor;
+Napi::FunctionReference MultiCurve::constructor;
 
-void MultiCurve::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void MultiCurve::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(MultiCurve);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(MultiCurve::New);
-  lcons->Inherit(Nan::New(GeometryCollection::constructor));
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("MultiCurve").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "MultiCurve",
+    {
+        METHOD(toString)
+        METHOD(polygonize)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan::SetPrototypeMethod(lcons, "polygonize", polygonize);
+  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
+  Napi::Function base = GeometryCollection::constructor.Value();
+  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
+  lcons.SetPrototypeOf(base);
 
-  Nan::Set(target, Nan::New("MultiCurve").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
+  target.Set("MultiCurve", lcons);
 
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 /**
@@ -34,7 +40,7 @@ void MultiCurve::Initialize(Local<Object> target) {
  */
 
 NAN_METHOD(MultiCurve::toString) {
-  info.GetReturnValue().Set(Nan::New("MultiCurve").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "MultiCurve");
 }
 
 /**
@@ -47,9 +53,9 @@ NAN_METHOD(MultiCurve::toString) {
  */
 NAN_METHOD(MultiCurve::polygonize) {
 
-  MultiCurve *geom = Nan::ObjectWrap::Unwrap<MultiCurve>(info.This());
+  MultiCurve *geom = node_gdal::UnwrapWrapped<MultiCurve>(info.This().As<Napi::Object>());
 
-  info.GetReturnValue().Set(Geometry::New(geom->this_->Polygonize()));
+  return Geometry::New(geom->this_->Polygonize());
 }
 
 } // namespace node_gdal

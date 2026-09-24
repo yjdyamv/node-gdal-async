@@ -2,28 +2,23 @@
 #define __NODE_OGR_FEATURE_H__
 
 // node
-#include <node.h>
-#include <node_object_wrap.h>
 
 // nan
-#include "nan-wrapper.h"
+#include "gdal_common.hpp"
 
 // ogr
 #include <ogrsf_frmts.h>
 
 #include <ogr_featurestyle.h>
-using namespace v8;
-using namespace node;
 
 namespace node_gdal {
 
-class Feature : public Nan::ObjectWrap {
+class Feature : public GDALObject<Feature> {
     public:
-  static Nan::Persistent<FunctionTemplate> constructor;
-  static void Initialize(Local<Object> target);
-  static NAN_METHOD(New);
-  static Local<Value> New(OGRFeature *feature);
-  static Local<Value> New(OGRFeature *feature, bool owned);
+  static Napi::FunctionReference constructor;
+  static void Initialize(Napi::Object target);
+  static Napi::Value New(OGRFeature *feature);
+  static Napi::Value New(OGRFeature *feature, bool owned);
   static NAN_METHOD(toString);
   static NAN_METHOD(getGeometry);
   //	static NAN_METHOD(setGeometryDirectly);
@@ -43,8 +38,10 @@ class Feature : public Nan::ObjectWrap {
 
   static NAN_SETTER(fidSetter);
 
-  Feature();
-  Feature(OGRFeature *feature);
+  Feature(const Napi::CallbackInfo &info);
+
+  // Must be accessible: ObjectWrap's finalizer deletes the instance itself
+  ~Feature();
   inline OGRFeature *get() {
     return this_;
   }
@@ -54,7 +51,6 @@ class Feature : public Nan::ObjectWrap {
   void dispose();
 
     private:
-  ~Feature();
   OGRFeature *this_;
   bool owned_;
   // int size_;

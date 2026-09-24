@@ -4,25 +4,27 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> GDALDrivers::constructor;
+Napi::FunctionReference GDALDrivers::constructor;
 
-void GDALDrivers::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void GDALDrivers::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(GDALDrivers);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(GDALDrivers::New);
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("GDALDrivers").ToLocalChecked());
-
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan::SetPrototypeMethod(lcons, "count", count);
-  Nan::SetPrototypeMethod(lcons, "get", get);
-  Nan::SetPrototypeMethod(lcons, "getNames", getNames);
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "GDALDrivers",
+    {
+        METHOD(toString)
+        METHOD(count)
+        METHOD(get)
+        METHOD(getNames)
+    });
 
   GDALAllRegister();
 
-  Nan::Set(target, Nan::New("GDALDrivers").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
+  target.Set("GDALDrivers", lcons);
 
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 GDALDrivers::GDALDrivers() : Nan::ObjectWrap() {
@@ -40,36 +42,35 @@ GDALDrivers::~GDALDrivers() {
 NAN_METHOD(GDALDrivers::New) {
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     GDALDrivers *f = static_cast<GDALDrivers *>(ptr);
     f->Wrap(info.This());
-    info.GetReturnValue().Set(info.This());
-    return;
+    return info.This();
+    return node_gdal::napi_env.Undefined();
   } else {
-    Nan::ThrowError("Cannot create GDALDrivers directly");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot create GDALDrivers directly").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 }
 
-Local<Value> GDALDrivers::New() {
-  Nan::EscapableHandleScope scope;
+Napi::Value GDALDrivers::New() {
 
   GDALDrivers *wrapped = new GDALDrivers();
 
-  v8::Local<v8::Value> ext = Nan::New<External>(wrapped);
+  Napi::Value ext = Nan::New<External>(wrapped);
   v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Nan::New(GDALDrivers::constructor)).ToLocalChecked(), 1, &ext).ToLocalChecked();
+    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, GDALDrivers::constructor)), 1, &ext).ToLocalChecked();
 
-  return scope.Escape(obj);
+  return obj;
 }
 
 NAN_METHOD(GDALDrivers::toString) {
-  info.GetReturnValue().Set(Nan::New("GDALDrivers").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "GDALDrivers");
 }
 
 /**
@@ -91,11 +92,11 @@ NAN_METHOD(GDALDrivers::get) {
   GDALDriver *gdal_driver;
 
   if (info.Length() == 0) {
-    Nan::ThrowError("Either driver name or index must be provided");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Either driver name or index must be provided").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  if (info[0]->IsString()) {
+  if (info[0].IsString()) {
     // try getting OGR driver first, and then GDAL driver if it fails
     // A driver named "VRT" exists for both GDAL and OGR, so if building
     // with <2.0 require user to specify which driver to pick
@@ -106,22 +107,22 @@ NAN_METHOD(GDALDrivers::get) {
     if (name == "VRT:raster") { name = "VRT"; }
     gdal_driver = GetGDALDriverManager()->GetDriverByName(name.c_str());
     if (gdal_driver) {
-      info.GetReturnValue().Set(Driver::New(gdal_driver));
-      return;
+      return Driver::New(gdal_driver);
+      return node_gdal::napi_env.Undefined();
     }
 
-  } else if (info[0]->IsNumber()) {
+  } else if (info[0].IsNumber()) {
     int i = static_cast<int>(Nan::To<int64_t>(info[0]).ToChecked());
 
     gdal_driver = GetGDALDriverManager()->GetDriver(i);
     if (gdal_driver) {
-      info.GetReturnValue().Set(Driver::New(gdal_driver));
-      return;
+      return Driver::New(gdal_driver);
+      return node_gdal::napi_env.Undefined();
     }
 
   } else {
-    Nan::ThrowError("Argument must be string or integer");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Argument must be string or integer").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   NODE_THROW_LAST_CPLERR;
@@ -142,15 +143,15 @@ NAN_METHOD(GDALDrivers::getNames) {
 
   int n = gdal_count + ogr_count;
 
-  Local<Array> driver_names = Nan::New<Array>(n);
+  Napi::Array driver_names = Napi::Array::New(node_gdal::napi_env, n);
 
   for (i = 0; i < gdal_count; ++i) {
     GDALDriver *driver = GetGDALDriverManager()->GetDriver(i);
     name = driver->GetDescription();
-    Nan::Set(driver_names, i, SafeString::New(name.c_str()));
+    driver_names.Set( i, SafeString::New(name.c_str()));
   }
 
-  info.GetReturnValue().Set(driver_names);
+  return driver_names;
 }
 
 /**
@@ -165,7 +166,7 @@ NAN_METHOD(GDALDrivers::count) {
 
   int count = GetGDALDriverManager()->GetDriverCount();
 
-  info.GetReturnValue().Set(Nan::New<Integer>(count));
+  return Napi::Number::New(node_gdal::napi_env, count);
 }
 
 } // namespace node_gdal

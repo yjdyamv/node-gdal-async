@@ -37,18 +37,30 @@ void Memfile::weakCallback(const Nan::WeakCallbackInfo<Memfile> &file) {
   delete mem;
 }
 
-void Memfile::Initialize(Local<Object> target) {
-  Local<Object> vsimem = Nan::New<Object>();
-  Nan::Set(target, Nan::New("vsimem").ToLocalChecked(), vsimem);
-  Nan::SetMethod(vsimem, "_anonymous", Memfile::vsimemAnonymous); // not a public API
-  Nan::SetMethod(vsimem, "set", Memfile::vsimemSet);
-  Nan::SetMethod(vsimem, "release", Memfile::vsimemRelease);
-  Nan::SetMethod(vsimem, "copy", Memfile::vsimemCopy);
+void Memfile::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(Memfile);
+
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "vsimem",
+    {
+    });
+
+  Napi::Object vsimem = Napi::Object::New(node_gdal::napi_env);
+  GDAL_SetMethod(env, vsimem, "_anonymous", Memfile::vsimemAnonymous);
+  GDAL_SetMethod(env, vsimem, "set", Memfile::vsimemSet);
+  GDAL_SetMethod(env, vsimem, "release", Memfile::vsimemRelease);
+  GDAL_SetMethod(env, vsimem, "copy", Memfile::vsimemCopy);
+
+  target.Set("vsimem", lcons);
+
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 // Anonymous buffers are handled by the GC
 // Whenever the JS buffer goes out of scope, the file is deleted
-Memfile *Memfile::get(Local<Object> buffer) {
+Memfile *Memfile::get(Napi::Object buffer) {
   if (!Buffer::HasInstance(buffer)) return nullptr;
   void *data = Buffer::Data(buffer);
   if (data == nullptr) return nullptr;
@@ -69,7 +81,7 @@ Memfile *Memfile::get(Local<Object> buffer) {
 }
 
 // Named buffers are protected from the GC and are owned by Node
-Memfile *Memfile::get(Local<Object> buffer, const std::string &filename) {
+Memfile *Memfile::get(Napi::Object buffer, const std::string &filename) {
   if (!Buffer::HasInstance(buffer)) return nullptr;
   void *data = node::Buffer::Data(buffer);
   if (data == nullptr) { return nullptr; }
@@ -88,7 +100,7 @@ Memfile *Memfile::get(Local<Object> buffer, const std::string &filename) {
 }
 
 // GDAL buffers handled by GDAL and are not referenced by node-gdal-async
-bool Memfile::copy(Local<Object> buffer, const std::string &filename) {
+bool Memfile::copy(Napi::Object buffer, const std::string &filename) {
   if (!Buffer::HasInstance(buffer)) return false;
   void *data = node::Buffer::Data(buffer);
   if (data == nullptr) return false;
@@ -108,7 +120,7 @@ bool Memfile::copy(Local<Object> buffer, const std::string &filename) {
 
   // If you malloc, you adjust external memory too (https://github.com/nodejs/node/issues/40936)
   Memfile::tracked_buffers.insert({dataCopy, len});
-  Nan::AdjustExternalMemory(len);
+  Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, len);
 
   VSIFCloseL(vsi);
   return true;
@@ -133,14 +145,14 @@ bool Memfile::copy(Local<Object> buffer, const std::string &filename) {
  * @param {string} filename A file name beginning with `/vsimem/`
  */
 NAN_METHOD(Memfile::vsimemSet) {
-  Local<Object> buffer;
+  Napi::Object buffer;
   std::string filename;
 
   NODE_ARG_OBJECT(0, "buffer", buffer);
   NODE_ARG_STR(1, "filename", filename);
 
   Memfile *memfile = Memfile::get(buffer, filename);
-  if (memfile == nullptr) Nan::ThrowError("Failed creating in-memory file");
+  if (memfile == nullptr) Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
 }
 
 /**
@@ -159,13 +171,13 @@ NAN_METHOD(Memfile::vsimemSet) {
  * @param {string} filename A file name beginning with `/vsimem/`
  */
 NAN_METHOD(Memfile::vsimemCopy) {
-  Local<Object> buffer;
+  Napi::Object buffer;
   std::string filename;
 
   NODE_ARG_OBJECT(0, "buffer", buffer);
   NODE_ARG_STR(1, "filename", filename);
 
-  if (!Memfile::copy(buffer, filename)) Nan::ThrowError("Failed creating in-memory file");
+  if (!Memfile::copy(buffer, filename)) Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
 }
 
 /*
@@ -174,15 +186,15 @@ NAN_METHOD(Memfile::vsimemCopy) {
  * This is not a public method as it is not always safe.
  */
 NAN_METHOD(Memfile::vsimemAnonymous) {
-  Local<Object> buffer;
+  Napi::Object buffer;
 
   NODE_ARG_OBJECT(0, "buffer", buffer);
 
   Memfile *memfile = Memfile::get(buffer);
   if (memfile == nullptr)
-    Nan::ThrowError("Failed creating in-memory file");
+    Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
   else
-    info.GetReturnValue().Set(Nan::New<String>(memfile->filename).ToLocalChecked());
+    return Nan::New<String>(memfile->filename).ToLocalChecked();
 }
 
 /**
@@ -215,7 +227,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
   void *data = VSIGetMemFileBuffer(filename.c_str(), &len, false);
   if (data == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return;
+    return node_gdal::napi_env.Undefined();
   }
 
   // Two cases:
@@ -225,7 +237,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
     Memfile *mem = memfile_collection.find(data)->second;
     memfile_collection.erase(mem->data);
     VSIUnlink(mem->filename.c_str());
-    info.GetReturnValue().Set(Nan::New(*mem->persistent));
+    return Napi::Number::New(node_gdal::napi_env, *mem->persistent);
     delete mem;
   } else {
     // the file has been created by GDAL and the buffer is owned by GDAL
@@ -243,7 +255,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
                                   std::map<void *, size_t>::iterator b =
                                     Memfile::tracked_buffers.find(static_cast<void *>(data));
                                   if (b != Memfile::tracked_buffers.end()) {
-                                    Nan::AdjustExternalMemory(-(static_cast<int>(b->second)));
+                                    Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, -(static_cast<int>(b->second)));
                                     Memfile::tracked_buffers.erase(b);
                                   }
                                   CPLFree(data);

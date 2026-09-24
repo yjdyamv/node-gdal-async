@@ -7,25 +7,26 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> DatasetBands::constructor;
+Napi::FunctionReference DatasetBands::constructor;
 
-void DatasetBands::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void DatasetBands::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(DatasetBands);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(DatasetBands::New);
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("DatasetBands").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "DatasetBands",
+    {
+        METHOD(toString)
+        METHOD_ASYNCABLE(count)
+        METHOD_ASYNCABLE(create)
+        METHOD_ASYNCABLE(get)
+        ATTR_DONT_ENUM(lcons, "ds", dsGetter, READ_ONLY_SETTER)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan__SetPrototypeAsyncableMethod(lcons, "count", count);
-  Nan__SetPrototypeAsyncableMethod(lcons, "create", create);
-  Nan__SetPrototypeAsyncableMethod(lcons, "get", get);
+  target.Set("DatasetBands", lcons);
 
-  ATTR_DONT_ENUM(lcons, "ds", dsGetter, READ_ONLY_SETTER);
-
-  Nan::Set(target, Nan::New("DatasetBands").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
-
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 DatasetBands::DatasetBands() : Nan::ObjectWrap() {
@@ -46,37 +47,36 @@ DatasetBands::~DatasetBands() {
 NAN_METHOD(DatasetBands::New) {
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     DatasetBands *f = static_cast<DatasetBands *>(ptr);
     f->Wrap(info.This());
-    info.GetReturnValue().Set(info.This());
-    return;
+    return info.This();
+    return node_gdal::napi_env.Undefined();
   } else {
-    Nan::ThrowError("Cannot create DatasetBands directly");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot create DatasetBands directly").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 }
 
-Local<Value> DatasetBands::New(Local<Value> ds_obj) {
-  Nan::EscapableHandleScope scope;
+Napi::Value DatasetBands::New(Napi::Value ds_obj) {
 
   DatasetBands *wrapped = new DatasetBands();
 
-  v8::Local<v8::Value> ext = Nan::New<External>(wrapped);
+  Napi::Value ext = Nan::New<External>(wrapped);
   v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Nan::New(DatasetBands::constructor)).ToLocalChecked(), 1, &ext).ToLocalChecked();
-  Nan::SetPrivate(obj, Nan::New("parent_").ToLocalChecked(), ds_obj);
+    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, DatasetBands::constructor)), 1, &ext).ToLocalChecked();
+  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), ds_obj);
 
-  return scope.Escape(obj);
+  return obj;
 }
 
 NAN_METHOD(DatasetBands::toString) {
-  info.GetReturnValue().Set(Nan::New("DatasetBands").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "DatasetBands");
 }
 
 /**
@@ -105,13 +105,13 @@ NAN_METHOD(DatasetBands::toString) {
  */
 GDAL_ASYNCABLE_DEFINE(DatasetBands::get) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Dataset *ds = Nan::ObjectWrap::Unwrap<Dataset>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Nan::ThrowError("Dataset object has already been destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -127,7 +127,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::get) {
     return band;
   };
   job.rval = [raw](GDALRasterBand *band, const GetFromPersistentFunc &) { return RasterBand::New(band, raw); };
-  job.run(info, async, 1);
+  return job.run(info, async, 1);
 }
 
 /**
@@ -158,13 +158,13 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::get) {
 
 GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Dataset *ds = Nan::ObjectWrap::Unwrap<Dataset>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Nan::ThrowError("Dataset object has already been destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -173,21 +173,21 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
 
   // NODE_ARG_ENUM(0, "data type", GDALDataType, type);
   if (info.Length() < 1) {
-    Nan::ThrowError("data type argument needed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "data type argument needed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
-  if (info[0]->IsString()) {
+  if (info[0].IsString()) {
     std::string type_name = *Nan::Utf8String(info[0]);
     type = GDALGetDataTypeByName(type_name.c_str());
-  } else if (info[0]->IsNull() || info[0]->IsUndefined()) {
+  } else if (info[0].IsNull() || info[0].IsUndefined()) {
     type = GDT_Unknown;
   } else {
-    Nan::ThrowError("data type must be string or undefined");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "data type must be string or undefined").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   if (info.Length() > 1 && options->parse(info[1])) {
-    return; // error parsing creation options, options->parse does the throwing
+    return node_gdal::napi_env.Undefined(); // error parsing creation options, options->parse does the throwing
   }
 
   GDALAsyncableJob<GDALRasterBand *> job(ds->uid);
@@ -199,7 +199,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
     return raw->GetRasterBand(raw->GetRasterCount());
   };
   job.rval = [raw](GDALRasterBand *r, const GetFromPersistentFunc &) { return RasterBand::New(r, raw); };
-  job.run(info, async, 2);
+  return job.run(info, async, 2);
 }
 
 /**
@@ -225,13 +225,13 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
  */
 GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  Dataset *ds = Nan::ObjectWrap::Unwrap<Dataset>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Nan::ThrowError("Dataset object has already been destroyed");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -241,8 +241,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
     int count = raw->GetRasterCount();
     return count;
   };
-  job.rval = [](int count, const GetFromPersistentFunc &) { return Nan::New<Integer>(count); };
-  job.run(info, async, 0);
+  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, count); };
+  return job.run(info, async, 0);
 }
 
 /**
@@ -256,7 +256,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
  * @type {Dataset}
  */
 NAN_GETTER(DatasetBands::dsGetter) {
-  info.GetReturnValue().Set(Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked());
+  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked();
 }
 
 } // namespace node_gdal

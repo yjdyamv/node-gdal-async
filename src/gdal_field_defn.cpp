@@ -5,26 +5,28 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> FieldDefn::constructor;
+Napi::FunctionReference FieldDefn::constructor;
 
-void FieldDefn::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void FieldDefn::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(FieldDefn);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(FieldDefn::New);
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("FieldDefn").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "FieldDefn",
+    {
+        ATTR(lcons, "name", nameGetter, nameSetter)
+        ATTR(lcons, "type", typeGetter, typeSetter)
+        ATTR(lcons, "justification", justificationGetter, justificationSetter)
+        ATTR(lcons, "width", widthGetter, widthSetter)
+        ATTR(lcons, "precision", precisionGetter, precisionSetter)
+        ATTR(lcons, "ignored", ignoredGetter, ignoredSetter)
+        METHOD(toString)
+    });
 
-  ATTR(lcons, "name", nameGetter, nameSetter);
-  ATTR(lcons, "type", typeGetter, typeSetter);
-  ATTR(lcons, "justification", justificationGetter, justificationSetter);
-  ATTR(lcons, "width", widthGetter, widthSetter);
-  ATTR(lcons, "precision", precisionGetter, precisionSetter);
-  ATTR(lcons, "ignored", ignoredGetter, ignoredSetter);
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
+  target.Set("FieldDefn", lcons);
 
-  Nan::Set(target, Nan::New("FieldDefn").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
-
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 FieldDefn::FieldDefn(OGRFieldDefn *def) : Nan::ObjectWrap(), this_(def), owned_(false) {
@@ -52,17 +54,17 @@ FieldDefn::~FieldDefn() {
 NAN_METHOD(FieldDefn::New) {
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     FieldDefn *f = static_cast<FieldDefn *>(ptr);
     f->Wrap(info.This());
-    info.GetReturnValue().Set(info.This());
-    return;
+    return info.This();
+    return node_gdal::napi_env.Undefined();
   } else {
     std::string field_name("");
     std::string type_name("string");
@@ -72,8 +74,8 @@ NAN_METHOD(FieldDefn::New) {
 
     int field_type = getFieldTypeByName(type_name);
     if (field_type < 0) {
-      Nan::ThrowError("Unrecognized field type");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "Unrecognized field type").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
 
     FieldDefn *def = new FieldDefn(new OGRFieldDefn(field_name.c_str(), static_cast<OGRFieldType>(field_type)));
@@ -81,7 +83,7 @@ NAN_METHOD(FieldDefn::New) {
     def->Wrap(info.This());
   }
 
-  info.GetReturnValue().Set(info.This());
+  return info.This();
 }
 
 // Currently read-only field definitions are copied.
@@ -89,31 +91,29 @@ NAN_METHOD(FieldDefn::New) {
 // read-only modifies a shadow copy without any real effect.
 // TODO: Implement proper read-only objects that throw
 
-Local<Value> FieldDefn::New(const OGRFieldDefn *def) {
-  Nan::EscapableHandleScope scope;
-  if (!def) { return scope.Escape(Nan::Null()); }
+Napi::Value FieldDefn::New(const OGRFieldDefn *def) {
+  if (!def) { return node_gdal::napi_env.Null(); }
   OGRFieldDefn *copy = new OGRFieldDefn(def);
-  return scope.Escape(FieldDefn::New(copy, true));
+  return FieldDefn::New(copy, true);
 }
 
-Local<Value> FieldDefn::New(OGRFieldDefn *def, bool owned) {
-  Nan::EscapableHandleScope scope;
+Napi::Value FieldDefn::New(OGRFieldDefn *def, bool owned) {
 
-  if (!def) { return scope.Escape(Nan::Null()); }
+  if (!def) { return node_gdal::napi_env.Null(); }
   if (!owned) { def = new OGRFieldDefn(def); }
 
   FieldDefn *wrapped = new FieldDefn(def);
   wrapped->owned_ = true;
 
-  v8::Local<v8::Value> ext = Nan::New<External>(wrapped);
+  Napi::Value ext = Nan::New<External>(wrapped);
   v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Nan::New(FieldDefn::constructor)).ToLocalChecked(), 1, &ext).ToLocalChecked();
+    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, FieldDefn::constructor)), 1, &ext).ToLocalChecked();
 
-  return scope.Escape(obj);
+  return obj;
 }
 
 NAN_METHOD(FieldDefn::toString) {
-  info.GetReturnValue().Set(Nan::New("FieldDefn").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "FieldDefn");
 }
 
 /**
@@ -124,8 +124,8 @@ NAN_METHOD(FieldDefn::toString) {
  * @type {string}
  */
 NAN_GETTER(FieldDefn::nameGetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
-  info.GetReturnValue().Set(SafeString::New(def->this_->GetNameRef()));
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
+  return SafeString::New(def->this_->GetNameRef());
 }
 
 /**
@@ -138,8 +138,8 @@ NAN_GETTER(FieldDefn::nameGetter) {
  * @type {string}
  */
 NAN_GETTER(FieldDefn::typeGetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
-  info.GetReturnValue().Set(SafeString::New(getFieldTypeName(def->this_->GetType())));
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
+  return SafeString::New(getFieldTypeName(def->this_->GetType()));
 }
 
 /**
@@ -150,8 +150,8 @@ NAN_GETTER(FieldDefn::typeGetter) {
  * @type {boolean}
  */
 NAN_GETTER(FieldDefn::ignoredGetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
-  info.GetReturnValue().Set(Nan::New<Boolean>(def->this_->IsIgnored()));
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
+  return Napi::Boolean::New(node_gdal::napi_env, def->this_->IsIgnored());
 }
 
 /**
@@ -164,17 +164,17 @@ NAN_GETTER(FieldDefn::ignoredGetter) {
  * @type {string}
  */
 NAN_GETTER(FieldDefn::justificationGetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   OGRJustification justification = def->this_->GetJustify();
   if (justification == OJRight) {
-    info.GetReturnValue().Set(Nan::New("Right").ToLocalChecked());
-    return;
+    return Napi::String::New(node_gdal::napi_env, "Right");
+    return node_gdal::napi_env.Undefined();
   }
   if (justification == OJLeft) {
-    info.GetReturnValue().Set(Nan::New("Left").ToLocalChecked());
-    return;
+    return Napi::String::New(node_gdal::napi_env, "Left");
+    return node_gdal::napi_env.Undefined();
   }
-  info.GetReturnValue().Set(Nan::Undefined());
+  return node_gdal::napi_env.Undefined();
 }
 
 /**
@@ -185,8 +185,8 @@ NAN_GETTER(FieldDefn::justificationGetter) {
  * @type {number}
  */
 NAN_GETTER(FieldDefn::widthGetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
-  info.GetReturnValue().Set(Nan::New<Integer>(def->this_->GetWidth()));
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
+  return Napi::Number::New(node_gdal::napi_env, def->this_->GetWidth());
 }
 
 /**
@@ -197,37 +197,37 @@ NAN_GETTER(FieldDefn::widthGetter) {
  * @type {number}
  */
 NAN_GETTER(FieldDefn::precisionGetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
-  info.GetReturnValue().Set(Nan::New<Integer>(def->this_->GetPrecision()));
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
+  return Napi::Number::New(node_gdal::napi_env, def->this_->GetPrecision());
 }
 
 NAN_SETTER(FieldDefn::nameSetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsString()) {
-    Nan::ThrowError("Name must be string");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Name must be string").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   std::string name = *Nan::Utf8String(value);
   def->this_->SetName(name.c_str());
 }
 
 NAN_SETTER(FieldDefn::typeSetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsString()) {
-    Nan::ThrowError("type must be a string");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "type must be a string").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   std::string name = *Nan::Utf8String(value);
   int type = getFieldTypeByName(name.c_str());
   if (type < 0) {
-    Nan::ThrowError("Unrecognized field type");
+    Napi::Error::New(node_gdal::napi_env, "Unrecognized field type").ThrowAsJavaScriptException();
   } else {
     def->this_->SetType(OGRFieldType(type));
   }
 }
 
 NAN_SETTER(FieldDefn::justificationSetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
 
   OGRJustification justification;
   std::string str = *Nan::Utf8String(value);
@@ -239,42 +239,42 @@ NAN_SETTER(FieldDefn::justificationSetter) {
     } else if (str == "Undefined") {
       justification = OJUndefined;
     } else {
-      Nan::ThrowError("Unrecognized justification");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "Unrecognized justification").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
   } else if (value->IsNull() || value->IsUndefined()) {
     justification = OJUndefined;
   } else {
-    Nan::ThrowError("justification must be a string or undefined");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "justification must be a string or undefined").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
   def->this_->SetJustify(justification);
 }
 
 NAN_SETTER(FieldDefn::widthSetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsInt32()) {
-    Nan::ThrowError("width must be an integer");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "width must be an integer").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   def->this_->SetWidth(Nan::To<int64_t>(value).ToChecked());
 }
 
 NAN_SETTER(FieldDefn::precisionSetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsInt32()) {
-    Nan::ThrowError("precision must be an integer");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "precision must be an integer").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   def->this_->SetPrecision(Nan::To<int64_t>(value).ToChecked());
 }
 
 NAN_SETTER(FieldDefn::ignoredSetter) {
-  FieldDefn *def = Nan::ObjectWrap::Unwrap<FieldDefn>(info.This());
+  FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
   if (!value->IsBoolean()) {
-    Nan::ThrowError("ignored must be a boolean");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "ignored must be a boolean").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
   def->this_->SetIgnored(Nan::To<int64_t>(value).ToChecked());
 }

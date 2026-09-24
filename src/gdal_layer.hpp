@@ -2,29 +2,23 @@
 #define __NODE_OGR_LAYER_H__
 
 // node
-#include <node.h>
-#include <node_object_wrap.h>
 
 // nan
-#include "nan-wrapper.h"
+#include "gdal_common.hpp"
 
 // ogr
 #include <ogrsf_frmts.h>
 
 #include "gdal_dataset.hpp"
 
-using namespace v8;
-using namespace node;
-
 namespace node_gdal {
 
-class Layer : public Nan::ObjectWrap {
+class Layer : public GDALObject<Layer> {
     public:
-  static Nan::Persistent<FunctionTemplate> constructor;
-  static void Initialize(Local<Object> target);
-  static NAN_METHOD(New);
-  static Local<Value> New(OGRLayer *raw, GDALDataset *raw_parent);
-  static Local<Value> New(OGRLayer *raw, GDALDataset *raw_parent, bool result_set);
+  static Napi::FunctionReference constructor;
+  static void Initialize(Napi::Object target);
+  static Napi::Value New(OGRLayer *raw, GDALDataset *raw_parent);
+  static Napi::Value New(OGRLayer *raw, GDALDataset *raw_parent, bool result_set);
   static NAN_METHOD(toString);
   static NAN_METHOD(getExtent);
   static NAN_METHOD(setAttributeFilter);
@@ -44,8 +38,10 @@ class Layer : public Nan::ObjectWrap {
   static NAN_GETTER(geomTypeGetter);
   static NAN_GETTER(uidGetter);
 
-  Layer();
-  Layer(OGRLayer *ds);
+  Layer(const Napi::CallbackInfo &info);
+
+  // Must be accessible: ObjectWrap's finalizer deletes the instance itself
+  ~Layer();
   inline OGRLayer *get() {
     return this_;
   }
@@ -60,7 +56,6 @@ class Layer : public Nan::ObjectWrap {
   long parent_uid;
 
     private:
-  ~Layer();
   OGRLayer *this_;
   GDALDataset *parent_ds;
 };

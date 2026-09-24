@@ -9,21 +9,23 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> CoordinateTransformation::constructor;
+Napi::FunctionReference CoordinateTransformation::constructor;
 
-void CoordinateTransformation::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void CoordinateTransformation::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(CoordinateTransformation);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(CoordinateTransformation::New);
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("CoordinateTransformation").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "CoordinateTransformation",
+    {
+        METHOD(toString)
+        METHOD(transformPoint)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan::SetPrototypeMethod(lcons, "transformPoint", transformPoint);
+  target.Set("CoordinateTransformation", lcons);
 
-  Nan::Set(target, Nan::New("CoordinateTransformation").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
-
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 CoordinateTransformation::CoordinateTransformation(OGRCoordinateTransformation *transform)
@@ -58,37 +60,37 @@ NAN_METHOD(CoordinateTransformation::New) {
   SpatialReference *source, *target;
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     f = static_cast<CoordinateTransformation *>(ptr);
   } else {
     if (info.Length() < 2) {
-      Nan::ThrowError("Invalid number of arguments");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "Invalid number of arguments").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
 
     NODE_ARG_WRAPPED(0, "source", SpatialReference, source);
 
-    if (!info[1]->IsObject() || info[1]->IsNull()) {
+    if (!info[1].IsObject() || info[1].IsNull()) {
       Nan::ThrowTypeError("target must be a SpatialReference or Dataset object");
-      return;
+      return node_gdal::napi_env.Undefined();
     }
-    if (Nan::New(SpatialReference::constructor)->HasInstance(info[1])) {
+    if (Napi::Number::New(node_gdal::napi_env, SpatialReference::constructor)->HasInstance(info[1])) {
       // srs -> srs
       NODE_ARG_WRAPPED(1, "target", SpatialReference, target);
 
       OGRCoordinateTransformation *transform = OGRCreateCoordinateTransformation(source->get(), target->get());
       if (!transform) {
         NODE_THROW_LAST_CPLERR;
-        return;
+        return node_gdal::napi_env.Undefined();
       }
       f = new CoordinateTransformation(transform);
-    } else if (Nan::New(Dataset::constructor)->HasInstance(info[1])) {
+    } else if (Napi::Number::New(node_gdal::napi_env, Dataset::constructor)->HasInstance(info[1])) {
       // srs -> px/line
       // todo: allow additional options using StringList
 
@@ -96,17 +98,17 @@ NAN_METHOD(CoordinateTransformation::New) {
       char **papszTO = NULL;
       char *src_wkt;
 
-      ds = Nan::ObjectWrap::Unwrap<Dataset>(info[1].As<Object>());
+      ds = node_gdal::UnwrapWrapped<Dataset>(info[1].As<Object>());
 
       if (!ds->get()) {
-        Nan::ThrowError("Dataset already closed");
-        return;
+        Napi::Error::New(node_gdal::napi_env, "Dataset already closed").ThrowAsJavaScriptException();
+        return node_gdal::napi_env.Undefined();
       }
 
       OGRErr err = source->get()->exportToWkt(&src_wkt);
       if (err) {
         NODE_THROW_OGRERR(err);
-        return;
+        return node_gdal::napi_env.Undefined();
       }
 
       papszTO = CSLSetNameValue(papszTO, "DST_SRS", src_wkt);
@@ -116,7 +118,7 @@ NAN_METHOD(CoordinateTransformation::New) {
       transform->hSrcImageTransformer = GDALCreateGenImgProjTransformer2(ds->get(), NULL, papszTO);
       if (!transform->hSrcImageTransformer) {
         NODE_THROW_LAST_CPLERR;
-        return;
+        return node_gdal::napi_env.Undefined();
       }
 
       f = new CoordinateTransformation(transform);
@@ -125,31 +127,30 @@ NAN_METHOD(CoordinateTransformation::New) {
       CSLDestroy(papszTO);
     } else {
       Nan::ThrowTypeError("target must be a SpatialReference or Dataset object");
-      return;
+      return node_gdal::napi_env.Undefined();
     }
   }
 
   f->Wrap(info.This());
-  info.GetReturnValue().Set(info.This());
+  return info.This();
 }
 
-Local<Value> CoordinateTransformation::New(OGRCoordinateTransformation *transform) {
-  Nan::EscapableHandleScope scope;
+Napi::Value CoordinateTransformation::New(OGRCoordinateTransformation *transform) {
 
-  if (!transform) { return scope.Escape(Nan::Null()); }
+  if (!transform) { return node_gdal::napi_env.Null(); }
 
   CoordinateTransformation *wrapped = new CoordinateTransformation(transform);
 
-  Local<Value> ext = Nan::New<External>(wrapped);
-  Local<Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Nan::New(CoordinateTransformation::constructor)).ToLocalChecked(), 1, &ext)
+  Napi::Value ext = Nan::New<External>(wrapped);
+  Napi::Object obj =
+    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, CoordinateTransformation::constructor)), 1, &ext)
       .ToLocalChecked();
 
-  return scope.Escape(obj);
+  return obj;
 }
 
 NAN_METHOD(CoordinateTransformation::toString) {
-  info.GetReturnValue().Set(Nan::New("CoordinateTransformation").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "CoordinateTransformation");
 }
 
 /**
@@ -182,18 +183,18 @@ NAN_METHOD(CoordinateTransformation::toString) {
  * @return {xyz} A regular object containing `x`, `y`, `z` properties.
  */
 NAN_METHOD(CoordinateTransformation::transformPoint) {
-  CoordinateTransformation *transform = Nan::ObjectWrap::Unwrap<CoordinateTransformation>(info.This());
+  CoordinateTransformation *transform = node_gdal::UnwrapWrapped<CoordinateTransformation>(info.This().As<Napi::Object>());
 
   double x, y, z = 0;
 
-  if (info.Length() == 1 && info[0]->IsObject()) {
-    Local<Object> obj = info[0].As<Object>();
-    Local<Value> arg_x = Nan::Get(obj, Nan::New("x").ToLocalChecked()).ToLocalChecked();
-    Local<Value> arg_y = Nan::Get(obj, Nan::New("y").ToLocalChecked()).ToLocalChecked();
-    Local<Value> arg_z = Nan::Get(obj, Nan::New("z").ToLocalChecked()).ToLocalChecked();
+  if (info.Length() == 1 && info[0].IsObject()) {
+    Napi::Object obj = info[0].As<Object>();
+    Napi::Value arg_x = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "x")).ToLocalChecked();
+    Napi::Value arg_y = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "y")).ToLocalChecked();
+    Napi::Value arg_z = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "z")).ToLocalChecked();
     if (!arg_x->IsNumber() || !arg_y->IsNumber()) {
-      Nan::ThrowError("point must contain numerical properties x and y");
-      return;
+      Napi::Error::New(node_gdal::napi_env, "point must contain numerical properties x and y").ThrowAsJavaScriptException();
+      return node_gdal::napi_env.Undefined();
     }
     x = static_cast<double>(Nan::To<double>(arg_x).ToChecked());
     y = static_cast<double>(Nan::To<double>(arg_y).ToChecked());
@@ -210,21 +211,21 @@ NAN_METHOD(CoordinateTransformation::transformPoint) {
   if (!r || proj_error_code != 0) {
     Nan::ThrowError(
       ("Error transforming point: " + std::string(proj_context_errno_string(nullptr, proj_error_code))).c_str());
-    return;
+    return node_gdal::napi_env.Undefined();
   }
 #else
   if (!transform->this_->Transform(1, &x, &y, &z)) {
-    Nan::ThrowError("Error transforming point");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Error transforming point").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 #endif
 
-  Local<Object> result = Nan::New<Object>();
-  Nan::Set(result, Nan::New("x").ToLocalChecked(), Nan::New<Number>(x));
-  Nan::Set(result, Nan::New("y").ToLocalChecked(), Nan::New<Number>(y));
-  Nan::Set(result, Nan::New("z").ToLocalChecked(), Nan::New<Number>(z));
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
+  result.Set( Napi::String::New(node_gdal::napi_env, "x"), Napi::Number::New(node_gdal::napi_env, x));
+  result.Set( Napi::String::New(node_gdal::napi_env, "y"), Napi::Number::New(node_gdal::napi_env, y));
+  result.Set( Napi::String::New(node_gdal::napi_env, "z"), Napi::Number::New(node_gdal::napi_env, z));
 
-  info.GetReturnValue().Set(result);
+  return result;
 }
 
 } // namespace node_gdal

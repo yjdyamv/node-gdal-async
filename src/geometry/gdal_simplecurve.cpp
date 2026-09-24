@@ -10,26 +10,31 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> SimpleCurve::constructor;
+Napi::FunctionReference SimpleCurve::constructor;
 
-void SimpleCurve::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void SimpleCurve::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(SimpleCurve);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(SimpleCurve::New);
-  lcons->Inherit(Nan::New(Geometry::constructor));
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("SimpleCurve").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "SimpleCurve",
+    {
+        METHOD(toString)
+        METHOD(getLength)
+        METHOD(value)
+        METHOD(addSubLineString)
+        ATTR(lcons, "points", pointsGetter, READ_ONLY_SETTER)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan::SetPrototypeMethod(lcons, "getLength", getLength);
-  Nan::SetPrototypeMethod(lcons, "value", value);
-  Nan::SetPrototypeMethod(lcons, "addSubLineString", addSubLineString);
+  // lcons->Inherit() has no DefineClass equivalent, chain the prototypes by hand
+  Napi::Function base = Geometry::constructor.Value();
+  lcons.Get("prototype").As<Napi::Object>().SetPrototypeOf(base.Get("prototype").As<Napi::Object>());
+  lcons.SetPrototypeOf(base);
 
-  ATTR(lcons, "points", pointsGetter, READ_ONLY_SETTER);
+  target.Set("SimpleCurve", lcons);
 
-  Nan::Set(target, Nan::New("SimpleCurve").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
-
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 /**
@@ -40,11 +45,11 @@ void SimpleCurve::Initialize(Local<Object> target) {
  * @extends Geometry
  */
 NAN_METHOD(SimpleCurve::New) {
-  Nan::ThrowError("SimpleCurve is an abstract class and cannot be instantiated");
+  Napi::Error::New(node_gdal::napi_env, "SimpleCurve is an abstract class and cannot be instantiated").ThrowAsJavaScriptException();
 }
 
 NAN_METHOD(SimpleCurve::toString) {
-  info.GetReturnValue().Set(Nan::New("SimpleCurve").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "SimpleCurve");
 }
 
 /**
@@ -58,7 +63,7 @@ NAN_METHOD(SimpleCurve::toString) {
  */
 NAN_METHOD(SimpleCurve::value) {
 
-  SimpleCurve *geom = Nan::ObjectWrap::Unwrap<SimpleCurve>(info.This());
+  SimpleCurve *geom = node_gdal::UnwrapWrapped<SimpleCurve>(info.This().As<Napi::Object>());
 
   OGRPoint *pt = new OGRPoint();
   double dist;
@@ -67,7 +72,7 @@ NAN_METHOD(SimpleCurve::value) {
 
   geom->this_->Value(dist, pt);
 
-  info.GetReturnValue().Set(Point::New(pt));
+  return Point::New(pt);
 }
 
 /**
@@ -90,7 +95,7 @@ NODE_WRAPPED_METHOD_WITH_RESULT(SimpleCurve, getLength, Number, get_Length);
  * @type {LineStringPoints}
  */
 NAN_GETTER(SimpleCurve::pointsGetter) {
-  info.GetReturnValue().Set(Nan::GetPrivate(info.This(), Nan::New("points_").ToLocalChecked()).ToLocalChecked());
+  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "points_")).ToLocalChecked();
 }
 
 /**
@@ -112,7 +117,7 @@ NAN_GETTER(SimpleCurve::pointsGetter) {
  */
 NAN_METHOD(SimpleCurve::addSubLineString) {
 
-  SimpleCurve *geom = Nan::ObjectWrap::Unwrap<SimpleCurve>(info.This());
+  SimpleCurve *geom = node_gdal::UnwrapWrapped<SimpleCurve>(info.This().As<Napi::Object>());
   LineString *other;
   int start = 0;
   int end = -1;
@@ -125,14 +130,14 @@ NAN_METHOD(SimpleCurve::addSubLineString) {
 
   if (start < 0 || end < -1 || start >= n || end >= n) {
     Nan::ThrowRangeError("Invalid start or end index for LineString");
-    return;
+    return node_gdal::napi_env.Undefined();
   }
 
   geom->this_->addSubLineString(other->get(), start, end);
 
   UPDATE_AMOUNT_OF_GEOMETRY_MEMORY(geom);
 
-  return;
+  return node_gdal::napi_env.Undefined();
 }
 
 } // namespace node_gdal

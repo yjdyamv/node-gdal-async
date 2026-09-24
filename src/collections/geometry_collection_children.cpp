@@ -5,24 +5,26 @@
 
 namespace node_gdal {
 
-Nan::Persistent<FunctionTemplate> GeometryCollectionChildren::constructor;
+Napi::FunctionReference GeometryCollectionChildren::constructor;
 
-void GeometryCollectionChildren::Initialize(Local<Object> target) {
-  Nan::HandleScope scope;
+void GeometryCollectionChildren::Initialize(Napi::Object target) {
+  Napi::Env env = target.Env();
+  SELF_CLASS(GeometryCollectionChildren);
 
-  Local<FunctionTemplate> lcons = Nan::New<FunctionTemplate>(GeometryCollectionChildren::New);
-  lcons->InstanceTemplate()->SetInternalFieldCount(1);
-  lcons->SetClassName(Nan::New("GeometryCollectionChildren").ToLocalChecked());
+  // NOTE: the descriptor macros carry their own trailing comma
+  Napi::Function lcons = DefineClass(env, "GeometryCollectionChildren",
+    {
+        METHOD(toString)
+        METHOD(count)
+        METHOD(get)
+        METHOD(remove)
+        METHOD(add)
+    });
 
-  Nan::SetPrototypeMethod(lcons, "toString", toString);
-  Nan::SetPrototypeMethod(lcons, "count", count);
-  Nan::SetPrototypeMethod(lcons, "get", get);
-  Nan::SetPrototypeMethod(lcons, "remove", remove);
-  Nan::SetPrototypeMethod(lcons, "add", add);
+  target.Set("GeometryCollectionChildren", lcons);
 
-  Nan::Set(target, Nan::New("GeometryCollectionChildren").ToLocalChecked(), Nan::GetFunction(lcons).ToLocalChecked());
-
-  constructor.Reset(lcons);
+  constructor = Napi::Persistent(lcons);
+  constructor.SuppressDestruct();
 }
 
 GeometryCollectionChildren::GeometryCollectionChildren() : Nan::ObjectWrap() {
@@ -39,38 +41,37 @@ GeometryCollectionChildren::~GeometryCollectionChildren() {
 NAN_METHOD(GeometryCollectionChildren::New) {
 
   if (!info.IsConstructCall()) {
-    Nan::ThrowError("Cannot call constructor as function, you need to use 'new' keyword");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
-  if (info[0]->IsExternal()) {
+  if (info[0].IsExternal()) {
     Local<External> ext = info[0].As<External>();
     void *ptr = ext->Value(V8_TYPE_TAG);
     GeometryCollectionChildren *geom = static_cast<GeometryCollectionChildren *>(ptr);
     geom->Wrap(info.This());
-    info.GetReturnValue().Set(info.This());
-    return;
+    return info.This();
+    return node_gdal::napi_env.Undefined();
   } else {
-    Nan::ThrowError("Cannot create GeometryCollectionChildren directly");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "Cannot create GeometryCollectionChildren directly").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 }
 
-Local<Value> GeometryCollectionChildren::New(Local<Value> geom) {
-  Nan::EscapableHandleScope scope;
+Napi::Value GeometryCollectionChildren::New(Napi::Value geom) {
 
   GeometryCollectionChildren *wrapped = new GeometryCollectionChildren();
 
-  v8::Local<v8::Value> ext = Nan::New<External>(wrapped);
+  Napi::Value ext = Nan::New<External>(wrapped);
   v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Nan::New(GeometryCollectionChildren::constructor)).ToLocalChecked(), 1, &ext)
+    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, GeometryCollectionChildren::constructor)), 1, &ext)
       .ToLocalChecked();
-  Nan::SetPrivate(obj, Nan::New("parent_").ToLocalChecked(), geom);
+  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), geom);
 
-  return scope.Escape(obj);
+  return obj;
 }
 
 NAN_METHOD(GeometryCollectionChildren::toString) {
-  info.GetReturnValue().Set(Nan::New("GeometryCollectionChildren").ToLocalChecked());
+  return Napi::String::New(node_gdal::napi_env, "GeometryCollectionChildren");
 }
 
 /**
@@ -83,11 +84,11 @@ NAN_METHOD(GeometryCollectionChildren::toString) {
  */
 NAN_METHOD(GeometryCollectionChildren::count) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  GeometryCollection *geom = Nan::ObjectWrap::Unwrap<GeometryCollection>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
-  info.GetReturnValue().Set(Nan::New<Integer>(geom->get()->getNumGeometries()));
+  return Napi::Number::New(node_gdal::napi_env, geom->get()->getNumGeometries());
 }
 
 /**
@@ -102,9 +103,9 @@ NAN_METHOD(GeometryCollectionChildren::count) {
  */
 NAN_METHOD(GeometryCollectionChildren::get) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  GeometryCollection *geom = Nan::ObjectWrap::Unwrap<GeometryCollection>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   int i;
   NODE_ARG_INT(0, "index", i);
@@ -112,9 +113,9 @@ NAN_METHOD(GeometryCollectionChildren::get) {
   auto r = geom->get()->getGeometryRef(i);
   if (r == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return;
+    return node_gdal::napi_env.Undefined();
   }
-  info.GetReturnValue().Set(Geometry::New(r, false));
+  return Geometry::New(r, false);
 }
 
 /**
@@ -127,9 +128,9 @@ NAN_METHOD(GeometryCollectionChildren::get) {
  */
 NAN_METHOD(GeometryCollectionChildren::remove) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  GeometryCollection *geom = Nan::ObjectWrap::Unwrap<GeometryCollection>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   int i;
   NODE_ARG_INT(0, "index", i);
@@ -137,10 +138,10 @@ NAN_METHOD(GeometryCollectionChildren::remove) {
   OGRErr err = geom->get()->removeGeometry(i);
   if (err) {
     NODE_THROW_OGRERR(err);
-    return;
+    return node_gdal::napi_env.Undefined();
   }
 
-  return;
+  return node_gdal::napi_env.Undefined();
 }
 
 /**
@@ -164,47 +165,47 @@ NAN_METHOD(GeometryCollectionChildren::remove) {
  */
 NAN_METHOD(GeometryCollectionChildren::add) {
 
-  Local<Object> parent =
-    Nan::GetPrivate(info.This(), Nan::New("parent_").ToLocalChecked()).ToLocalChecked().As<Object>();
-  GeometryCollection *geom = Nan::ObjectWrap::Unwrap<GeometryCollection>(parent);
+  Napi::Object parent =
+    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+  GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   Geometry *child;
 
   if (info.Length() < 1) {
-    Nan::ThrowError("child(ren) must be given");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "child(ren) must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
-  if (info[0]->IsArray()) {
+  if (info[0].IsArray()) {
     // set from array of geometry objects
-    Local<Array> array = info[0].As<Array>();
+    Napi::Array array = info[0].As<Array>();
     int length = array->Length();
     for (int i = 0; i < length; i++) {
-      Local<Value> element = Nan::Get(array, i).ToLocalChecked();
+      Napi::Value element = Nan::Get(array, i).ToLocalChecked();
       if (IS_WRAPPED(element, Geometry)) {
-        child = Nan::ObjectWrap::Unwrap<Geometry>(element.As<Object>());
+        child = node_gdal::UnwrapWrapped<Geometry>(element.As<Object>());
         OGRErr err = geom->get()->addGeometry(child->get());
         if (err) {
           NODE_THROW_OGRERR(err);
-          return;
+          return node_gdal::napi_env.Undefined();
         }
       } else {
-        Nan::ThrowError("All array elements must be geometry objects");
-        return;
+        Napi::Error::New(node_gdal::napi_env, "All array elements must be geometry objects").ThrowAsJavaScriptException();
+        return node_gdal::napi_env.Undefined();
       }
     }
   } else if (IS_WRAPPED(info[0], Geometry)) {
-    child = Nan::ObjectWrap::Unwrap<Geometry>(info[0].As<Object>());
+    child = node_gdal::UnwrapWrapped<Geometry>(info[0].As<Object>());
     OGRErr err = geom->get()->addGeometry(child->get());
     if (err) {
       NODE_THROW_OGRERR(err);
-      return;
+      return node_gdal::napi_env.Undefined();
     }
   } else {
-    Nan::ThrowError("child must be a geometry object or array of geometry objects");
-    return;
+    Napi::Error::New(node_gdal::napi_env, "child must be a geometry object or array of geometry objects").ThrowAsJavaScriptException();
+    return node_gdal::napi_env.Undefined();
   }
 
-  return;
+  return node_gdal::napi_env.Undefined();
 }
 
 } // namespace node_gdal

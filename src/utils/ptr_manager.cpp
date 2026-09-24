@@ -239,14 +239,14 @@ vector<AsyncLock> ObjectStore::tryLockDatasets(vector<long> uids, bool &result) 
 // This is a Weak Persistent and Nan::ObjectWrap will call the C++ destructor
 // when the GC calls the Weak Callback which will trigger the dispose functions below
 
-template <typename GDALPTR> ObjectStoreItem<GDALPTR>::ObjectStoreItem(Nan::Persistent<Object> &obj) : obj(obj) {
+template <typename GDALPTR> ObjectStoreItem<GDALPTR>::ObjectStoreItem(Napi::Reference<Napi::Object> &obj) : obj(obj) {
 }
-ObjectStoreItem<GDALDataset *>::ObjectStoreItem(Nan::Persistent<Object> &obj) : obj(obj) {
+ObjectStoreItem<GDALDataset *>::ObjectStoreItem(Napi::Reference<Napi::Object> &obj) : obj(obj) {
 }
-ObjectStoreItem<OGRLayer *>::ObjectStoreItem(Nan::Persistent<Object> &obj) : obj(obj) {
+ObjectStoreItem<OGRLayer *>::ObjectStoreItem(Napi::Reference<Napi::Object> &obj) : obj(obj) {
 }
 
-template <typename GDALPTR> long ObjectStore::add(GDALPTR ptr, Nan::Persistent<Object> &obj, long parent_uid) {
+template <typename GDALPTR> long ObjectStore::add(GDALPTR ptr, Napi::Reference<Napi::Object> &obj, long parent_uid) {
   uv_scoped_mutex lock(&master_lock);
   shared_ptr<ObjectStoreItem<GDALPTR>> item(new ObjectStoreItem<GDALPTR>(obj));
   item->uid = uid++;
@@ -266,7 +266,7 @@ template <typename GDALPTR> long ObjectStore::add(GDALPTR ptr, Nan::Persistent<O
 }
 
 // Creating a Layer object is a special case - it can contain SQL results
-long ObjectStore::add(OGRLayer *ptr, Nan::Persistent<Object> &obj, long parent_uid, bool is_result_set) {
+long ObjectStore::add(OGRLayer *ptr, Napi::Reference<Napi::Object> &obj, long parent_uid, bool is_result_set) {
   long uid = ObjectStore::add<OGRLayer *>(ptr, obj, parent_uid);
   uidMap<OGRLayer *>[uid] -> is_result_set = is_result_set;
   return uid;
@@ -274,7 +274,7 @@ long ObjectStore::add(OGRLayer *ptr, Nan::Persistent<Object> &obj, long parent_u
 
 // Creating a Dataset object is a special case
 // It contains a lock (unless it is a dependant Dataset)
-long ObjectStore::add(GDALDataset *ptr, Nan::Persistent<Object> &obj, long parent_uid, bool close) {
+long ObjectStore::add(GDALDataset *ptr, Napi::Reference<Napi::Object> &obj, long parent_uid, bool close) {
   long uid = ObjectStore::add<GDALDataset *>(ptr, obj, parent_uid);
   if (parent_uid == 0) {
     uidMap<GDALDataset *>[uid] -> async_lock = shared_ptr<uv_sem_t>(new uv_sem_t(), uv_sem_deleter());
@@ -291,50 +291,48 @@ template <typename GDALPTR> bool ObjectStore::has(GDALPTR ptr) {
   uv_scoped_mutex lock(&master_lock);
   return ptrMap<GDALPTR>.count(ptr) > 0;
 }
-template <typename GDALPTR> Local<Object> ObjectStore::get(GDALPTR ptr) {
+template <typename GDALPTR> Napi::Object ObjectStore::get(GDALPTR ptr) {
   uv_scoped_mutex lock(&master_lock);
-  Nan::EscapableHandleScope scope;
-  return scope.Escape(Nan::New(ptrMap<GDALPTR>[ptr] -> obj));
+  return ptrMap<GDALPTR>[ptr] -> obj.Value();
 }
-template <typename GDALPTR> Local<Object> ObjectStore::get(long uid) {
+template <typename GDALPTR> Napi::Object ObjectStore::get(long uid) {
   uv_scoped_mutex lock(&master_lock);
-  Nan::EscapableHandleScope scope;
-  return scope.Escape(Nan::New(uidMap<GDALPTR>[uid] -> obj));
+  return uidMap<GDALPTR>[uid] -> obj.Value();
 }
 
 // Explicit instantiation:
 // * allows calling object_store.add without <>
 // * makes sure that this class template won't be accidentally instantiated with an unsupported type
-template long ObjectStore::add(GDALDriver *, Nan::Persistent<Object> &, long);
-template long ObjectStore::add(GDALRasterBand *, Nan::Persistent<Object> &, long);
-template long ObjectStore::add(OGRSpatialReference *, Nan::Persistent<Object> &, long);
-template long ObjectStore::add(GDALColorTable *, Nan::Persistent<Object> &, long);
+template long ObjectStore::add(GDALDriver *, Napi::Reference<Napi::Object> &, long);
+template long ObjectStore::add(GDALRasterBand *, Napi::Reference<Napi::Object> &, long);
+template long ObjectStore::add(OGRSpatialReference *, Napi::Reference<Napi::Object> &, long);
+template long ObjectStore::add(GDALColorTable *, Napi::Reference<Napi::Object> &, long);
 template bool ObjectStore::has(GDALDriver *);
 template bool ObjectStore::has(GDALDataset *);
 template bool ObjectStore::has(OGRLayer *);
 template bool ObjectStore::has(GDALRasterBand *);
 template bool ObjectStore::has(OGRSpatialReference *);
 template bool ObjectStore::has(GDALColorTable *);
-template Local<Object> ObjectStore::get(GDALDriver *);
-template Local<Object> ObjectStore::get(GDALDataset *);
-template Local<Object> ObjectStore::get(OGRLayer *);
-template Local<Object> ObjectStore::get(GDALRasterBand *);
-template Local<Object> ObjectStore::get(OGRSpatialReference *);
-template Local<Object> ObjectStore::get(GDALColorTable *);
-template Local<Object> ObjectStore::get<GDALDataset *>(long uid);
+template Napi::Object ObjectStore::get(GDALDriver *);
+template Napi::Object ObjectStore::get(GDALDataset *);
+template Napi::Object ObjectStore::get(OGRLayer *);
+template Napi::Object ObjectStore::get(GDALRasterBand *);
+template Napi::Object ObjectStore::get(OGRSpatialReference *);
+template Napi::Object ObjectStore::get(GDALColorTable *);
+template Napi::Object ObjectStore::get<GDALDataset *>(long uid);
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-template long ObjectStore::add(shared_ptr<GDALAttribute>, Nan::Persistent<Object> &, long);
-template long ObjectStore::add(shared_ptr<GDALDimension>, Nan::Persistent<Object> &, long);
-template long ObjectStore::add(shared_ptr<GDALGroup>, Nan::Persistent<Object> &, long);
-template long ObjectStore::add(shared_ptr<GDALMDArray>, Nan::Persistent<Object> &, long);
+template long ObjectStore::add(shared_ptr<GDALAttribute>, Napi::Reference<Napi::Object> &, long);
+template long ObjectStore::add(shared_ptr<GDALDimension>, Napi::Reference<Napi::Object> &, long);
+template long ObjectStore::add(shared_ptr<GDALGroup>, Napi::Reference<Napi::Object> &, long);
+template long ObjectStore::add(shared_ptr<GDALMDArray>, Napi::Reference<Napi::Object> &, long);
 template bool ObjectStore::has(shared_ptr<GDALAttribute>);
 template bool ObjectStore::has(shared_ptr<GDALDimension>);
 template bool ObjectStore::has(shared_ptr<GDALGroup>);
 template bool ObjectStore::has(shared_ptr<GDALMDArray>);
-template Local<Object> ObjectStore::get(shared_ptr<GDALAttribute>);
-template Local<Object> ObjectStore::get(shared_ptr<GDALDimension>);
-template Local<Object> ObjectStore::get(shared_ptr<GDALGroup>);
-template Local<Object> ObjectStore::get(shared_ptr<GDALMDArray>);
+template Napi::Object ObjectStore::get(shared_ptr<GDALAttribute>);
+template Napi::Object ObjectStore::get(shared_ptr<GDALDimension>);
+template Napi::Object ObjectStore::get(shared_ptr<GDALGroup>);
+template Napi::Object ObjectStore::get(shared_ptr<GDALMDArray>);
 #endif
 
 const char warningGCBug[] =
