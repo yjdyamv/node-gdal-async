@@ -62,6 +62,9 @@ RULES = [
     (r"(\w+)\[(.*?)\]->Is(\w+)\(\)", "\\1[\\2].Is\\3()"),
     (r"(\w+(?:\[[^\]]*\])?)->IsConstructCall\(\)", "\\1.IsConstructCall()"),
     (r"(\w+)->handle\(\)", "\\1->Value()"),
+    # Nan::ObjectWrap::persistent() was the wrapper's own handle; ObjectWrap *is*
+    # a Reference<Object> in node-addon-api
+    (r"(\w+)->persistent\(\)", r"*\1"),
     # scopes - N-API manages them
     (r"(?m)^\s*Nan::EscapableHandleScope scope;\n", ""),
     (r"(?m)^\s*Nan::HandleScope scope;\n", ""),
@@ -125,6 +128,8 @@ RULES = [
     (r"\.ToLocalChecked\(\)", ""),
     (r"\.ToChecked\(\)", ""),
     (r"\.FromJust\(\)", ""),
+    # NAN's Maybe API: HasOwnProperty() etc. return the value directly here
+    (r"\.FromMaybe\([^()]*\)", ""),
 ]
 
 total = 0

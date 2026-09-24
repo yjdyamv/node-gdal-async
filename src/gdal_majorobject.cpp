@@ -8,7 +8,7 @@ namespace node_gdal {
 
 Napi::Object MajorObject::getMetadata(CSLConstList metadata) {
 
-  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env());
 
   if (metadata) {
     int i = 0;
@@ -18,7 +18,7 @@ Napi::Object MajorObject::getMetadata(CSLConstList metadata) {
       if (i_equal != std::string::npos) {
         std::string key = pair.substr(0, i_equal);
         std::string val = pair.substr(i_equal + 1);
-        result.Set( Napi::String::New(node_gdal::napi_env, key.c_str()), Napi::String::New(node_gdal::napi_env, val.c_str()));
+        result.Set( Napi::String::New(node_gdal::napi_env(), key.c_str()), Napi::String::New(node_gdal::napi_env(), val.c_str()));
       }
       i++;
     }

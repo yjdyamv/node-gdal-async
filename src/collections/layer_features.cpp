@@ -32,6 +32,11 @@ void LayerFeatures::Initialize(Napi::Object target) {
 }
 
 LayerFeatures::LayerFeatures(const Napi::CallbackInfo &info) : GDALObject<LayerFeatures>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create LayerFeatures directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 LayerFeatures::~LayerFeatures() {
@@ -43,36 +48,17 @@ LayerFeatures::~LayerFeatures() {
  *
  * @class LayerFeatures
  */
-NAN_METHOD(LayerFeatures::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    LayerFeatures *f = static_cast<LayerFeatures *>(ptr);
-    f->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create LayerFeatures directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value LayerFeatures::New(Napi::Value layer_obj) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {layer_obj};
   Napi::Object obj = LayerFeatures::constructor.Value().New(args);
-  GDAL_SET_PRIVATE(obj, "parent_", layer_obj);
 
   return obj;
 }
 
 NAN_METHOD(LayerFeatures::toString) {
-  return Napi::String::New(node_gdal::napi_env, "LayerFeatures");
+  return Napi::String::New(node_gdal::napi_env(), "LayerFeatures");
 }
 
 /**
@@ -112,8 +98,8 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::get) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   int feature_id;
@@ -158,8 +144,8 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::first) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   OGRLayer *gdal_layer = layer->get();
@@ -207,8 +193,8 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::next) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   OGRLayer *gdal_layer = layer->get();
@@ -267,8 +253,8 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::add) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Feature *f;
@@ -283,7 +269,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::add) {
     if (err != CE_None) throw getOGRErrMsg(err);
     return err;
   };
-  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined(); };
+  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined(); };
   return job.run(info, async, 1);
 }
 
@@ -315,16 +301,16 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::count) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Object ds;
   if (object_store.has(layer->getParent())) {
     ds = object_store.get(layer->getParent());
   } else {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   int force = 1;
@@ -337,7 +323,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::count) {
     GIntBig count = gdal_layer->GetFeatureCount(force);
     return count;
   };
-  job.rval = [](GIntBig count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, count); };
+  job.rval = [](GIntBig count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env(), count); };
   return job.run(info, async, 1);
 }
 
@@ -381,15 +367,15 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::set) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Object ds;
   if (object_store.has(layer->getParent())) { ds = object_store.get(layer->getParent()); }
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   int err;
@@ -406,17 +392,17 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::set) {
     feature = info[1].As<Napi::Object>();
     err = f->get()->SetFID(i);
     if (err) {
-      Napi::Error::New(node_gdal::napi_env, "Error setting feature id").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Error setting feature id").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
   } else {
-    Napi::Error::New(node_gdal::napi_env, "Invalid arguments").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Invalid arguments").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (!f->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   OGRLayer *gdal_layer = layer->get();
@@ -429,7 +415,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::set) {
     return err;
   };
 
-  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined(); };
+  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined(); };
   return job.run(info, async, 2);
 }
 
@@ -462,8 +448,8 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::remove) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   int i;
@@ -477,10 +463,10 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::remove) {
     if (err) { throw getOGRErrMsg(err); }
     return err;
   };
-  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined(); };
+  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined(); };
   return job.run(info, async, 1);
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**

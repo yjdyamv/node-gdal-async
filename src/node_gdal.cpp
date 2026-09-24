@@ -80,7 +80,7 @@ namespace node_gdal {
 FILE *log_file = NULL;
 ObjectStore object_store;
 bool eventLoopWarn = true;
-Napi::Env napi_env;
+::napi_env napi_env_storage = nullptr;
 
 static NAN_GETTER(LastErrorGetter) {
 
@@ -100,7 +100,7 @@ static NAN_SETTER(LastErrorSetter) {
     CPLErrorReset();
   } else {
     Napi::Error::New(info.Env(), "'lastError' only supports being set to null").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 }
 
@@ -111,7 +111,7 @@ static NAN_GETTER(EventLoopWarningGetter) {
 static NAN_SETTER(EventLoopWarningSetter) {
   if (!value.IsBoolean()) {
     Napi::Error::New(info.Env(), "'eventLoopWarning' must be a boolean value").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
   eventLoopWarn = value.As<Napi::Boolean>().Value();
 }
@@ -1813,4 +1813,10 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
 
 } // namespace node_gdal
 
-NODE_API_MODULE(NODE_GYP_MODULE_NAME, node_gdal::Init);
+// NODE_API_MODULE concatenates the registration function into an identifier
+// (__napi_##regfunc), so it has to be a plain name - not node_gdal::Init
+static Napi::Object GDALInit(Napi::Env env, Napi::Object target) {
+  return node_gdal::Init(env, target);
+}
+
+NODE_API_MODULE(NODE_GYP_MODULE_NAME, GDALInit)

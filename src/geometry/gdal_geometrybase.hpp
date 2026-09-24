@@ -84,7 +84,7 @@ template <class T, class OGRT> Napi::Value GeometryBase<T, OGRT>::New(OGRT *geom
 }
 
 template <class T, class OGRT> Napi::Value GeometryBase<T, OGRT>::New(OGRT *geom, bool owned) {
-  Napi::Env env = node_gdal::napi_env;
+  Napi::Env env = node_gdal::napi_env();
 
   if (!geom) { return env.Null(); }
 
@@ -131,7 +131,7 @@ template <class T, class OGRT> GeometryBase<T, OGRT>::~GeometryBase() {
     LOG("Disposing Geometry %s [%p] (%s)", typeid(T).name(), this_, owned_ ? "owned" : "unowned");
     if (owned_) {
       OGRGeometryFactory::destroyGeometry(this_);
-      Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, -size_);
+      Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), -size_);
     }
     LOG("Disposed Geometry [%p]", this_)
     this_ = NULL;

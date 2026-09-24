@@ -258,13 +258,13 @@ GDAL_ASYNCABLE_DEFINE(Warper::reprojectImage) {
   NODE_ARG_OBJECT(0, "Warp options", obj);
 
   if (options->parse(obj)) {
-    return node_gdal::napi_env.Undefined(); // error parsing options object
+    return node_gdal::napi_env().Undefined(); // error parsing options object
   } else {
     opts = options->get();
   }
   if (!opts->hDstDS) {
-    Napi::TypeError::New(node_gdal::napi_env, "dst Dataset must be provided").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::TypeError::New(node_gdal::napi_env(), "dst Dataset must be provided").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   NODE_WRAPPED_FROM_OBJ(obj, "s_srs", SpatialReference, s_srs);
@@ -274,14 +274,14 @@ GDAL_ASYNCABLE_DEFINE(Warper::reprojectImage) {
 
   char *s_srs_wkt, *t_srs_wkt;
   if (s_srs->get()->exportToWkt(&s_srs_wkt)) {
-    Napi::Error::New(node_gdal::napi_env, "Error converting s_srs to WKT").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Error converting s_srs to WKT").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   s_srs_str = std::string(s_srs_wkt);
   CPLFree(s_srs_wkt);
   if (t_srs->get()->exportToWkt(&t_srs_wkt)) {
-    Napi::Error::New(node_gdal::napi_env, "Error converting t_srs to WKT").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Error converting t_srs to WKT").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   t_srs_str = std::string(t_srs_wkt);
   CPLFree(t_srs_wkt);
@@ -329,7 +329,7 @@ GDAL_ASYNCABLE_DEFINE(Warper::reprojectImage) {
     };
   }
 
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined(); };
   return job.run(info, async, 1);
 }
 
@@ -391,21 +391,21 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
 
   NODE_ARG_OBJECT(0, "Warp options", obj);
 
-  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "src")).FromMaybe(false)) {
-    prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "src"));
-    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env, Dataset::constructor)->HasInstance(prop)) {
+  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "src"))) {
+    prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "src"));
+    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env(), Dataset::constructor)->HasInstance(prop)) {
       ds = node_gdal::UnwrapWrapped<Dataset>(prop.As<Napi::Object>());
       if (!ds->get()) {
-        Napi::Error::New(node_gdal::napi_env, "src dataset already closed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "src dataset already closed").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
     } else {
-      Napi::TypeError::New(node_gdal::napi_env, "src property must be a Dataset object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::TypeError::New(node_gdal::napi_env(), "src property must be a Dataset object").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
   } else {
-    Napi::Error::New(node_gdal::napi_env, "src dataset must be provided").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "src dataset must be provided").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   NODE_WRAPPED_FROM_OBJ(obj, "s_srs", SpatialReference, s_srs);
@@ -414,14 +414,14 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
 
   char *s_srs_wkt, *t_srs_wkt;
   if (s_srs->get()->exportToWkt(&s_srs_wkt)) {
-    Napi::Error::New(node_gdal::napi_env, "Error converting s_srs to WKT").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Error converting s_srs to WKT").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   std::string s_srs_str = std::string(s_srs_wkt);
   CPLFree(s_srs_wkt);
   if (t_srs->get()->exportToWkt(&t_srs_wkt)) {
-    Napi::Error::New(node_gdal::napi_env, "Error converting t_srs to WKT").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Error converting t_srs to WKT").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   std::string t_srs_str = std::string(t_srs_wkt);
   CPLFree(t_srs_wkt);
@@ -473,21 +473,21 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
   };
 
   job.rval = [](warpOutputResult r, const GetFromPersistentFunc &) {
-    Napi::Array result_geotransform = Napi::Array::New(node_gdal::napi_env);
-    result_geotransform.Set( 0, Napi::Number::New(node_gdal::napi_env, r.geotransform[0]));
-    result_geotransform.Set( 1, Napi::Number::New(node_gdal::napi_env, r.geotransform[1]));
-    result_geotransform.Set( 2, Napi::Number::New(node_gdal::napi_env, r.geotransform[2]));
-    result_geotransform.Set( 3, Napi::Number::New(node_gdal::napi_env, r.geotransform[3]));
-    result_geotransform.Set( 4, Napi::Number::New(node_gdal::napi_env, r.geotransform[4]));
-    result_geotransform.Set( 5, Napi::Number::New(node_gdal::napi_env, r.geotransform[5]));
+    Napi::Array result_geotransform = Napi::Array::New(node_gdal::napi_env());
+    result_geotransform.Set( 0, Napi::Number::New(node_gdal::napi_env(), r.geotransform[0]));
+    result_geotransform.Set( 1, Napi::Number::New(node_gdal::napi_env(), r.geotransform[1]));
+    result_geotransform.Set( 2, Napi::Number::New(node_gdal::napi_env(), r.geotransform[2]));
+    result_geotransform.Set( 3, Napi::Number::New(node_gdal::napi_env(), r.geotransform[3]));
+    result_geotransform.Set( 4, Napi::Number::New(node_gdal::napi_env(), r.geotransform[4]));
+    result_geotransform.Set( 5, Napi::Number::New(node_gdal::napi_env(), r.geotransform[5]));
 
-    Napi::Object result_size = Napi::Object::New(node_gdal::napi_env);
-    result_size.Set( Napi::String::New(node_gdal::napi_env, "x"), Napi::Number::New(node_gdal::napi_env, r.w));
-    result_size.Set( Napi::String::New(node_gdal::napi_env, "y"), Napi::Number::New(node_gdal::napi_env, r.h));
+    Napi::Object result_size = Napi::Object::New(node_gdal::napi_env());
+    result_size.Set( Napi::String::New(node_gdal::napi_env(), "x"), Napi::Number::New(node_gdal::napi_env(), r.w));
+    result_size.Set( Napi::String::New(node_gdal::napi_env(), "y"), Napi::Number::New(node_gdal::napi_env(), r.h));
 
-    Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-    result.Set( Napi::String::New(node_gdal::napi_env, "rasterSize"), result_size);
-    result.Set( Napi::String::New(node_gdal::napi_env, "geoTransform"), result_geotransform);
+    Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+    result.Set( Napi::String::New(node_gdal::napi_env(), "rasterSize"), result_size);
+    result.Set( Napi::String::New(node_gdal::napi_env(), "geoTransform"), result_geotransform);
 
     return result;
   };

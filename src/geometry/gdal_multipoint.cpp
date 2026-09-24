@@ -38,7 +38,7 @@ void MultiPoint::Initialize(Napi::Object target) {
  */
 
 NAN_METHOD(MultiPoint::toString) {
-  return Napi::String::New(node_gdal::napi_env, "MultiPoint");
+  return Napi::String::New(node_gdal::napi_env(), "MultiPoint");
 }
 
 } // namespace node_gdal

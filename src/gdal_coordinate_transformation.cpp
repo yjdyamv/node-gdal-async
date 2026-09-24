@@ -60,8 +60,8 @@ NAN_METHOD(CoordinateTransformation::New) {
   SpatialReference *source, *target;
 
   if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (info[0].IsExternal()) {
@@ -70,27 +70,27 @@ NAN_METHOD(CoordinateTransformation::New) {
     f = static_cast<CoordinateTransformation *>(ptr);
   } else {
     if (info.Length() < 2) {
-      Napi::Error::New(node_gdal::napi_env, "Invalid number of arguments").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Invalid number of arguments").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
 
     NODE_ARG_WRAPPED(0, "source", SpatialReference, source);
 
     if (!info[1].IsObject() || info[1].IsNull()) {
-      Napi::TypeError::New(node_gdal::napi_env, "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::TypeError::New(node_gdal::napi_env(), "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
-    if (Napi::Number::New(node_gdal::napi_env, SpatialReference::constructor)->HasInstance(info[1])) {
+    if (Napi::Number::New(node_gdal::napi_env(), SpatialReference::constructor)->HasInstance(info[1])) {
       // srs -> srs
       NODE_ARG_WRAPPED(1, "target", SpatialReference, target);
 
       OGRCoordinateTransformation *transform = OGRCreateCoordinateTransformation(source->get(), target->get());
       if (!transform) {
         NODE_THROW_LAST_CPLERR;
-        return node_gdal::napi_env.Undefined();
+        return node_gdal::napi_env().Undefined();
       }
       f = new CoordinateTransformation(transform);
-    } else if (Napi::Number::New(node_gdal::napi_env, Dataset::constructor)->HasInstance(info[1])) {
+    } else if (Napi::Number::New(node_gdal::napi_env(), Dataset::constructor)->HasInstance(info[1])) {
       // srs -> px/line
       // todo: allow additional options using StringList
 
@@ -101,14 +101,14 @@ NAN_METHOD(CoordinateTransformation::New) {
       ds = node_gdal::UnwrapWrapped<Dataset>(info[1].As<Napi::Object>());
 
       if (!ds->get()) {
-        Napi::Error::New(node_gdal::napi_env, "Dataset already closed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "Dataset already closed").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
 
       OGRErr err = source->get()->exportToWkt(&src_wkt);
       if (err) {
         NODE_THROW_OGRERR(err);
-        return node_gdal::napi_env.Undefined();
+        return node_gdal::napi_env().Undefined();
       }
 
       papszTO = CSLSetNameValue(papszTO, "DST_SRS", src_wkt);
@@ -118,7 +118,7 @@ NAN_METHOD(CoordinateTransformation::New) {
       transform->hSrcImageTransformer = GDALCreateGenImgProjTransformer2(ds->get(), NULL, papszTO);
       if (!transform->hSrcImageTransformer) {
         NODE_THROW_LAST_CPLERR;
-        return node_gdal::napi_env.Undefined();
+        return node_gdal::napi_env().Undefined();
       }
 
       f = new CoordinateTransformation(transform);
@@ -126,8 +126,8 @@ NAN_METHOD(CoordinateTransformation::New) {
       CPLFree(src_wkt);
       CSLDestroy(papszTO);
     } else {
-      Napi::TypeError::New(node_gdal::napi_env, "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::TypeError::New(node_gdal::napi_env(), "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
   }
 
@@ -137,9 +137,9 @@ NAN_METHOD(CoordinateTransformation::New) {
 
 Napi::Value CoordinateTransformation::New(OGRCoordinateTransformation *transform) {
 
-  if (!transform) { return node_gdal::napi_env.Null(); }
+  if (!transform) { return node_gdal::napi_env().Null(); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, transform)};
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), transform)};
   Napi::Object obj = CoordinateTransformation::constructor.Value().New(args);
   CoordinateTransformation *wrapped = node_gdal::UnwrapWrapped<CoordinateTransformation>(obj);
 
@@ -147,7 +147,7 @@ Napi::Value CoordinateTransformation::New(OGRCoordinateTransformation *transform
 }
 
 NAN_METHOD(CoordinateTransformation::toString) {
-  return Napi::String::New(node_gdal::napi_env, "CoordinateTransformation");
+  return Napi::String::New(node_gdal::napi_env(), "CoordinateTransformation");
 }
 
 /**
@@ -186,16 +186,16 @@ NAN_METHOD(CoordinateTransformation::transformPoint) {
 
   if (info.Length() == 1 && info[0].IsObject()) {
     Napi::Object obj = info[0].As<Napi::Object>();
-    Napi::Value arg_x = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "x"));
-    Napi::Value arg_y = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "y"));
-    Napi::Value arg_z = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "z"));
+    Napi::Value arg_x = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "x"));
+    Napi::Value arg_y = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "y"));
+    Napi::Value arg_z = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "z"));
     if (!arg_x.IsNumber() || !arg_y.IsNumber()) {
-      Napi::Error::New(node_gdal::napi_env, "point must contain numerical properties x and y").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "point must contain numerical properties x and y").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     x = static_cast<double>(arg_x.As<Napi::Number>().DoubleValue());
     y = static_cast<double>(arg_y.As<Napi::Number>().DoubleValue());
-    if (arg_z->IsNumber()) { z = static_cast<double>(arg_z.As<Napi::Number>().DoubleValue()); }
+    if (arg_z.IsNumber()) { z = static_cast<double>(arg_z.As<Napi::Number>().DoubleValue()); }
   } else {
     NODE_ARG_DOUBLE(0, "x", x);
     NODE_ARG_DOUBLE(1, "y", y);
@@ -208,19 +208,19 @@ NAN_METHOD(CoordinateTransformation::transformPoint) {
   if (!r || proj_error_code != 0) {
     Nan::ThrowError(
       ("Error transforming point: " + std::string(proj_context_errno_string(nullptr, proj_error_code))).c_str());
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 #else
   if (!transform->this_->Transform(1, &x, &y, &z)) {
-    Napi::Error::New(node_gdal::napi_env, "Error transforming point").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Error transforming point").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 #endif
 
-  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-  result.Set( Napi::String::New(node_gdal::napi_env, "x"), Napi::Number::New(node_gdal::napi_env, x));
-  result.Set( Napi::String::New(node_gdal::napi_env, "y"), Napi::Number::New(node_gdal::napi_env, y));
-  result.Set( Napi::String::New(node_gdal::napi_env, "z"), Napi::Number::New(node_gdal::napi_env, z));
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+  result.Set( Napi::String::New(node_gdal::napi_env(), "x"), Napi::Number::New(node_gdal::napi_env(), x));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "y"), Napi::Number::New(node_gdal::napi_env(), y));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "z"), Napi::Number::New(node_gdal::napi_env(), z));
 
   return result;
 }

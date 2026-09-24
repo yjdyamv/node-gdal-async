@@ -67,8 +67,8 @@ GDALSyncExecutionProgress::~GDALSyncExecutionProgress() {
 // Going back to JS in sync mode
 void GDALSyncExecutionProgress::Send(GDALProgressInfo *info) const {
   std::vector<napi_value> argv;
-  argv.push_back(Napi::Number::New(node_gdal::napi_env, info->complete));
-  argv.push_back(SafeString::New(node_gdal::napi_env, info->message));
+  argv.push_back(Napi::Number::New(node_gdal::napi_env(), info->complete));
+  argv.push_back(SafeString::New(node_gdal::napi_env(), info->message));
   try {
     progress_callback->Value().Call(argv);
   } catch (const Napi::Error &) {

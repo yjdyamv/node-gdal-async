@@ -26,6 +26,11 @@ void RasterBandOverviews::Initialize(Napi::Object target) {
 }
 
 RasterBandOverviews::RasterBandOverviews(const Napi::CallbackInfo &info) : GDALObject<RasterBandOverviews>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create RasterBandOverviews directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 RasterBandOverviews::~RasterBandOverviews() {
@@ -36,36 +41,17 @@ RasterBandOverviews::~RasterBandOverviews() {
  *
  * @class RasterBandOverviews
  */
-NAN_METHOD(RasterBandOverviews::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    RasterBandOverviews *f = static_cast<RasterBandOverviews *>(ptr);
-    f->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create RasterBandOverviews directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value RasterBandOverviews::New(Napi::Value band_obj) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {band_obj};
   Napi::Object obj = RasterBandOverviews::constructor.Value().New(args);
-  GDAL_SET_PRIVATE(obj, "parent_", band_obj);
 
   return obj;
 }
 
 NAN_METHOD(RasterBandOverviews::toString) {
-  return Napi::String::New(node_gdal::napi_env, "RasterBandOverviews");
+  return Napi::String::New(node_gdal::napi_env(), "RasterBandOverviews");
 }
 
 /**
@@ -202,7 +188,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBandOverviews::count) {
     int count = band->get()->GetOverviewCount();
     return count;
   };
-  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, count); };
+  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env(), count); };
   return job.run(info, async, 0);
 }
 

@@ -19,8 +19,8 @@ namespace node_gdal {
 namespace Algebra {
 
 void Initialize(Napi::Object target) {
-  Napi::Object algebra = Napi::Object::New(node_gdal::napi_env);
-  target.Set( Napi::String::New(node_gdal::napi_env, "algebra"), algebra);
+  Napi::Object algebra = Napi::Object::New(node_gdal::napi_env());
+  target.Set( Napi::String::New(node_gdal::napi_env(), "algebra"), algebra);
 
   // Unary ops
   Nan__SetAsyncableMethod(algebra, "abs", abs);
@@ -58,17 +58,17 @@ void Initialize(Napi::Object target) {
 
 #define NODE_ALGEBRA_ARG(num, var)                                                                                     \
   if (info.Length() < num + 1) {                                                                                       \
-    Napi::Error::New(node_gdal::napi_env, "Two arguments must be given").ThrowAsJavaScriptException();                                                                    \
+    Napi::Error::New(node_gdal::napi_env(), "Two arguments must be given").ThrowAsJavaScriptException();                                                                    \
     return;                                                                                                            \
   }                                                                                                                    \
   if (info[num].IsNumber()) {                                                                                         \
     var##_number = info[num].As<Napi::Number>().DoubleValue();                                                             \
     var##_band = nullptr;                                                                                              \
-  } else if (info[num].IsObject() && Napi::Number::New(node_gdal::napi_env, RasterBand::constructor)->HasInstance(info[num])) {                     \
+  } else if (info[num].IsObject() && Napi::Number::New(node_gdal::napi_env(), RasterBand::constructor)->HasInstance(info[num])) {                     \
     var##_number = NAN;                                                                                                \
     var##_band = node_gdal::UnwrapWrapped<RasterBand>(info[num].As<Napi::Object>());                                          \
   } else {                                                                                                             \
-    Napi::Error::New(node_gdal::napi_env, "Argument must be either a number or a RasterBand").ThrowAsJavaScriptException();                                               \
+    Napi::Error::New(node_gdal::napi_env(), "Argument must be either a number or a RasterBand").ThrowAsJavaScriptException();                                               \
     return;                                                                                                            \
   }
 
@@ -127,7 +127,7 @@ void Initialize(Napi::Object target) {
         return new GDALComputedRasterBand(OPERATOR(arg1, *arg2));                                                      \
       };                                                                                                               \
     } else {                                                                                                           \
-      Napi::Error::New(node_gdal::napi_env, "At least one RasterBand must be given").ThrowAsJavaScriptException();                                                        \
+      Napi::Error::New(node_gdal::napi_env(), "At least one RasterBand must be given").ThrowAsJavaScriptException();                                                        \
       return;                                                                                                          \
     }                                                                                                                  \
                                                                                                                        \
@@ -154,7 +154,7 @@ void Initialize(Napi::Object target) {
       uids.push_back(arg_band->parent_uid);                                                                            \
     }                                                                                                                  \
     if (args_band.size() < 2) {                                                                                        \
-      Napi::Error::New(node_gdal::napi_env, "At least two arguments must be given").ThrowAsJavaScriptException();                                                         \
+      Napi::Error::New(node_gdal::napi_env(), "At least two arguments must be given").ThrowAsJavaScriptException();                                                         \
       return;                                                                                                          \
     }                                                                                                                  \
     GDALAsyncableJob<GDALRasterBand *> job(uids);                                                                      \
@@ -845,8 +845,8 @@ GDAL_ASYNCABLE_DEFINE(asType) {
   NODE_ARG_STR(1, "Data Type", type_name);
   type = GDALGetDataTypeByName(type_name.c_str());
   if (type == GDT_Unknown) {
-    Napi::Error::New(node_gdal::napi_env, "Invalid data type").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Invalid data type").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALAsyncableJob<GDALRasterBand *> job(arg_band->parent_uid);

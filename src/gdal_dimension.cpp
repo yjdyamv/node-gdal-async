@@ -65,52 +65,29 @@ void Dimension::dispose() {
  *
  * @class Dimension
  */
-NAN_METHOD(Dimension::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  if (info.Length() == 1 && info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    Dimension *f = static_cast<Dimension *>(ptr);
-    f->Wrap(info.This());
-
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create dimension directly. Create with dataset instead.").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  return info.This();
-}
 
 Napi::Value Dimension::New(std::shared_ptr<GDALDimension> raw, GDALDataset *parent_ds) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, raw)};
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), raw)};
   Napi::Object obj = Dimension::constructor.Value().New(args);
   Dimension *wrapped = node_gdal::UnwrapWrapped<Dimension>(obj);
 
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(ds);
   long parent_uid = unwrapped_ds->uid;
 
-  wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid);
+  wrapped->uid = object_store.add(raw, *wrapped, parent_uid);
   wrapped->parent_ds = parent_ds;
   wrapped->parent_uid = parent_uid;
 
-  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }
 
 NAN_METHOD(Dimension::toString) {
-  return Napi::String::New(node_gdal::napi_env, "Dimension");
+  return Napi::String::New(node_gdal::napi_env(), "Dimension");
 }
 
 /**
@@ -155,7 +132,7 @@ NODE_WRAPPED_GETTER_WITH_STRING_LOCKED(Dimension, typeGetter, GetType);
 
 NAN_GETTER(Dimension::uidGetter) {
   Dimension *group = node_gdal::UnwrapWrapped<Dimension>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, (int)group->uid);
+  return Napi::Number::New(node_gdal::napi_env(), (int)group->uid);
 }
 
 #endif

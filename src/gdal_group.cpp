@@ -66,37 +66,6 @@ void Group::dispose() {
  *
  * @class Group
  */
-NAN_METHOD(Group::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  if (info.Length() > 1 && info[0].IsExternal() && info[1].IsObject()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    Group *f = static_cast<Group *>(ptr);
-    f->Wrap(info.This());
-
-    Napi::Value groups = GroupGroups::New(info.This(), info[1]);
-    GDAL_SET_PRIVATE(info.This(), "groups_", groups);
-    Napi::Value arrays = GroupArrays::New(info.This(), info[1]);
-    GDAL_SET_PRIVATE(info.This(), "arrays_", arrays);
-    Napi::Value dims = GroupDimensions::New(info.This(), info[1]);
-    GDAL_SET_PRIVATE(info.This(), "dims_", dims);
-    Napi::Value attrs = GroupAttributes::New(info.This(), info[1]);
-    GDAL_SET_PRIVATE(info.This(), "attrs_", attrs);
-
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create group directly. Create with dataset instead.").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  return info.This();
-}
 
 Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, GDALDataset *parent_ds) {
 
@@ -105,14 +74,14 @@ Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, GDALDataset *parent_ds) {
     return Group::New(raw, ds);
   } else {
     LOG("Group's parent dataset disappeared from cache (group = %p, dataset = %p)", raw.get(), parent_ds);
-    Napi::Error::New(node_gdal::napi_env, "Group's parent dataset disappeared from cache").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Group's parent dataset disappeared from cache").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 }
 
 Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, Napi::Object parent_ds) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
   Group *wrapped = new Group(raw);
@@ -128,17 +97,16 @@ Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, Napi::Object parent_ds) {
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(parent_ds);
   long parent_uid = unwrapped_ds->uid;
 
-  wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid);
+  wrapped->uid = object_store.add(raw, *wrapped, parent_uid);
   wrapped->parent_ds = unwrapped_ds->get();
   wrapped->parent_uid = parent_uid;
-  GDAL_SET_PRIVATE(obj, "ds_", parent_ds);
   if (parent_group_uid != 0) GDAL_SET_PRIVATE(obj, "parent_", parent);
 
   return obj;
 }
 
 NAN_METHOD(Group::toString) {
-  return Napi::String::New(node_gdal::napi_env, "Group");
+  return Napi::String::New(node_gdal::napi_env(), "Group");
 }
 
 /**
@@ -201,7 +169,7 @@ NAN_GETTER(Group::attributesGetter) {
 
 NAN_GETTER(Group::uidGetter) {
   Group *group = node_gdal::UnwrapWrapped<Group>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, (int)group->uid);
+  return Napi::Number::New(node_gdal::napi_env(), (int)group->uid);
 }
 
 #endif

@@ -17,7 +17,7 @@ namespace node_gdal {
 class Memfile {
   void *data;
   Napi::Reference<Napi::Object> *persistent;
-  // napi_finalize callback: :: because node_gdal::napi_env shadows the type
+  // napi_finalize callback: :: because node_gdal::napi_env() shadows the type
   static void finalize(::napi_env env, void *data, void *hint);
 
     public:

@@ -39,7 +39,7 @@ void MultiLineString::Initialize(Napi::Object target) {
  */
 
 NAN_METHOD(MultiLineString::toString) {
-  return Napi::String::New(node_gdal::napi_env, "MultiLineString");
+  return Napi::String::New(node_gdal::napi_env(), "MultiLineString");
 }
 
 /**

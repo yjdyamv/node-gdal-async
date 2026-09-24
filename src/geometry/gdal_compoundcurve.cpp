@@ -50,7 +50,7 @@ void CompoundCurve::SetPrivate(Napi::Object _this, Napi::Value value) {
  */
 
 NAN_METHOD(CompoundCurve::toString) {
-  return Napi::String::New(node_gdal::napi_env, "CompoundCurve");
+  return Napi::String::New(node_gdal::napi_env(), "CompoundCurve");
 }
 
 /**

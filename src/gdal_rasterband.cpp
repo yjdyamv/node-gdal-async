@@ -95,37 +95,12 @@ void RasterBand::dispose() {
  *
  * @class RasterBand
  */
-NAN_METHOD(RasterBand::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    RasterBand *f = static_cast<RasterBand *>(ptr);
-    f->Wrap(info.This());
-
-    Napi::Value overviews = RasterBandOverviews::New(info.This());
-    GDAL_SET_PRIVATE(info.This(), "overviews_", overviews);
-    Napi::Value pixels = RasterBandPixels::New(info.This());
-    GDAL_SET_PRIVATE(info.This(), "pixels_", pixels);
-
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create band directly create with dataset instead").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 Napi::Value RasterBand::New(GDALRasterBand *raw, GDALDataset *raw_parent) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, raw)};
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), raw)};
   Napi::Object obj = RasterBand::constructor.Value().New(args);
   RasterBand *wrapped = node_gdal::UnwrapWrapped<RasterBand>(obj);
 
@@ -139,24 +114,23 @@ Napi::Value RasterBand::New(GDALRasterBand *raw, GDALDataset *raw_parent) {
   Napi::Object ds;
   if (!object_store.has(raw_parent)) {
     LOG("Band's parent dataset disappeared from cache (band = %p, dataset = %p)", raw, raw_parent);
-    Napi::Error::New(node_gdal::napi_env, "Band's parent dataset disappeared from cache").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Band's parent dataset disappeared from cache").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
     // ds = Dataset::New(raw_parent); //this should never happen
   }
 
   ds = object_store.get(raw_parent);
   Dataset *parent = node_gdal::UnwrapWrapped<Dataset>(ds);
   long parent_uid = parent->uid;
-  wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid);
+  wrapped->uid = object_store.add(raw, *wrapped, parent_uid);
   wrapped->parent_ds = raw_parent;
   wrapped->parent_uid = parent_uid;
-  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }
 
 NAN_METHOD(RasterBand::toString) {
-  return Napi::String::New(node_gdal::napi_env, "RasterBand");
+  return Napi::String::New(node_gdal::napi_env(), "RasterBand");
 }
 
 /**
@@ -231,8 +205,8 @@ NAN_METHOD(RasterBand::getMaskBand) {
   GDALRasterBand *mask_band = band->this_->GetMaskBand();
 
   if (!mask_band) {
-    return node_gdal::napi_env.Null();
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Null();
+    return node_gdal::napi_env().Undefined();
   }
 
   return RasterBand::New(mask_band, band->getParent());
@@ -280,7 +254,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBand::fill) {
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
-  job.rval = [](CPLErr, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](CPLErr, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
 
   return job.run(info, async, 2);
 }
@@ -326,8 +300,8 @@ NAN_METHOD(RasterBand::asMDArray) {
   CPLErrorReset();
   std::shared_ptr<GDALMDArray> mdarray = raw->AsMDArray();
   if (mdarray == nullptr) {
-    Napi::Error::New(node_gdal::napi_env, CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   Napi::Value obj = MDArray::New(mdarray, band->parent_ds);
   return obj;
@@ -364,21 +338,21 @@ NAN_METHOD(RasterBand::getStatistics) {
   CPLErr err = band->this_->GetStatistics(approx, force, &min, &max, &mean, &std_dev);
   popStatsErrorHandler();
   if (!stats_file_err.empty()) {
-    Napi::Error::New(node_gdal::napi_env, stats_file_err.c_str()).ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), stats_file_err.c_str()).ThrowAsJavaScriptException();
   } else if (err) {
     if (!force && err == CE_Warning) {
-      Napi::Error::New(node_gdal::napi_env, "Statistics cannot be efficiently computed without scanning raster").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Statistics cannot be efficiently computed without scanning raster").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
-  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-  result.Set( Napi::String::New(node_gdal::napi_env, "min"), Napi::Number::New(node_gdal::napi_env, min));
-  result.Set( Napi::String::New(node_gdal::napi_env, "max"), Napi::Number::New(node_gdal::napi_env, max));
-  result.Set( Napi::String::New(node_gdal::napi_env, "mean"), Napi::Number::New(node_gdal::napi_env, mean));
-  result.Set( Napi::String::New(node_gdal::napi_env, "std_dev"), Napi::Number::New(node_gdal::napi_env, std_dev));
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+  result.Set( Napi::String::New(node_gdal::napi_env(), "min"), Napi::Number::New(node_gdal::napi_env(), min));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "max"), Napi::Number::New(node_gdal::napi_env(), max));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "mean"), Napi::Number::New(node_gdal::napi_env(), mean));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "std_dev"), Napi::Number::New(node_gdal::napi_env(), std_dev));
 
   return result;
 }
@@ -459,11 +433,11 @@ GDAL_ASYNCABLE_DEFINE(RasterBand::computeStatistics) {
   };
 
   job.rval = [](stats_t r, const GetFromPersistentFunc &) {
-    Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-    result.Set( Napi::String::New(node_gdal::napi_env, "min"), Napi::Number::New(node_gdal::napi_env, r.min));
-    result.Set( Napi::String::New(node_gdal::napi_env, "max"), Napi::Number::New(node_gdal::napi_env, r.max));
-    result.Set( Napi::String::New(node_gdal::napi_env, "mean"), Napi::Number::New(node_gdal::napi_env, r.mean));
-    result.Set( Napi::String::New(node_gdal::napi_env, "std_dev"), Napi::Number::New(node_gdal::napi_env, r.std_dev));
+    Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+    result.Set( Napi::String::New(node_gdal::napi_env(), "min"), Napi::Number::New(node_gdal::napi_env(), r.min));
+    result.Set( Napi::String::New(node_gdal::napi_env(), "max"), Napi::Number::New(node_gdal::napi_env(), r.max));
+    result.Set( Napi::String::New(node_gdal::napi_env(), "mean"), Napi::Number::New(node_gdal::napi_env(), r.mean));
+    result.Set( Napi::String::New(node_gdal::napi_env(), "std_dev"), Napi::Number::New(node_gdal::napi_env(), r.std_dev));
     return result;
   };
 
@@ -496,9 +470,9 @@ NAN_METHOD(RasterBand::setStatistics) {
 
   if (err) {
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -566,8 +540,8 @@ GDAL_ASYNCABLE_DEFINE(RasterBand::setMetadata) {
 
   auto options = make_shared<StringList>();
   if (info.Length() == 0 || options->parse(info[0])) {
-    Napi::Error::New(node_gdal::napi_env, "Failed parsing metadata").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Failed parsing metadata").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   std::string domain("");
@@ -579,7 +553,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBand::setMetadata) {
     if (r == CE_Failure) throw CPLGetLastErrorMsg();
     return r;
   };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return Napi::Boolean::New(node_gdal::napi_env, r == CE_None); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return Napi::Boolean::New(node_gdal::napi_env(), r == CE_None); };
   return job.run(info, async, 2);
 }
 
@@ -648,8 +622,8 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::idGetter) {
     return raw->GetBand();
   };
   job.rval = [](int id, const GetFromPersistentFunc &) {
-    if (id == 0) return node_gdal::napi_env.Null().As<Napi::Value>();
-    return Napi::Number::New(node_gdal::napi_env, id).As<Napi::Value>();
+    if (id == 0) return node_gdal::napi_env().Null().As<Napi::Value>();
+    return Napi::Number::New(node_gdal::napi_env(), id).As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -723,9 +697,9 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::sizeGetter) {
     return r;
   };
   job.rval = [](xy r, const GetFromPersistentFunc &) {
-    Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-    result.Set( Napi::String::New(node_gdal::napi_env, "x"), Napi::Number::New(node_gdal::napi_env, r.x));
-    result.Set( Napi::String::New(node_gdal::napi_env, "y"), Napi::Number::New(node_gdal::napi_env, r.y));
+    Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+    result.Set( Napi::String::New(node_gdal::napi_env(), "x"), Napi::Number::New(node_gdal::napi_env(), r.x));
+    result.Set( Napi::String::New(node_gdal::napi_env(), "y"), Napi::Number::New(node_gdal::napi_env(), r.y));
     return result;
   };
   return job.run(info, async);
@@ -767,9 +741,9 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::blockSizeGetter) {
     return r;
   };
   job.rval = [](xy r, const GetFromPersistentFunc &) {
-    Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-    result.Set( Napi::String::New(node_gdal::napi_env, "x"), Napi::Number::New(node_gdal::napi_env, r.x));
-    result.Set( Napi::String::New(node_gdal::napi_env, "y"), Napi::Number::New(node_gdal::napi_env, r.y));
+    Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+    result.Set( Napi::String::New(node_gdal::napi_env(), "x"), Napi::Number::New(node_gdal::napi_env(), r.x));
+    result.Set( Napi::String::New(node_gdal::napi_env(), "y"), Napi::Number::New(node_gdal::napi_env(), r.y));
     return result;
   };
   return job.run(info, async);
@@ -814,8 +788,8 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::minimumGetter) {
     return r;
   };
   job.rval = [](MaybeResult<double> r, const GetFromPersistentFunc &) {
-    if (r.success) return Napi::Number::New(node_gdal::napi_env, r.value).As<Napi::Value>();
-    return node_gdal::napi_env.Null().As<Napi::Value>();
+    if (r.success) return Napi::Number::New(node_gdal::napi_env(), r.value).As<Napi::Value>();
+    return node_gdal::napi_env().Null().As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -854,8 +828,8 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::maximumGetter) {
     return r;
   };
   job.rval = [](MaybeResult<double> r, const GetFromPersistentFunc &) {
-    if (r.success) return Napi::Number::New(node_gdal::napi_env, r.value).As<Napi::Value>();
-    return node_gdal::napi_env.Null().As<Napi::Value>();
+    if (r.success) return Napi::Number::New(node_gdal::napi_env(), r.value).As<Napi::Value>();
+    return node_gdal::napi_env().Null().As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -893,8 +867,8 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::offsetGetter) {
     return r;
   };
   job.rval = [](MaybeResult<double> r, const GetFromPersistentFunc &) {
-    if (r.success) return Napi::Number::New(node_gdal::napi_env, r.value).As<Napi::Value>();
-    return node_gdal::napi_env.Null().As<Napi::Value>();
+    if (r.success) return Napi::Number::New(node_gdal::napi_env(), r.value).As<Napi::Value>();
+    return node_gdal::napi_env().Null().As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -932,8 +906,8 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::scaleGetter) {
     return r;
   };
   job.rval = [](MaybeResult<double> r, const GetFromPersistentFunc &) {
-    if (r.success) return Napi::Number::New(node_gdal::napi_env, r.value).As<Napi::Value>();
-    return node_gdal::napi_env.Null().As<Napi::Value>();
+    if (r.success) return Napi::Number::New(node_gdal::napi_env(), r.value).As<Napi::Value>();
+    return node_gdal::napi_env().Null().As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -972,9 +946,9 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::noDataValueGetter) {
   };
   job.rval = [](MaybeResult<double> r, const GetFromPersistentFunc &) {
     if (r.success)
-      return Napi::Number::New(node_gdal::napi_env, r.value).As<Napi::Value>();
+      return Napi::Number::New(node_gdal::napi_env(), r.value).As<Napi::Value>();
     else
-      return node_gdal::napi_env.Null().As<Napi::Value>();
+      return node_gdal::napi_env().Null().As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -1053,7 +1027,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::dataTypeGetter) {
     return raw->GetRasterDataType();
   };
   job.rval = [](GDALDataType type, const GetFromPersistentFunc &) {
-    if (type == GDT_Unknown) return node_gdal::napi_env.Null().As<Napi::Value>();
+    if (type == GDT_Unknown) return node_gdal::napi_env().Null().As<Napi::Value>();
     return SafeString::New(GDALGetDataTypeName(type));
   };
   return job.run(info, async);
@@ -1133,7 +1107,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::hasArbitraryOverviewsGetter) {
     CPLErrorReset();
     return static_cast<bool>(raw->HasArbitraryOverviews());
   };
-  job.rval = [](bool r, const GetFromPersistentFunc &) { return Napi::Boolean::New(node_gdal::napi_env, r); };
+  job.rval = [](bool r, const GetFromPersistentFunc &) { return Napi::Boolean::New(node_gdal::napi_env(), r); };
   return job.run(info, async);
 }
 
@@ -1181,7 +1155,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::categoryNamesGetter) {
     return names;
   };
   job.rval = [](std::shared_ptr<std::vector<std::string>> names, const GetFromPersistentFunc &) {
-    Napi::Array results = Napi::Array::New(node_gdal::napi_env);
+    Napi::Array results = Napi::Array::New(node_gdal::napi_env());
     for (std::size_t i = 0; i < names->size(); ++i) results.Set( i, SafeString::New((*names.get())[i].c_str()));
     return results;
   };
@@ -1218,7 +1192,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::colorInterpretationGetter) {
   job.main = [raw](const GDALExecutionProgress &) { return raw->GetColorInterpretation(); };
   job.rval = [](GDALColorInterp ci, const GetFromPersistentFunc &) {
     if (ci == GCI_Undefined)
-      return node_gdal::napi_env.Undefined().As<Napi::Value>();
+      return node_gdal::napi_env().Undefined().As<Napi::Value>();
     else
       return SafeString::New(GDALGetColorInterpretationName(ci));
   };
@@ -1229,7 +1203,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::colorInterpretationGetter) {
 NAN_SETTER(RasterBand::unitTypeSetter) {
   NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
   if (!value->IsString()) {
-    Napi::Error::New(node_gdal::napi_env, "Unit type must be a string").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Unit type must be a string").ThrowAsJavaScriptException();
     return;
   }
   std::string input = value.As<Napi::String>().Utf8Value();
@@ -1249,7 +1223,7 @@ NAN_SETTER(RasterBand::noDataValueSetter) {
   } else if (value->IsNumber()) {
     err = band->this_->SetNoDataValue(value.As<Napi::Number>().DoubleValue());
   } else {
-    Napi::Error::New(node_gdal::napi_env, "No data value must be a number").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "No data value must be a number").ThrowAsJavaScriptException();
     return;
   }
 
@@ -1260,7 +1234,7 @@ NAN_SETTER(RasterBand::scaleSetter) {
   NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
 
   if (!value->IsNumber()) {
-    Napi::Error::New(node_gdal::napi_env, "Scale must be a number").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Scale must be a number").ThrowAsJavaScriptException();
     return;
   }
   double input = value.As<Napi::Number>().DoubleValue();
@@ -1273,7 +1247,7 @@ NAN_SETTER(RasterBand::offsetSetter) {
   NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
 
   if (!value->IsNumber()) {
-    Napi::Error::New(node_gdal::napi_env, "Offset must be a number").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Offset must be a number").ThrowAsJavaScriptException();
     return;
   }
   double input = value.As<Napi::Number>().DoubleValue();
@@ -1286,7 +1260,7 @@ NAN_SETTER(RasterBand::categoryNamesSetter) {
   NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
 
   if (!value->IsArray()) {
-    Napi::Error::New(node_gdal::napi_env, "Category names must be an array").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Category names must be an array").ThrowAsJavaScriptException();
     return;
   }
   Napi::Array names = value.As<Napi::Array>();
@@ -1322,7 +1296,7 @@ NAN_SETTER(RasterBand::colorInterpretationSetter) {
     std::string name = value.As<Napi::String>().Utf8Value();
     ci = GDALGetColorInterpretationByName(name.c_str());
   } else if (!value->IsNull() && !value->IsUndefined()) {
-    Napi::Error::New(node_gdal::napi_env, "color interpretation must be a string or undefined").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "color interpretation must be a string or undefined").ThrowAsJavaScriptException();
     return;
   }
 
@@ -1361,7 +1335,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::colorTableGetter) {
   job.main = [raw](const GDALExecutionProgress &) { return raw->GetColorTable(); };
   job.rval = [](GDALColorTable *ct, const GetFromPersistentFunc &getter) {
     if (ct != nullptr) return ColorTable::New(ct, getter("this"));
-    return node_gdal::napi_env.Undefined().As<Napi::Value>();
+    return node_gdal::napi_env().Undefined().As<Napi::Value>();
   };
 
   return job.run(info, async);
@@ -1379,7 +1353,7 @@ NAN_SETTER(RasterBand::colorTableSetter) {
     GDAL_RAW_CHECK(GDALColorTable *, ct, _raw);
     raw = _raw;
   } else {
-    Napi::TypeError::New(node_gdal::napi_env, "color table must be a gdal.ColorTable object or null").ThrowAsJavaScriptException();
+    Napi::TypeError::New(node_gdal::napi_env(), "color table must be a gdal.ColorTable object or null").ThrowAsJavaScriptException();
     return;
   }
 
@@ -1390,7 +1364,7 @@ NAN_SETTER(RasterBand::colorTableSetter) {
 
 NAN_GETTER(RasterBand::uidGetter) {
   RasterBand *band = node_gdal::UnwrapWrapped<RasterBand>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, (int)band->uid);
+  return Napi::Number::New(node_gdal::napi_env(), (int)band->uid);
 }
 
 } // namespace node_gdal

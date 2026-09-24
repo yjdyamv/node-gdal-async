@@ -38,7 +38,7 @@ void MultiCurve::Initialize(Napi::Object target) {
  */
 
 NAN_METHOD(MultiCurve::toString) {
-  return Napi::String::New(node_gdal::napi_env, "MultiCurve");
+  return Napi::String::New(node_gdal::napi_env(), "MultiCurve");
 }
 
 /**

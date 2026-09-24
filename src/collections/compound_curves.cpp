@@ -29,6 +29,11 @@ void CompoundCurveCurves::Initialize(Napi::Object target) {
 }
 
 CompoundCurveCurves::CompoundCurveCurves(const Napi::CallbackInfo &info) : GDALObject<CompoundCurveCurves>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create CompoundCurveCurves directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 CompoundCurveCurves::~CompoundCurveCurves() {
@@ -39,36 +44,17 @@ CompoundCurveCurves::~CompoundCurveCurves() {
  *
  * @class CompoundCurveCurves
  */
-NAN_METHOD(CompoundCurveCurves::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    CompoundCurveCurves *geom = static_cast<CompoundCurveCurves *>(ptr);
-    geom->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create CompoundCurveCurves directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value CompoundCurveCurves::New(Napi::Value geom) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {geom};
   Napi::Object obj = CompoundCurveCurves::constructor.Value().New(args);
-  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
 
 NAN_METHOD(CompoundCurveCurves::toString) {
-  return Napi::String::New(node_gdal::napi_env, "CompoundCurveCurves");
+  return Napi::String::New(node_gdal::napi_env(), "CompoundCurveCurves");
 }
 
 /**
@@ -85,7 +71,7 @@ NAN_METHOD(CompoundCurveCurves::count) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   CompoundCurve *geom = node_gdal::UnwrapWrapped<CompoundCurve>(parent);
 
-  return Napi::Number::New(node_gdal::napi_env, geom->get()->getNumCurves());
+  return Napi::Number::New(node_gdal::napi_env(), geom->get()->getNumCurves());
 }
 
 /**
@@ -115,7 +101,7 @@ NAN_METHOD(CompoundCurveCurves::get) {
   if (i >= 0 && i < geom->get()->getNumCurves())
     return Geometry::New(geom->get()->getCurve(i), false);
   else
-    Napi::RangeError::New(node_gdal::napi_env, "Invalid curve requested").ThrowAsJavaScriptException();
+    Napi::RangeError::New(node_gdal::napi_env(), "Invalid curve requested").ThrowAsJavaScriptException();
 }
 
 /**
@@ -150,8 +136,8 @@ NAN_METHOD(CompoundCurveCurves::add) {
   SimpleCurve *ring;
 
   if (info.Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "curve(s) must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "curve(s) must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   if (info[0].IsArray()) {
     // set from array of geometry objects
@@ -164,11 +150,11 @@ NAN_METHOD(CompoundCurveCurves::add) {
         OGRErr err = geom->get()->addCurve(ring->get());
         if (err) {
           NODE_THROW_OGRERR(err);
-          return node_gdal::napi_env.Undefined();
+          return node_gdal::napi_env().Undefined();
         }
       } else {
-        Napi::Error::New(node_gdal::napi_env, "All array elements must be SimpleCurves").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "All array elements must be SimpleCurves").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
     }
   } else if (IS_WRAPPED(info[0], SimpleCurve)) {
@@ -176,14 +162,14 @@ NAN_METHOD(CompoundCurveCurves::add) {
     OGRErr err = geom->get()->addCurve(ring->get());
     if (err) {
       NODE_THROW_OGRERR(err);
-      return node_gdal::napi_env.Undefined();
+      return node_gdal::napi_env().Undefined();
     }
   } else {
-    Napi::Error::New(node_gdal::napi_env, "curve(s) must be a SimpleCurve or array of SimpleCurves").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "curve(s) must be a SimpleCurve or array of SimpleCurves").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

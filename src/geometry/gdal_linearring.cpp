@@ -34,7 +34,7 @@ void LinearRing::Initialize(Napi::Object target) {
 
 Napi::Value LinearRing::New(OGRLinearRing *geom, bool owned) {
 
-  if (!geom) { return node_gdal::napi_env.Null(); }
+  if (!geom) { return node_gdal::napi_env().Null(); }
 
   // make a copy of geometry owned by a feature
   // + no need to track when a feature is destroyed
@@ -44,7 +44,7 @@ Napi::Value LinearRing::New(OGRLinearRing *geom, bool owned) {
 
   if (!owned) { geom = static_cast<OGRLinearRing *>(geom->clone()); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, geom)};
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), geom)};
   Napi::Object obj = LinearRing::constructor.Value().New(args);
   LinearRing *wrapped = node_gdal::UnwrapWrapped<LinearRing>(obj);
 
@@ -60,7 +60,7 @@ Napi::Value LinearRing::New(OGRLinearRing *geom, bool owned) {
  */
 
 NAN_METHOD(LinearRing::toString) {
-  return Napi::String::New(node_gdal::napi_env, "LinearRing");
+  return Napi::String::New(node_gdal::napi_env(), "LinearRing");
 }
 
 /**
@@ -87,13 +87,13 @@ NAN_METHOD(LinearRing::addSubLineString) {
   int n = other->get()->getNumPoints();
 
   if (start < 0 || end < -1 || start >= n || end >= n) {
-    Napi::RangeError::New(node_gdal::napi_env, "Invalid start or end index for LineString").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "Invalid start or end index for LineString").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   geom->this_->addSubLineString(other->get(), start, end);
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

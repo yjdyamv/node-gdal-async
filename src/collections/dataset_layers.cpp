@@ -33,6 +33,11 @@ void DatasetLayers::Initialize(Napi::Object target) {
 }
 
 DatasetLayers::DatasetLayers(const Napi::CallbackInfo &info) : GDALObject<DatasetLayers>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create DatasetLayers directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 DatasetLayers::~DatasetLayers() {
@@ -47,37 +52,18 @@ DatasetLayers::~DatasetLayers() {
  *
  * @class DatasetLayers
  */
-NAN_METHOD(DatasetLayers::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    DatasetLayers *f = static_cast<DatasetLayers *>(ptr);
-    f->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create DatasetLayers directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value DatasetLayers::New(Napi::Value ds_obj) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {ds_obj};
   Napi::Object obj = DatasetLayers::constructor.Value().New(args);
 
-  GDAL_SET_PRIVATE(obj, "parent_", ds_obj);
 
   return obj;
 }
 
 NAN_METHOD(DatasetLayers::toString) {
-  return Napi::String::New(node_gdal::napi_env, "DatasetLayers");
+  return Napi::String::New(node_gdal::napi_env(), "DatasetLayers");
 }
 
 /**
@@ -111,15 +97,15 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
 
   if (info.Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "method must be given integer or string").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "method must be given integer or string").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALAsyncableJob<OGRLayer *> job(ds->uid);
@@ -142,8 +128,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
       return lyr;
     };
   } else {
-    Napi::TypeError::New(node_gdal::napi_env, "method must be given integer or string").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::TypeError::New(node_gdal::napi_env(), "method must be given integer or string").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   job.rval = [raw](OGRLayer *lyr, const GetFromPersistentFunc &) { return Layer::New(lyr, raw); };
@@ -200,8 +186,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::create) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -215,7 +201,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::create) {
   NODE_ARG_WRAPPED_OPT(1, "spatial reference", SpatialReference, spatial_ref);
   NODE_ARG_ENUM_OPT(2, "geometry type", OGRwkbGeometryType, geom_type);
   if (info.Length() > 3 && options->parse(info[3])) {
-    return node_gdal::napi_env.Undefined(); // error parsing string list
+    return node_gdal::napi_env().Undefined(); // error parsing string list
   }
 
   OGRSpatialReference *srs = NULL;
@@ -264,8 +250,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::count) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -277,7 +263,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::count) {
     return count;
   };
 
-  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, count); };
+  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env(), count); };
   return job.run(info, async, 0);
 }
 
@@ -314,8 +300,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::copy) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -326,7 +312,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::copy) {
 
   NODE_ARG_WRAPPED(0, "layer to copy", Layer, layer_to_copy);
   NODE_ARG_STR(1, "new layer name", *new_name);
-  if (info.Length() > 2 && options->parse(info[2])) { Napi::Error::New(node_gdal::napi_env, "Error parsing string list").ThrowAsJavaScriptException(); }
+  if (info.Length() > 2 && options->parse(info[2])) { Napi::Error::New(node_gdal::napi_env(), "Error parsing string list").ThrowAsJavaScriptException(); }
 
   OGRLayer *src = layer_to_copy->get();
   GDALAsyncableJob<OGRLayer *> job(ds->uid);
@@ -375,8 +361,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::remove) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -391,7 +377,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::remove) {
     return err;
   };
 
-  job.rval = [](int count, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](int count, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 

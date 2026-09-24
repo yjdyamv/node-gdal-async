@@ -39,7 +39,7 @@ void MultiPolygon::Initialize(Napi::Object target) {
  */
 
 NAN_METHOD(MultiPolygon::toString) {
-  return Napi::String::New(node_gdal::napi_env, "MultiPolygon");
+  return Napi::String::New(node_gdal::napi_env(), "MultiPolygon");
 }
 
 /**
@@ -56,7 +56,7 @@ NAN_METHOD(MultiPolygon::unionCascaded) {
   auto r = geom->this_->UnionCascaded();
   if (r == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return Geometry::New(r);

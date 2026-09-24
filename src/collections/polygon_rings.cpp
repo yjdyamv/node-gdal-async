@@ -28,6 +28,11 @@ void PolygonRings::Initialize(Napi::Object target) {
 }
 
 PolygonRings::PolygonRings(const Napi::CallbackInfo &info) : GDALObject<PolygonRings>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create PolygonRings directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 PolygonRings::~PolygonRings() {
@@ -38,36 +43,17 @@ PolygonRings::~PolygonRings() {
  *
  * @class PolygonRings
  */
-NAN_METHOD(PolygonRings::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    PolygonRings *geom = static_cast<PolygonRings *>(ptr);
-    geom->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create PolygonRings directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value PolygonRings::New(Napi::Value geom) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {geom};
   Napi::Object obj = PolygonRings::constructor.Value().New(args);
-  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
 
 NAN_METHOD(PolygonRings::toString) {
-  return Napi::String::New(node_gdal::napi_env, "PolygonRings");
+  return Napi::String::New(node_gdal::napi_env(), "PolygonRings");
 }
 
 /**
@@ -87,7 +73,7 @@ NAN_METHOD(PolygonRings::count) {
   int i = geom->get()->getExteriorRing() ? 1 : 0;
   i += geom->get()->getNumInteriorRings();
 
-  return Napi::Number::New(node_gdal::napi_env, i);
+  return Napi::Number::New(node_gdal::napi_env(), i);
 }
 
 /**
@@ -123,7 +109,7 @@ NAN_METHOD(PolygonRings::get) {
   }
   if (r == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
   return LinearRing::New(r, false);
 }
@@ -160,8 +146,8 @@ NAN_METHOD(PolygonRings::add) {
   LinearRing *ring;
 
   if (info.Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "ring(s) must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "ring(s) must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   if (info[0].IsArray()) {
     // set from array of geometry objects
@@ -174,11 +160,11 @@ NAN_METHOD(PolygonRings::add) {
         OGRErr err = geom->get()->addRing(ring->get());
         if (err) {
           NODE_THROW_OGRERR(err);
-          return node_gdal::napi_env.Undefined();
+          return node_gdal::napi_env().Undefined();
         }
       } else {
-        Napi::Error::New(node_gdal::napi_env, "All array elements must be LinearRings").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "All array elements must be LinearRings").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
     }
   } else if (IS_WRAPPED(info[0], LinearRing)) {
@@ -186,14 +172,14 @@ NAN_METHOD(PolygonRings::add) {
     OGRErr err = geom->get()->addRing(ring->get());
     if (err) {
       NODE_THROW_OGRERR(err);
-      return node_gdal::napi_env.Undefined();
+      return node_gdal::napi_env().Undefined();
     }
   } else {
-    Napi::Error::New(node_gdal::napi_env, "ring(s) must be a LinearRing or array of LinearRings").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "ring(s) must be a LinearRing or array of LinearRings").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

@@ -44,7 +44,7 @@ void Polygon::SetPrivate(Napi::Object _this, Napi::Value value) {
  */
 
 NAN_METHOD(Polygon::toString) {
-  return Napi::String::New(node_gdal::napi_env, "Polygon");
+  return Napi::String::New(node_gdal::napi_env(), "Polygon");
 }
 
 /**

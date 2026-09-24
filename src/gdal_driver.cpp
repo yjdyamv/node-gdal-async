@@ -39,12 +39,12 @@ Driver::Driver(const Napi::CallbackInfo &info)
   if (!info.IsConstructCall()) {
     Napi::Error::New(info.Env(), "Cannot call constructor as function, you need to use 'new' keyword")
       .ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   if (!info[0].IsExternal()) {
     Napi::Error::New(info.Env(), "Cannot create Driver directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   this_gdaldriver = info[0].As<Napi::External<GDALDriver>>().Data();
@@ -76,7 +76,7 @@ void Driver::dispose() {
  * @class Driver
  */
 Napi::Value Driver::New(GDALDriver *driver) {
-  Napi::Env env = node_gdal::napi_env;
+  Napi::Env env = node_gdal::napi_env();
 
   if (!driver) { return env.Null(); }
   if (object_store.has(driver)) { return object_store.get(driver); }

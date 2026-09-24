@@ -43,11 +43,11 @@ void SimpleCurve::Initialize(Napi::Object target) {
  * @extends Geometry
  */
 NAN_METHOD(SimpleCurve::New) {
-  Napi::Error::New(node_gdal::napi_env, "SimpleCurve is an abstract class and cannot be instantiated").ThrowAsJavaScriptException();
+  Napi::Error::New(node_gdal::napi_env(), "SimpleCurve is an abstract class and cannot be instantiated").ThrowAsJavaScriptException();
 }
 
 NAN_METHOD(SimpleCurve::toString) {
-  return Napi::String::New(node_gdal::napi_env, "SimpleCurve");
+  return Napi::String::New(node_gdal::napi_env(), "SimpleCurve");
 }
 
 /**
@@ -127,15 +127,15 @@ NAN_METHOD(SimpleCurve::addSubLineString) {
   int n = other->get()->getNumPoints();
 
   if (start < 0 || end < -1 || start >= n || end >= n) {
-    Napi::RangeError::New(node_gdal::napi_env, "Invalid start or end index for LineString").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "Invalid start or end index for LineString").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   geom->this_->addSubLineString(other->get(), start, end);
 
   UPDATE_AMOUNT_OF_GEOMETRY_MEMORY(geom);
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

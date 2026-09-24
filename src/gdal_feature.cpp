@@ -38,7 +38,7 @@ void Feature::Initialize(Napi::Object target) {
   // defn.fields.get() instead)
   // Note: This is used mainly for testing
   // TODO: Give node more info on the amount of memory a feature is using
-  //      Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, )
+  //      Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), )
 
   target.Set("Feature", lcons);
 
@@ -93,8 +93,8 @@ NAN_METHOD(Feature::New) {
   Feature *f;
 
   if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (info[0].IsExternal()) {
@@ -105,8 +105,8 @@ NAN_METHOD(Feature::New) {
   } else {
 
     if (info.Length() < 1) {
-      Napi::Error::New(node_gdal::napi_env, "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
 
     OGRFeatureDefn *def;
@@ -114,20 +114,20 @@ NAN_METHOD(Feature::New) {
     if (IS_WRAPPED(info[0], Layer)) {
       Layer *layer = node_gdal::UnwrapWrapped<Layer>(info[0].As<Napi::Object>());
       if (!layer->isAlive()) {
-        Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
       def = layer->get()->GetLayerDefn();
     } else if (IS_WRAPPED(info[0], FeatureDefn)) {
       FeatureDefn *feature_def = node_gdal::UnwrapWrapped<FeatureDefn>(info[0].As<Napi::Object>());
       if (!feature_def->isAlive()) {
-        Napi::Error::New(node_gdal::napi_env, "FeatureDefn object already destroyed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "FeatureDefn object already destroyed").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
       def = feature_def->get();
     } else {
-      Napi::Error::New(node_gdal::napi_env, "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
 
     OGRFeature *ogr_f = new OGRFeature(def);
@@ -147,16 +147,16 @@ Napi::Value Feature::New(OGRFeature *feature) {
 
 Napi::Value Feature::New(OGRFeature *feature, bool owned) {
 
-  if (!feature) { return node_gdal::napi_env.Null(); }
+  if (!feature) { return node_gdal::napi_env().Null(); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, feature)};
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), feature)};
   Napi::Object obj = Feature::constructor.Value().New(args);
   Feature *wrapped = node_gdal::UnwrapWrapped<Feature>(obj);
   return obj;
 }
 
 NAN_METHOD(Feature::toString) {
-  return Napi::String::New(node_gdal::napi_env, "Feature");
+  return Napi::String::New(node_gdal::napi_env(), "Feature");
 }
 
 /**
@@ -171,14 +171,14 @@ NAN_METHOD(Feature::getGeometry) {
 
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   OGRGeometry *geom = feature->this_->GetGeometryRef();
   if (!geom) {
-    return node_gdal::napi_env.Null();
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Null();
+    return node_gdal::napi_env().Undefined();
   }
 
   return Geometry::New(geom, false);
@@ -198,13 +198,13 @@ NAN_METHOD(Feature::getFieldDefn) {
 
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (field_index < 0 || field_index >= feature->this_->GetFieldCount()) {
-    Napi::RangeError::New(node_gdal::napi_env, "Invalid field index").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "Invalid field index").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   return FieldDefn::New(feature->this_->GetFieldDefnRef(field_index), false);
@@ -230,14 +230,14 @@ NAN_METHOD(Feature::setGeometry) {
 
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   OGRErr err = feature->this_->SetGeometry(geom ? geom->get() : NULL);
   if (err) { NODE_THROW_OGRERR(err); }
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -262,8 +262,8 @@ NODE_WRAPPED_METHOD_WITH_RESULT_1_WRAPPED_PARAM(Feature, equals, Boolean, Equal,
 NAN_METHOD(Feature::clone) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   return Feature::New(feature->this_->Clone());
 }
@@ -278,11 +278,11 @@ NAN_METHOD(Feature::clone) {
 NAN_METHOD(Feature::destroy) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   feature->dispose();
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -318,8 +318,8 @@ NAN_METHOD(Feature::setFrom) {
 
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (!info[1].IsArray()) {
@@ -331,19 +331,19 @@ NAN_METHOD(Feature::setFrom) {
     NODE_ARG_BOOL_OPT(2, "forgiving", forgiving);
 
     if (index_map->Length() < 1) {
-      Napi::Error::New(node_gdal::napi_env, "index map must contain at least 1 index").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "index map must contain at least 1 index").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
 
     int *index_map_ptr = new int[index_map->Length()];
 
     for (unsigned index = 0; index < index_map->Length(); index++) {
-      Napi::Value field_index(index_map.As<Napi::Object>().Get(Napi::Number::New(node_gdal::napi_env, index)));
+      Napi::Value field_index(index_map.As<Napi::Object>().Get(Napi::Number::New(node_gdal::napi_env(), index)));
 
       if (!field_index->IsInt32()) {
         delete[] index_map_ptr;
-        Napi::Error::New(node_gdal::napi_env, "index map must contain only integer values").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "index map must contain only integer values").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
 
       int val = (int)field_index.As<Napi::Number>().Int32Value(); // todo: validate index? perhaps ogr already
@@ -359,9 +359,9 @@ NAN_METHOD(Feature::setFrom) {
 
   if (err) {
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -386,10 +386,10 @@ NAN_GETTER(Feature::fieldsGetter) {
 NAN_GETTER(Feature::fidGetter) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
-  return Napi::Number::New(node_gdal::napi_env, feature->this_->GetFID());
+  return Napi::Number::New(node_gdal::napi_env(), feature->this_->GetFID());
 }
 
 /**
@@ -403,8 +403,8 @@ NAN_GETTER(Feature::fidGetter) {
 NAN_GETTER(Feature::defnGetter) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   return FeatureDefn::New(feature->this_->GetDefnRef());
 }
@@ -420,15 +420,15 @@ NAN_GETTER(Feature::defnGetter) {
 NAN_METHOD(Feature::getStyleString) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   const char *psz = feature->this_->GetStyleString();
   if (!psz) {
-    return node_gdal::napi_env.Null();
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Null();
+    return node_gdal::napi_env().Undefined();
   }
-  return Napi::String::New(node_gdal::napi_env, psz);
+  return Napi::String::New(node_gdal::napi_env(), psz);
 }
 
 /**
@@ -443,19 +443,19 @@ NAN_METHOD(Feature::getStyleString) {
 NAN_METHOD(Feature::setStyleString) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (info.Length() < 1 || info[0].IsNull() || info[0].IsUndefined()) {
     // Clear style if null/undefined or no arg
     feature->this_->SetStyleString(nullptr);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (!info[0].IsString()) {
-    Napi::TypeError::New(node_gdal::napi_env, "style must be a string, null or undefined").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::TypeError::New(node_gdal::napi_env(), "style must be a string, null or undefined").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Nan::Utf8String utf8(info[0]);
@@ -465,11 +465,11 @@ NAN_METHOD(Feature::setStyleString) {
 NAN_SETTER(Feature::fidSetter) {
   Feature *feature = node_gdal::UnwrapWrapped<Feature>(info.This().As<Napi::Object>());
   if (!feature->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Feature object already destroyed").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
     return;
   }
   if (!value->IsInt32()) {
-    Napi::Error::New(node_gdal::napi_env, "fid must be an integer").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "fid must be an integer").ThrowAsJavaScriptException();
     return;
   }
   feature->this_->SetFID(value.As<Napi::Number>().Int64Value());

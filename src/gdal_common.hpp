@@ -21,7 +21,12 @@ namespace node_gdal {
 extern FILE *log_file;
 extern ObjectStore object_store;
 extern bool eventLoopWarn;
-extern Napi::Env napi_env;
+// Napi::Env has no default constructor, so the environment is stored raw and
+// wrapped on demand (gdal-async is a single-instance addon, it is set once in Init)
+extern ::napi_env napi_env_storage;
+inline Napi::Env napi_env() {
+  return Napi::Env(napi_env_storage);
+}
 } // namespace node_gdal
 
 #ifdef ENABLE_LOGGING
@@ -59,7 +64,7 @@ class SafeString {
   // Convenience for the (many) call sites that run on the main thread and can
   // use the ambient environment - same approach as v8_undefined()/v8_null()
   static Napi::Value New(const char *data) {
-    return New(node_gdal::napi_env, data);
+    return New(node_gdal::napi_env(), data);
   }
 };
 
@@ -960,8 +965,8 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
 // lambdas) where NAN did not require threading it through.
 // The environment is declared near the top of this file (the trampolines above
 // need the ::napi_env type unshadowed), it is defined in node_gdal.cpp
-inline Napi::Value v8_undefined() { return node_gdal::napi_env.Undefined(); }
-inline Napi::Value v8_null() { return node_gdal::napi_env.Null(); }
+inline Napi::Value v8_undefined() { return node_gdal::napi_env().Undefined(); }
+inline Napi::Value v8_null() { return node_gdal::napi_env().Null(); }
 
 // ----- array helpers -------
 
@@ -1269,7 +1274,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Env env, Napi::Array arra
     auto *gdal_obj = obj->this_;                                                                                       \
     GDALAsyncableJob<async_type> job(0);                                                                               \
     job.main = [gdal_obj](const GDALExecutionProgress &) { return gdal_obj->wrapped_method(); };                       \
-    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env, r); };              \
+    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env(), r); };              \
     return job.run(info, async, 0);                                                                                    \
   }
 
@@ -1290,7 +1295,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Env env, Napi::Array arra
     job.main = [gdal_obj, gdal_param](const GDALExecutionProgress &) {                                                 \
       return gdal_obj->wrapped_method(gdal_param);                                                                     \
     };                                                                                                                 \
-    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env, r); };              \
+    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env(), r); };              \
     return job.run(info, async, 1);                                                                                    \
   }
 
@@ -1307,7 +1312,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Env env, Napi::Array arra
     auto *gdal_obj = obj->this_;                                                                                       \
     GDALAsyncableJob<async_type> job(0);                                                                               \
     job.main = [gdal_obj, param](const GDALExecutionProgress &) { return gdal_obj->wrapped_method(param); };           \
-    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env, r); };              \
+    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env(), r); };              \
     return job.run(info, async, 1);                                                                                    \
   }
 

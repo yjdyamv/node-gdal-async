@@ -110,7 +110,7 @@ class GroupCollection : public GDALObject<SELF> {
       int r = SELF::__count(raw);
       return r;
     };
-    job.rval = [](int r, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, r); };
+    job.rval = [](int r, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env(), r); };
     return job.run(info, async, 0);
   }
 

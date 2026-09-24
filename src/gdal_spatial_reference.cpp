@@ -97,7 +97,7 @@ SpatialReference::SpatialReference(const Napi::CallbackInfo &info)
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_ = info[0].As<Napi::External<OGRSpatialReference>>().Data();
     LOG("Created SpatialReference [%p]", this_);
-    return node_gdal::napi_env.Undefined();
+    return;
   }
 
   // Constructed from JS: SpatialReference([wkt])
@@ -107,7 +107,7 @@ SpatialReference::SpatialReference(const Napi::CallbackInfo &info)
   if (info.Length() > 0 && !info[0].IsNull() && !info[0].IsUndefined()) {
     if (!info[0].IsString()) {
       Napi::TypeError::New(info.Env(), "wkt must be a string").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      return;
     }
     wkt = info[0].As<Napi::String>().Utf8Value();
   }
@@ -120,7 +120,7 @@ SpatialReference::SpatialReference(const Napi::CallbackInfo &info)
     if (err) {
       delete srs;
       NODE_THROW_OGRERR(err);
-      return node_gdal::napi_env.Undefined();
+      return;
     }
   }
 
@@ -144,7 +144,7 @@ Napi::Value SpatialReference::New(const OGRSpatialReference *srs) {
 }
 
 Napi::Value SpatialReference::New(OGRSpatialReference *raw, bool owned) {
-  Napi::Env env = node_gdal::napi_env;
+  Napi::Env env = node_gdal::napi_env();
 
   if (!raw) { return env.Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
@@ -163,7 +163,7 @@ Napi::Value SpatialReference::New(OGRSpatialReference *raw, bool owned) {
 }
 
 NAN_METHOD(SpatialReference::toString) {
-  return Napi::String::New(node_gdal::napi_env, "SpatialReference");
+  return Napi::String::New(node_gdal::napi_env(), "SpatialReference");
 }
 
 /**
@@ -414,7 +414,7 @@ NAN_METHOD(SpatialReference::exportToWKT) {
   int err = srs->this_->exportToWkt(&str);
   if (err) {
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
   result = SafeString::New(str);
   CPLFree(str);
@@ -445,7 +445,7 @@ NAN_METHOD(SpatialReference::exportToPrettyWKT) {
   int err = srs->this_->exportToPrettyWkt(&str, simplify);
   if (err) {
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
   result = SafeString::New(str);
   CPLFree(str);
@@ -471,13 +471,13 @@ NAN_METHOD(SpatialReference::exportToProj4) {
   int err = srs->this_->exportToProj4(&str);
   if (err) {
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (str) {
-    result = Napi::String::New(node_gdal::napi_env, CPLString(str).Trim().c_str());
+    result = Napi::String::New(node_gdal::napi_env(), CPLString(str).Trim().c_str());
   } else {
-    result = node_gdal::napi_env.Null();
+    result = node_gdal::napi_env().Null();
   }
   CPLFree(str);
 
@@ -502,7 +502,7 @@ NAN_METHOD(SpatialReference::exportToXML) {
   int err = srs->this_->exportToXML(&str);
   if (err) {
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
   result = SafeString::New(str);
   CPLFree(str);
@@ -552,7 +552,7 @@ NAN_METHOD(SpatialReference::fromWKT) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -579,7 +579,7 @@ NAN_METHOD(SpatialReference::fromProj4) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -614,7 +614,7 @@ NAN_METHOD(SpatialReference::fromWMSAUTO) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -641,7 +641,7 @@ NAN_METHOD(SpatialReference::fromXML) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -672,7 +672,7 @@ NAN_METHOD(SpatialReference::fromURN) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -802,7 +802,7 @@ NAN_METHOD(SpatialReference::fromMICoordSys) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -884,7 +884,7 @@ NAN_METHOD(SpatialReference::fromEPSG) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -921,7 +921,7 @@ NAN_METHOD(SpatialReference::fromEPSGA) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -955,12 +955,12 @@ NAN_METHOD(SpatialReference::fromESRI) {
   StringList list;
 
   if (info.Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "input string list must be provided").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "input string list must be provided").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (list.parse(info[0])) {
-    return node_gdal::napi_env.Undefined(); // error parsing string list
+    return node_gdal::napi_env().Undefined(); // error parsing string list
   }
 
   OGRSpatialReference *srs = new OGRSpatialReference();
@@ -968,7 +968,7 @@ NAN_METHOD(SpatialReference::fromESRI) {
   if (err) {
     delete srs;
     NODE_THROW_OGRERR(err);
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs, true);
@@ -995,9 +995,9 @@ NAN_METHOD(SpatialReference::getLinearUnits) {
   OGRChar *unit_name;
   double units = srs->this_->GetLinearUnits(&unit_name);
 
-  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-  result.Set( Napi::String::New(node_gdal::napi_env, "value"), Napi::Number::New(node_gdal::napi_env, units));
-  result.Set( Napi::String::New(node_gdal::napi_env, "units"), SafeString::New(unit_name));
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+  result.Set( Napi::String::New(node_gdal::napi_env(), "value"), Napi::Number::New(node_gdal::napi_env(), units));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "units"), SafeString::New(unit_name));
 
   return result;
 }
@@ -1017,9 +1017,9 @@ NAN_METHOD(SpatialReference::getAngularUnits) {
   OGRChar *unit_name;
   double units = srs->this_->GetAngularUnits(&unit_name);
 
-  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-  result.Set( Napi::String::New(node_gdal::napi_env, "value"), Napi::Number::New(node_gdal::napi_env, units));
-  result.Set( Napi::String::New(node_gdal::napi_env, "units"), SafeString::New(unit_name));
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+  result.Set( Napi::String::New(node_gdal::napi_env(), "value"), Napi::Number::New(node_gdal::napi_env(), units));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "units"), SafeString::New(unit_name));
 
   return result;
 }
@@ -1042,20 +1042,20 @@ NAN_METHOD(SpatialReference::validate) {
   OGRErr err = srs->this_->Validate();
 
   if (err == OGRERR_NONE) {
-    return node_gdal::napi_env.Null();
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Null();
+    return node_gdal::napi_env().Undefined();
   }
   if (err == OGRERR_CORRUPT_DATA) {
-    return Napi::String::New(node_gdal::napi_env, "corrupt");
-    return node_gdal::napi_env.Undefined();
+    return Napi::String::New(node_gdal::napi_env(), "corrupt");
+    return node_gdal::napi_env().Undefined();
   }
   if (err == OGRERR_UNSUPPORTED_SRS) {
-    return Napi::String::New(node_gdal::napi_env, "unsupported");
-    return node_gdal::napi_env.Undefined();
+    return Napi::String::New(node_gdal::napi_env(), "unsupported");
+    return node_gdal::napi_env().Undefined();
   }
 
   NODE_THROW_OGRERR(err);
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

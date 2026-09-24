@@ -35,24 +35,24 @@ Napi::Value TypedArray::New(GDALDataType type, int64_t length) {
 #endif
     case GDT_Float32: name = "Float32Array"; break;
     case GDT_Float64: name = "Float64Array"; break;
-    default: Napi::Error::New(node_gdal::napi_env, "Unsupported array type").ThrowAsJavaScriptException(); return node_gdal::napi_env.Undefined();
+    default: Napi::Error::New(node_gdal::napi_env(), "Unsupported array type").ThrowAsJavaScriptException(); return node_gdal::napi_env().Undefined();
   }
 
   // make ArrayBuffer
-  val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "ArrayBuffer"));
+  val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "ArrayBuffer"));
   if (!val.IsFunction()) {
-    Napi::Error::New(node_gdal::napi_env, "Error getting ArrayBuffer constructor").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Error getting ArrayBuffer constructor").ThrowAsJavaScriptException();
     return Napi::Value();
   }
 
   constructor = val.As<Napi::Function>();
   int64_t size = length * GDALGetDataTypeSizeBytes(type);
   if (size == 0) {
-    Napi::Error::New(node_gdal::napi_env, "Invalid GDAL data type").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Invalid GDAL data type").ThrowAsJavaScriptException();
     return Napi::Value();
   }
   if (size > max_safe_integer) {
-    Napi::Error::New(node_gdal::napi_env, "Buffer size exceeds maximum safe JS integer").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Buffer size exceeds maximum safe JS integer").ThrowAsJavaScriptException();
     return Napi::Value();
   }
   Napi::Value v8_size = Nan::New<v8::Number>(size);
@@ -60,26 +60,26 @@ Napi::Value TypedArray::New(GDALDataType type, int64_t length) {
   if (array_buffer_maybe.IsEmpty()) { return Napi::Value(); }
   Napi::Value array_buffer = array_buffer_maybe;
   if (!array_buffer->IsObject()) {
-    Napi::Error::New(node_gdal::napi_env, "Error allocating ArrayBuffer").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Error allocating ArrayBuffer").ThrowAsJavaScriptException();
     return Napi::Value();
   }
 
   // make TypedArray
-  val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, name));
+  val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), name));
   if (val.IsEmpty()) { return Napi::Value(); }
   if (!val->IsFunction()) {
-    Napi::Error::New(node_gdal::napi_env, "Error getting typed array constructor").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Error getting typed array constructor").ThrowAsJavaScriptException();
     return Napi::Value();
   }
   constructor = val.As<Napi::Function>();
   MaybeNapi::Object array_maybe = Nan::NewInstance(constructor, 1, &array_buffer);
   if (array_maybe.IsEmpty()) {
-    Napi::RangeError::New(node_gdal::napi_env, "Failed constructing a TypedArray, data is probably over the 4G elements limit").ThrowAsJavaScriptException();
+    Napi::RangeError::New(node_gdal::napi_env(), "Failed constructing a TypedArray, data is probably over the 4G elements limit").ThrowAsJavaScriptException();
     return Napi::Value();
   }
   Napi::Object array = array_maybe;
 
-  array.Set( Napi::String::New(node_gdal::napi_env, "_gdal_type"), Napi::Number::New(node_gdal::napi_env, type));
+  array.Set( Napi::String::New(node_gdal::napi_env(), "_gdal_type"), Napi::Number::New(node_gdal::napi_env(), type));
 
   return array;
 }
@@ -119,10 +119,10 @@ Napi::Value TypedArray::New(GDALDataType type, void *data, int64_t length) {
   if (buffer.IsEmpty() || !buffer->IsObject()) { throw "Error getting creating Node.js Buffer"; }
 
   // get the underlying ArrayBuffer
-  Napi::Value underlyingAB = buffer.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "buffer"));
+  Napi::Value underlyingAB = buffer.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "buffer"));
 
   // make TypedArray
-  Napi::Value val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, name));
+  Napi::Value val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), name));
   if (val.IsEmpty() || !val->IsFunction()) { throw "Error getting typed array constructor"; }
   Local<Function> constructor = val.As<Napi::Function>();
 
@@ -130,15 +130,15 @@ Napi::Value TypedArray::New(GDALDataType type, void *data, int64_t length) {
 
   if (array.IsEmpty() || !array->IsObject()) { throw "Error creating TypedArray"; }
 
-  array.Set( Napi::String::New(node_gdal::napi_env, "_gdal_type"), Napi::Number::New(node_gdal::napi_env, type));
+  array.Set( Napi::String::New(node_gdal::napi_env(), "_gdal_type"), Napi::Number::New(node_gdal::napi_env(), type));
 
   return array;
 }
 
 GDALDataType TypedArray::Identify(Napi::Object obj) {
 
-  Local<String> sym = Napi::String::New(node_gdal::napi_env, "_gdal_type");
-  if (!obj.As<Napi::Object>().HasOwnProperty(sym).FromMaybe(false)) return GDT_Unknown;
+  Local<String> sym = Napi::String::New(node_gdal::napi_env(), "_gdal_type");
+  if (!obj.As<Napi::Object>().HasOwnProperty(sym)) return GDT_Unknown;
   Napi::Value val = obj.As<Napi::Object>().Get(sym);
   if (!val->IsNumber()) return GDT_Unknown;
 
@@ -150,7 +150,7 @@ void *TypedArray::Validate(Napi::Object obj, GDALDataType type, int64_t min_leng
 
   GDALDataType src_type = TypedArray::Identify(obj);
   if (src_type == GDT_Unknown) {
-    Napi::TypeError::New(node_gdal::napi_env, "Unable to identify GDAL datatype of passed array object").ThrowAsJavaScriptException();
+    Napi::TypeError::New(node_gdal::napi_env(), "Unable to identify GDAL datatype of passed array object").ThrowAsJavaScriptException();
     return NULL;
   }
   if (src_type != type) {
@@ -158,7 +158,7 @@ void *TypedArray::Validate(Napi::Object obj, GDALDataType type, int64_t min_leng
     ss << "Array type does not match band data type ("
        << "input: " << GDALGetDataTypeName(src_type) << ", target: " << GDALGetDataTypeName(type) << ")";
 
-    Napi::TypeError::New(node_gdal::napi_env, ss.str().c_str()).ThrowAsJavaScriptException();
+    Napi::TypeError::New(node_gdal::napi_env(), ss.str().c_str()).ThrowAsJavaScriptException();
     return NULL;
   }
   switch (type) {
@@ -216,7 +216,7 @@ void *TypedArray::Validate(Napi::Object obj, GDALDataType type, int64_t min_leng
       if (ValidateLength(contents.length(), min_length)) return NULL;
       return *contents;
     }
-    default: Napi::Error::New(node_gdal::napi_env, "Unsupported array type").ThrowAsJavaScriptException(); return NULL;
+    default: Napi::Error::New(node_gdal::napi_env(), "Unsupported array type").ThrowAsJavaScriptException(); return NULL;
   }
 }
 bool TypedArray::ValidateLength(size_t length, int64_t min_length) {
@@ -224,7 +224,7 @@ bool TypedArray::ValidateLength(size_t length, int64_t min_length) {
     std::ostringstream ss;
     ss << "Array length must be greater than or equal to " << min_length;
 
-    Napi::Error::New(node_gdal::napi_env, ss.str().c_str()).ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), ss.str().c_str()).ThrowAsJavaScriptException();
     return true;
   }
   return false;

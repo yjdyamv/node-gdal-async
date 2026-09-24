@@ -82,7 +82,7 @@ void Geometry::Initialize(Napi::Object target) {
         ATTR(lcons, "name", nameGetter, READ_ONLY_SETTER)
     });
 
-  // GDAL_SetMethod(node_gdal::napi_env, constructor, "fromWKBType", Geometry::create);
+  // GDAL_SetMethod(node_gdal::napi_env(), constructor, "fromWKBType", Geometry::create);
   GDAL_SetAsyncableMethod(env, lcons, "fromWKT", Geometry::createFromWkt);
   GDAL_SetAsyncableMethod(env, lcons, "fromWKB", Geometry::createFromWkb);
   GDAL_SetAsyncableMethod(env, lcons, "fromGeoJson", Geometry::createFromGeoJson);
@@ -105,8 +105,8 @@ NAN_METHOD(Geometry::New) {
   Geometry *f;
 
   if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (info[0].IsExternal()) {
@@ -117,7 +117,7 @@ NAN_METHOD(Geometry::New) {
   } else {
     Nan::ThrowError(
       "Geometry doesnt have a constructor, use Geometry.fromWKT(), Geometry.fromWKB() or type-specific constructor. ie. new ogr.Point()");
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
     // OGRwkbGeometryType geometry_type;
     // NODE_ARG_ENUM(0, "geometry type", OGRwkbGeometryType, geometry_type);
     // OGRGeometry *geom = OGRGeometryFactory::createGeometry(geometry_type);
@@ -130,7 +130,7 @@ NAN_METHOD(Geometry::New) {
 
 Napi::Value Geometry::New(OGRGeometry *geom, bool owned) {
 
-  if (!geom) { return node_gdal::napi_env.Null(); }
+  if (!geom) { return node_gdal::napi_env().Null(); }
 
   OGRwkbGeometryType type = getGeometryType_fixed(geom);
   type = wkbFlatten(type);
@@ -148,7 +148,7 @@ Napi::Value Geometry::New(OGRGeometry *geom, bool owned) {
     case wkbCompoundCurve: return CompoundCurve::New(static_cast<OGRCompoundCurve *>(geom), owned);
     case wkbCircularString: return CircularString::New(static_cast<OGRCircularString *>(geom), owned);
     case wkbMultiCurve: return MultiCurve::New(static_cast<OGRMultiCurve *>(geom), owned);
-    default: Napi::Error::New(node_gdal::napi_env, "Tried to create unsupported geometry type").ThrowAsJavaScriptException(); return node_gdal::napi_env.Undefined();
+    default: Napi::Error::New(node_gdal::napi_env(), "Tried to create unsupported geometry type").ThrowAsJavaScriptException(); return node_gdal::napi_env().Undefined();
   }
 }
 
@@ -171,7 +171,7 @@ NAN_METHOD(Geometry::toString) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
   std::ostringstream ss;
   ss << "Geometry (" << geom->this_->getGeometryName() << ")";
-  return Napi::String::New(node_gdal::napi_env, ss.str().c_str());
+  return Napi::String::New(node_gdal::napi_env(), ss.str().c_str());
 }
 
 /**
@@ -1103,7 +1103,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKT) {
       CPLFree(text);
       return r;
     }
-    return node_gdal::napi_env.Undefined().As<Napi::Value>();
+    return node_gdal::napi_env().Undefined().As<Napi::Value>();
   };
 
   return job.run(info, async, 0);
@@ -1150,8 +1150,8 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKB) {
   } else if (order == "LSB") {
     byte_order = wkbNDR;
   } else {
-    Napi::Error::New(node_gdal::napi_env, "byte order must be 'MSB' or 'LSB'").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "byte order must be 'MSB' or 'LSB'").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   // wkb variant
@@ -1163,14 +1163,14 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKB) {
   } else if (variant == "ISO") {
     wkb_variant = wkbVariantIso;
   } else {
-    Napi::Error::New(node_gdal::napi_env, "variant must be 'OGC' or 'ISO'").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "variant must be 'OGC' or 'ISO'").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   unsigned char *data = (unsigned char *)malloc(size);
   if (data == nullptr) {
-    Napi::Error::New(node_gdal::napi_env, "Failed allocating memory").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Failed allocating memory").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   OGRGeometry *gdal_geom = geom->this_;
@@ -1187,7 +1187,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKB) {
     return data;
   };
 
-  Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, size);
+  Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), size);
 
   job.rval = [size](unsigned char *data, const GetFromPersistentFunc &) {
     int *hint = new int{static_cast<int>(size)};
@@ -1196,7 +1196,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKB) {
                             size,
                             [](char *data, void *hint) {
                               int *size = reinterpret_cast<int *>(hint);
-                              Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, -(*size));
+                              Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), -(*size));
                               delete size;
                               free(data);
                             },
@@ -1246,11 +1246,11 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToKML) {
   };
   job.rval = [](char *text, const GetFromPersistentFunc &) {
     if (text) {
-      Napi::Value result = Napi::String::New(node_gdal::napi_env, text);
+      Napi::Value result = Napi::String::New(node_gdal::napi_env(), text);
       CPLFree(text);
       return result;
     }
-    return node_gdal::napi_env.Undefined().As<Napi::Value>();
+    return node_gdal::napi_env().Undefined().As<Napi::Value>();
   };
   return job.run(info, async, 0);
 }
@@ -1294,11 +1294,11 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToGML) {
   };
   job.rval = [](char *text, const GetFromPersistentFunc &) {
     if (text) {
-      Napi::Value result = Napi::String::New(node_gdal::napi_env, text);
+      Napi::Value result = Napi::String::New(node_gdal::napi_env(), text);
       CPLFree(text);
       return result;
     }
-    return node_gdal::napi_env.Undefined().As<Napi::Value>();
+    return node_gdal::napi_env().Undefined().As<Napi::Value>();
   };
   return job.run(info, async, 0);
 }
@@ -1342,11 +1342,11 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToJSON) {
   };
   job.rval = [](char *text, const GetFromPersistentFunc &) {
     if (text) {
-      Napi::Value result = Napi::String::New(node_gdal::napi_env, text);
+      Napi::Value result = Napi::String::New(node_gdal::napi_env(), text);
       CPLFree(text);
       return result;
     }
-    return node_gdal::napi_env.Undefined().As<Napi::Value>();
+    return node_gdal::napi_env().Undefined().As<Napi::Value>();
   };
   return job.run(info, async, 0);
 }
@@ -1436,11 +1436,11 @@ GDAL_ASYNCABLE_DEFINE(Geometry::getEnvelope) {
   };
 
   job.rval = [](OGREnvelope *envelope, const GetFromPersistentFunc &) {
-    Napi::Object obj = Napi::Object::New(node_gdal::napi_env);
-    obj.Set( Napi::String::New(node_gdal::napi_env, "minX"), Napi::Number::New(node_gdal::napi_env, envelope->MinX));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "maxX"), Napi::Number::New(node_gdal::napi_env, envelope->MaxX));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "minY"), Napi::Number::New(node_gdal::napi_env, envelope->MinY));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "maxY"), Napi::Number::New(node_gdal::napi_env, envelope->MaxY));
+    Napi::Object obj = Napi::Object::New(node_gdal::napi_env());
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "minX"), Napi::Number::New(node_gdal::napi_env(), envelope->MinX));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "maxX"), Napi::Number::New(node_gdal::napi_env(), envelope->MaxX));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "minY"), Napi::Number::New(node_gdal::napi_env(), envelope->MinY));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "maxY"), Napi::Number::New(node_gdal::napi_env(), envelope->MaxY));
     delete envelope;
     return obj;
   };
@@ -1486,13 +1486,13 @@ GDAL_ASYNCABLE_DEFINE(Geometry::getEnvelope3D) {
   };
 
   job.rval = [](OGREnvelope3D *envelope, const GetFromPersistentFunc &) {
-    Napi::Object obj = Napi::Object::New(node_gdal::napi_env);
-    obj.Set( Napi::String::New(node_gdal::napi_env, "minX"), Napi::Number::New(node_gdal::napi_env, envelope->MinX));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "maxX"), Napi::Number::New(node_gdal::napi_env, envelope->MaxX));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "minY"), Napi::Number::New(node_gdal::napi_env, envelope->MinY));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "maxY"), Napi::Number::New(node_gdal::napi_env, envelope->MaxY));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "minZ"), Napi::Number::New(node_gdal::napi_env, envelope->MinZ));
-    obj.Set( Napi::String::New(node_gdal::napi_env, "maxZ"), Napi::Number::New(node_gdal::napi_env, envelope->MaxZ));
+    Napi::Object obj = Napi::Object::New(node_gdal::napi_env());
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "minX"), Napi::Number::New(node_gdal::napi_env(), envelope->MinX));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "maxX"), Napi::Number::New(node_gdal::napi_env(), envelope->MaxX));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "minY"), Napi::Number::New(node_gdal::napi_env(), envelope->MinY));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "maxY"), Napi::Number::New(node_gdal::napi_env(), envelope->MaxY));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "minZ"), Napi::Number::New(node_gdal::napi_env(), envelope->MinZ));
+    obj.Set( Napi::String::New(node_gdal::napi_env(), "maxZ"), Napi::Number::New(node_gdal::napi_env(), envelope->MaxZ));
     delete envelope;
     return obj;
   };
@@ -1615,8 +1615,8 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromWkb) {
   std::string obj_type = wkb_obj->GetConstructorName(.As<Napi::String>().Utf8Value());
 
   if (obj_type != "Buffer" && obj_type != "Uint8Array") {
-    Napi::Error::New(node_gdal::napi_env, "Argument must be a buffer object").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Argument must be a buffer object").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   unsigned char *data = (unsigned char *)Buffer::Data(wkb_obj);
@@ -1673,8 +1673,8 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromWkb) {
  */
 GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
 #if GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR < 3
-  Napi::Error::New(node_gdal::napi_env, "GDAL < 2.3 does not support parsing GeoJSON directly").ThrowAsJavaScriptException();
-  return node_gdal::napi_env.Undefined();
+  Napi::Error::New(node_gdal::napi_env(), "GDAL < 2.3 does not support parsing GeoJSON directly").ThrowAsJavaScriptException();
+  return node_gdal::napi_env().Undefined();
 #else
 
   Napi::Object geo_obj;
@@ -1685,8 +1685,8 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
   Nan::JSON NanJSON;
   Nan::MaybeLocal<String> result = NanJSON.Stringify(geo_obj);
   if (result.IsEmpty()) {
-    Napi::Error::New(node_gdal::napi_env, "Invalid GeoJSON").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Invalid GeoJSON").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   Local<String> stringified = result;
   std::string *val = new std::string(stringified.As<Napi::String>().Utf8Value());
@@ -1732,8 +1732,8 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
 
 GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJsonBuffer) {
 #if GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR < 3
-  Napi::Error::New(node_gdal::napi_env, "GDAL < 2.3 does not support parsing GeoJSON directly").ThrowAsJavaScriptException();
-  return node_gdal::napi_env.Undefined();
+  Napi::Error::New(node_gdal::napi_env(), "GDAL < 2.3 does not support parsing GeoJSON directly").ThrowAsJavaScriptException();
+  return node_gdal::napi_env().Undefined();
 #else
   std::string geojson_string;
 
@@ -1743,8 +1743,8 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJsonBuffer) {
   std::string obj_type = geojson_obj->GetConstructorName(.As<Napi::String>().Utf8Value());
 
   if (obj_type != "Buffer" && obj_type != "Uint8Array") {
-    Napi::Error::New(node_gdal::napi_env, "Argument must be a buffer object").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Argument must be a buffer object").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   char *data = Buffer::Data(geojson_obj);
@@ -1812,7 +1812,7 @@ NAN_SETTER(Geometry::srsSetter) {
     SpatialReference *srs_obj = node_gdal::UnwrapWrapped<SpatialReference>(value.As<Napi::Object>());
     srs = srs_obj->get();
   } else if (!value->IsNull() && !value->IsUndefined()) {
-    Napi::Error::New(node_gdal::napi_env, "srs must be SpatialReference object").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "srs must be SpatialReference object").ThrowAsJavaScriptException();
     return;
   }
 
@@ -1853,7 +1853,7 @@ NAN_GETTER(Geometry::nameGetter) {
  */
 NAN_GETTER(Geometry::typeGetter) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, getGeometryType_fixed(geom->this_));
+  return Napi::Number::New(node_gdal::napi_env(), getGeometryType_fixed(geom->this_));
 }
 
 /**
@@ -1866,7 +1866,7 @@ NAN_GETTER(Geometry::typeGetter) {
  */
 NAN_GETTER(Geometry::wkbSizeGetter) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, static_cast<int>(geom->this_->WkbSize()));
+  return Napi::Number::New(node_gdal::napi_env(), static_cast<int>(geom->this_->WkbSize()));
 }
 
 /**
@@ -1879,7 +1879,7 @@ NAN_GETTER(Geometry::wkbSizeGetter) {
  */
 NAN_GETTER(Geometry::dimensionGetter) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, geom->this_->getDimension());
+  return Napi::Number::New(node_gdal::napi_env(), geom->this_->getDimension());
 }
 
 /**
@@ -1891,19 +1891,19 @@ NAN_GETTER(Geometry::dimensionGetter) {
  */
 NAN_GETTER(Geometry::coordinateDimensionGetter) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, geom->this_->getCoordinateDimension());
+  return Napi::Number::New(node_gdal::napi_env(), geom->this_->getCoordinateDimension());
 }
 
 NAN_SETTER(Geometry::coordinateDimensionSetter) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
 
   if (!value->IsInt32()) {
-    Napi::Error::New(node_gdal::napi_env, "coordinateDimension must be an integer").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "coordinateDimension must be an integer").ThrowAsJavaScriptException();
     return;
   }
   int dim = value.As<Napi::Number>().Int64Value();
   if (dim != 2 && dim != 3) {
-    Napi::Error::New(node_gdal::napi_env, "coordinateDimension must be 2 or 3").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "coordinateDimension must be 2 or 3").ThrowAsJavaScriptException();
     return;
   }
 
@@ -1928,7 +1928,7 @@ Napi::Value Geometry::getConstructor(OGRwkbGeometryType type) {
       return CircularString::constructor.Value();
     case wkbCompoundCurve: return CompoundCurve::constructor.Value();
     case wkbMultiCurve: return MultiCurve::constructor.Value();
-    default: return node_gdal::napi_env.Null();
+    default: return node_gdal::napi_env().Null();
   }
 }
 

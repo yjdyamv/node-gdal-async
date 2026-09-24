@@ -63,51 +63,29 @@ void Attribute::dispose() {
  *
  * @class Attribute
  */
-NAN_METHOD(Attribute::New) {
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  if (info.Length() == 1 && info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    Attribute *f = static_cast<Attribute *>(ptr);
-    f->Wrap(info.This());
-
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create attribute directly. Create with dataset instead.").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  return info.This();
-}
 
 Napi::Value Attribute::New(std::shared_ptr<GDALAttribute> raw, GDALDataset *parent_ds) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, raw)};
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), raw)};
   Napi::Object obj = Attribute::constructor.Value().New(args);
   Attribute *wrapped = node_gdal::UnwrapWrapped<Attribute>(obj);
 
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(ds);
   long parent_uid = unwrapped_ds->uid;
 
-  wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid);
+  wrapped->uid = object_store.add(raw, *wrapped, parent_uid);
   wrapped->parent_ds = parent_ds;
   wrapped->parent_uid = parent_uid;
 
-  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }
 
 NAN_METHOD(Attribute::toString) {
-  return Napi::String::New(node_gdal::napi_env, "Attribute");
+  return Napi::String::New(node_gdal::napi_env(), "Attribute");
 }
 
 /**
@@ -127,9 +105,9 @@ NAN_GETTER(Attribute::valueGetter) {
   GDALExtendedDataType type = raw->GetDataType();
   Napi::Value r;
   switch (type.GetClass()) {
-    case GEDTC_NUMERIC: r = Napi::Number::New(node_gdal::napi_env, raw->ReadAsDouble()); break;
+    case GEDTC_NUMERIC: r = Napi::Number::New(node_gdal::napi_env(), raw->ReadAsDouble()); break;
     case GEDTC_STRING: r = SafeString::New(raw->ReadAsString()); break;
-    default: Napi::Error::New(node_gdal::napi_env, "Compound attributes are not supported yet").ThrowAsJavaScriptException(); return;
+    default: Napi::Error::New(node_gdal::napi_env(), "Compound attributes are not supported yet").ThrowAsJavaScriptException(); return node_gdal::napi_env().Undefined();
   }
 
   return r;
@@ -153,7 +131,7 @@ NAN_GETTER(Attribute::typeGetter) {
     case GEDTC_NUMERIC: r = GDALGetDataTypeName(type.GetNumericDataType()); break;
     case GEDTC_STRING: r = "String"; break;
     case GEDTC_COMPOUND: r = "Compound"; break;
-    default: Napi::Error::New(node_gdal::napi_env, "Invalid attribute type").ThrowAsJavaScriptException(); return;
+    default: Napi::Error::New(node_gdal::napi_env(), "Invalid attribute type").ThrowAsJavaScriptException(); return node_gdal::napi_env().Undefined();
   }
 
   return SafeString::New(r);
@@ -161,7 +139,7 @@ NAN_GETTER(Attribute::typeGetter) {
 
 NAN_GETTER(Attribute::uidGetter) {
   Attribute *group = node_gdal::UnwrapWrapped<Attribute>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, (int)group->uid);
+  return Napi::Number::New(node_gdal::napi_env(), (int)group->uid);
 }
 
 #endif

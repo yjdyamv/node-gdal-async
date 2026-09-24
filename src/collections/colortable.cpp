@@ -60,48 +60,13 @@ void ColorTable::dispose() {
  * @class ColorTable
  * @param {string} interpretation palette interpretation
  */
-NAN_METHOD(ColorTable::New) {
-  ColorTable *f;
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    f = static_cast<ColorTable *>(ptr);
-  } else {
-    std::string pi;
-    NODE_ARG_STR(0, "palette interpretation", pi);
-    GDALPaletteInterp gpi;
-    if (pi == "Gray")
-      gpi = GPI_Gray;
-    else if (pi == "RGB")
-      gpi = GPI_RGB;
-    else if (pi == "CMYK")
-      gpi = GPI_CMYK;
-    else if (pi == "HLS")
-      gpi = GPI_HLS;
-    else {
-      Napi::RangeError::New(node_gdal::napi_env, "Invalid palette interpretation").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
-    }
-    f = new ColorTable(new GDALColorTable(gpi), 0);
-  }
-
-  f->Wrap(info.This());
-  f->uid = object_store.add(f->get(), f->persistent(), f->parent_uid);
-  return info.This();
-  return node_gdal::napi_env.Undefined();
-}
 
 /*
  * Create a color table owned by a gdal.RasterBand
  */
 Napi::Value ColorTable::New(GDALColorTable *raw, Napi::Value parent) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
   RasterBand *band = node_gdal::UnwrapWrapped<RasterBand>(parent.As<Napi::Object>());
@@ -112,7 +77,6 @@ Napi::Value ColorTable::New(GDALColorTable *raw, Napi::Value parent) {
   Napi::Object obj =
     Nan::NewInstance(ColorTable::constructor.Value(), 1, &ext);
 
-  GDAL_SET_PRIVATE(obj, "parent_", parent);
 
   return obj;
 }
@@ -122,7 +86,7 @@ Napi::Value ColorTable::New(GDALColorTable *raw, Napi::Value parent) {
  */
 Napi::Value ColorTable::New(GDALColorTable *raw) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
   ColorTable *wrapped = new ColorTable(raw, 0);
@@ -135,7 +99,7 @@ Napi::Value ColorTable::New(GDALColorTable *raw) {
 }
 
 NAN_METHOD(ColorTable::toString) {
-  return Napi::String::New(node_gdal::napi_env, "ColorTable");
+  return Napi::String::New(node_gdal::napi_env(), "ColorTable");
 }
 
 /**
@@ -181,7 +145,7 @@ NAN_METHOD(ColorTable::isSame) {
   GDAL_RAW_CHECK(GDALColorTable *, other, raw_other);
 
   CPLErrorReset();
-  return Napi::Boolean::New(node_gdal::napi_env, raw->IsSame(raw_other));
+  return Napi::Boolean::New(node_gdal::napi_env(), raw->IsSame(raw_other));
 }
 
 /**
@@ -212,14 +176,14 @@ NAN_METHOD(ColorTable::get) {
   const GDALColorEntry *color = raw->GetColorEntry(index);
   if (color == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
-  Napi::Object result = Napi::Object::New(node_gdal::napi_env);
-  result.Set( Napi::String::New(node_gdal::napi_env, "c1"), Napi::Number::New(node_gdal::napi_env, color->c1));
-  result.Set( Napi::String::New(node_gdal::napi_env, "c2"), Napi::Number::New(node_gdal::napi_env, color->c2));
-  result.Set( Napi::String::New(node_gdal::napi_env, "c3"), Napi::Number::New(node_gdal::napi_env, color->c3));
-  result.Set( Napi::String::New(node_gdal::napi_env, "c4"), Napi::Number::New(node_gdal::napi_env, color->c4));
+  Napi::Object result = Napi::Object::New(node_gdal::napi_env());
+  result.Set( Napi::String::New(node_gdal::napi_env(), "c1"), Napi::Number::New(node_gdal::napi_env(), color->c1));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "c2"), Napi::Number::New(node_gdal::napi_env(), color->c2));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "c3"), Napi::Number::New(node_gdal::napi_env(), color->c3));
+  result.Set( Napi::String::New(node_gdal::napi_env(), "c4"), Napi::Number::New(node_gdal::napi_env(), color->c4));
   return result;
 }
 
@@ -254,8 +218,8 @@ NAN_METHOD(ColorTable::set) {
 
   MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
   if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
-    Napi::Error::New(node_gdal::napi_env, "RasterBand color tables are read-only, create a new one to modify it").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "RasterBand color tables are read-only, create a new one to modify it").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALColorEntry color;
@@ -285,8 +249,8 @@ NAN_METHOD(ColorTable::ramp) {
   NODE_ARG_INT(0, "start_index", start_index);
   NODE_ARG_INT(2, "end_index", end_index);
   if (start_index < 0 || end_index < 0 || end_index < start_index) {
-    Napi::RangeError::New(node_gdal::napi_env, "Invalid color interval").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "Invalid color interval").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Object start_color_obj, end_color_obj;
@@ -302,17 +266,17 @@ NAN_METHOD(ColorTable::ramp) {
 
   MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
   if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
-    Napi::Error::New(node_gdal::napi_env, "RasterBand color tables are read-only, create a new one to modify it").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "RasterBand color tables are read-only, create a new one to modify it").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   int r = raw->CreateColorRamp(start_index, &start_color, end_index, &end_color);
   if (r == -1) {
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
-  return Napi::Number::New(node_gdal::napi_env, r);
+  return Napi::Number::New(node_gdal::napi_env(), r);
 }
 
 /**

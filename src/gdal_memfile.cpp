@@ -46,7 +46,7 @@ void Memfile::Initialize(Napi::Object target) {
     {
     });
 
-  Napi::Object vsimem = Napi::Object::New(node_gdal::napi_env);
+  Napi::Object vsimem = Napi::Object::New(node_gdal::napi_env());
   GDAL_SetMethod(env, vsimem, "_anonymous", Memfile::vsimemAnonymous);
   GDAL_SetMethod(env, vsimem, "set", Memfile::vsimemSet);
   GDAL_SetMethod(env, vsimem, "release", Memfile::vsimemRelease);
@@ -120,7 +120,7 @@ bool Memfile::copy(Napi::Object buffer, const std::string &filename) {
 
   // If you malloc, you adjust external memory too (https://github.com/nodejs/node/issues/40936)
   Memfile::tracked_buffers.insert({dataCopy, len});
-  Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, len);
+  Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), len);
 
   VSIFCloseL(vsi);
   return true;
@@ -152,7 +152,7 @@ NAN_METHOD(Memfile::vsimemSet) {
   NODE_ARG_STR(1, "filename", filename);
 
   Memfile *memfile = Memfile::get(buffer, filename);
-  if (memfile == nullptr) Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
+  if (memfile == nullptr) Napi::Error::New(node_gdal::napi_env(), "Failed creating in-memory file").ThrowAsJavaScriptException();
 }
 
 /**
@@ -177,7 +177,7 @@ NAN_METHOD(Memfile::vsimemCopy) {
   NODE_ARG_OBJECT(0, "buffer", buffer);
   NODE_ARG_STR(1, "filename", filename);
 
-  if (!Memfile::copy(buffer, filename)) Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
+  if (!Memfile::copy(buffer, filename)) Napi::Error::New(node_gdal::napi_env(), "Failed creating in-memory file").ThrowAsJavaScriptException();
 }
 
 /*
@@ -192,7 +192,7 @@ NAN_METHOD(Memfile::vsimemAnonymous) {
 
   Memfile *memfile = Memfile::get(buffer);
   if (memfile == nullptr)
-    Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
+    Napi::Error::New(node_gdal::napi_env(), "Failed creating in-memory file").ThrowAsJavaScriptException();
   else
     return Nan::New<String>(memfile->filename);
 }
@@ -227,7 +227,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
   void *data = VSIGetMemFileBuffer(filename.c_str(), &len, false);
   if (data == nullptr) {
     NODE_THROW_LAST_CPLERR;
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Undefined();
   }
 
   // Two cases:
@@ -237,7 +237,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
     Memfile *mem = memfile_collection.find(data)->second;
     memfile_collection.erase(mem->data);
     VSIUnlink(mem->filename.c_str());
-    return Napi::Number::New(node_gdal::napi_env, *mem->persistent);
+    return Napi::Number::New(node_gdal::napi_env(), *mem->persistent);
     delete mem;
   } else {
     // the file has been created by GDAL and the buffer is owned by GDAL
@@ -255,7 +255,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
                                   std::map<void *, size_t>::iterator b =
                                     Memfile::tracked_buffers.find(static_cast<void *>(data));
                                   if (b != Memfile::tracked_buffers.end()) {
-                                    Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env, -(static_cast<int>(b->second)));
+                                    Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), -(static_cast<int>(b->second)));
                                     Memfile::tracked_buffers.erase(b);
                                   }
                                   CPLFree(data);

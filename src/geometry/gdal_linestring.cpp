@@ -46,7 +46,7 @@ void LineString::Initialize(Napi::Object target) {
  */
 
 NAN_METHOD(LineString::toString) {
-  return Napi::String::New(node_gdal::napi_env, "LineString");
+  return Napi::String::New(node_gdal::napi_env(), "LineString");
 }
 
 } // namespace node_gdal

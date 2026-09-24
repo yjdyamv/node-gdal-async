@@ -30,6 +30,11 @@ void DatasetBands::Initialize(Napi::Object target) {
 }
 
 DatasetBands::DatasetBands(const Napi::CallbackInfo &info) : GDALObject<DatasetBands>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create DatasetBands directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 DatasetBands::~DatasetBands() {
@@ -44,36 +49,17 @@ DatasetBands::~DatasetBands() {
  *
  * @class DatasetBands
  */
-NAN_METHOD(DatasetBands::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    DatasetBands *f = static_cast<DatasetBands *>(ptr);
-    f->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create DatasetBands directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value DatasetBands::New(Napi::Value ds_obj) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {ds_obj};
   Napi::Object obj = DatasetBands::constructor.Value().New(args);
-  GDAL_SET_PRIVATE(obj, "parent_", ds_obj);
 
   return obj;
 }
 
 NAN_METHOD(DatasetBands::toString) {
-  return Napi::String::New(node_gdal::napi_env, "DatasetBands");
+  return Napi::String::New(node_gdal::napi_env(), "DatasetBands");
 }
 
 /**
@@ -107,8 +93,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::get) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -160,8 +146,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -170,8 +156,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
 
   // NODE_ARG_ENUM(0, "data type", GDALDataType, type);
   if (info.Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "data type argument needed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "data type argument needed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   if (info[0].IsString()) {
     std::string type_name = info[0].As<Napi::String>().Utf8Value();
@@ -179,12 +165,12 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
   } else if (info[0].IsNull() || info[0].IsUndefined()) {
     type = GDT_Unknown;
   } else {
-    Napi::Error::New(node_gdal::napi_env, "data type must be string or undefined").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "data type must be string or undefined").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   if (info.Length() > 1 && options->parse(info[1])) {
-    return node_gdal::napi_env.Undefined(); // error parsing creation options, options->parse does the throwing
+    return node_gdal::napi_env().Undefined(); // error parsing creation options, options->parse does the throwing
   }
 
   GDALAsyncableJob<GDALRasterBand *> job(ds->uid);
@@ -227,8 +213,8 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
-    Napi::Error::New(node_gdal::napi_env, "Dataset object has already been destroyed").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Dataset object has already been destroyed").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *raw = ds->get();
@@ -238,7 +224,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
     int count = raw->GetRasterCount();
     return count;
   };
-  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, count); };
+  job.rval = [](int count, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env(), count); };
   return job.run(info, async, 0);
 }
 

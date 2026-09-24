@@ -40,7 +40,7 @@ void GeometryCollection::Initialize(Napi::Object target) {
 }
 
 NAN_METHOD(GeometryCollection::toString) {
-  return Napi::String::New(node_gdal::napi_env, "GeometryCollection");
+  return Napi::String::New(node_gdal::napi_env(), "GeometryCollection");
 }
 
 /**

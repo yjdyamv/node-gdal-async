@@ -89,7 +89,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::fillNodata) {
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -177,21 +177,21 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::contourGenerate) {
   NODE_DOUBLE_FROM_OBJ_OPT(obj, "interval", interval);
   NODE_DOUBLE_FROM_OBJ_OPT(obj, "offset", base);
   NODE_CB_FROM_OBJ_OPT(obj, "progress_cb", progress_cb);
-  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "fixedLevels")).FromMaybe(false)) {
-    if (fixed_level_array.parse(obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "fixedLevels")))) {
-      return node_gdal::napi_env.Undefined(); // error parsing double list
+  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "fixedLevels"))) {
+    if (fixed_level_array.parse(obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "fixedLevels")))) {
+      return node_gdal::napi_env().Undefined(); // error parsing double list
     } else {
       fixed_levels = fixed_level_array.get();
       n_fixed_levels = fixed_level_array.length();
     }
   }
-  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "nodata")).FromMaybe(false)) {
-    prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "nodata"));
+  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "nodata"))) {
+    prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "nodata"));
     if (prop.IsNumber()) {
       use_nodata = 1;
       nodata = prop.As<Napi::Number>().DoubleValue();
     } else if (!prop.IsNull() && !prop.IsUndefined()) {
-      Napi::TypeError::New(node_gdal::napi_env, "nodata property must be a number").ThrowAsJavaScriptException();
+      Napi::TypeError::New(node_gdal::napi_env(), "nodata property must be a number").ThrowAsJavaScriptException();
     }
   }
 
@@ -231,7 +231,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::contourGenerate) {
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -296,8 +296,8 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::sieveFilter) {
   NODE_CB_FROM_OBJ_OPT(obj, "progress_cb", progress_cb);
 
   if (connectedness != 4 && connectedness != 8) {
-    Napi::Error::New(node_gdal::napi_env, "connectedness option must be 4 or 8").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "connectedness option must be 4 or 8").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALRasterBand *gdal_src = src->get();
@@ -324,7 +324,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::sieveFilter) {
       if (err) { throw CPLGetLastErrorMsg(); }
       return err;
     };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -374,16 +374,16 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::checksumImage) {
   NODE_ARG_INT_OPT(4, "ySize", h);
 
   if (x < 0 || y < 0 || x >= bandw || y >= bandh) {
-    Napi::RangeError::New(node_gdal::napi_env, "offset invalid for given band").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "offset invalid for given band").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   if (w < 0 || h < 0 || w > bandw || h > bandh) {
-    Napi::RangeError::New(node_gdal::napi_env, "x and y size must be smaller than band dimensions and greater than 0").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "x and y size must be smaller than band dimensions and greater than 0").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   if (x + w - 1 >= bandw || y + h - 1 >= bandh) {
-    Napi::RangeError::New(node_gdal::napi_env, "given range is outside bounds of given band").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "given range is outside bounds of given band").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   long src_uid = src->parent_uid;
@@ -400,7 +400,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::checksumImage) {
 #endif
     return r;
   };
-  job.rval = [](int r, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env, r); };
+  job.rval = [](int r, const GetFromPersistentFunc &) { return Napi::Number::New(node_gdal::napi_env(), r); };
   return job.run(info, async, 5);
 }
 
@@ -477,8 +477,8 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::polygonize) {
   if (connectedness == 8) {
     papszOptions = CSLSetNameValue(papszOptions, "8CONNECTED", "8");
   } else if (connectedness != 4) {
-    Napi::Error::New(node_gdal::napi_env, "connectedness must be 4 or 8").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "connectedness must be 4 or 8").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALRasterBand *gdal_src = src->get();
@@ -492,8 +492,8 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::polygonize) {
   job.progress = progress_cb;
 
   if (
-    obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "useFloats")).FromMaybe(false) &&
-    obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "useFloats")).As<Napi::Boolean>().Value()) {
+    obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "useFloats")) &&
+    obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "useFloats")).As<Napi::Boolean>().Value()) {
     job.main =
       [gdal_src, gdal_mask, gdal_dst, pix_val_field, papszOptions, progress_cb](const GDALExecutionProgress &progress) {
         CPLErrorReset();
@@ -526,7 +526,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::polygonize) {
         return err;
       };
   }
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -546,7 +546,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::_acquireLocks) {
     for (i = 0; i < 1e4; i++) sum += i;
     return sum;
   };
-  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
+  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env().Undefined().As<Napi::Value>(); };
   return job.run(info, async, 3);
 }
 
@@ -582,8 +582,8 @@ NAN_METHOD(Algorithms::addPixelFunc) {
   Nan::TypedArrayContents<uint64_t> magic(arg);
 
   if (magic.length() < 1 || **magic != NODE_GDAL_CAPI_MAGIC) {
-    Napi::TypeError::New(node_gdal::napi_env, "pixelFn must be a native code pixel function").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::TypeError::New(node_gdal::napi_env(), "pixelFn must be a native code pixel function").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Nan::TypedArrayContents<uint8_t> data(arg);
@@ -593,7 +593,7 @@ NAN_METHOD(Algorithms::addPixelFunc) {
   CPLErr err = GDALAddDerivedBandPixelFuncWithArgs(name.c_str(), desc->fn, desc->metadata);
   if (err != CE_None) { NODE_THROW_LAST_CPLERR; }
 #else
-  Napi::Error::New(node_gdal::napi_env, "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
+  Napi::Error::New(node_gdal::napi_env(), "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
 #endif
 }
 
@@ -639,24 +639,24 @@ static void callJSpfn(uv_async_t *async) {
   // Here V8 is accessible
 
   pixelFn *fn = reinterpret_cast<pixelFn *>(async->data);
-  Napi::Array sources = Napi::Array::New(node_gdal::napi_env, fn->call.num);
+  Napi::Array sources = Napi::Array::New(node_gdal::napi_env(), fn->call.num);
   size_t len = fn->call.width * fn->call.height;
   for (size_t i = 0; i < fn->call.num; i++) {
     sources.Set( i, TypedArray::New(fn->call.inType, fn->call.sources[i], len));
   }
   Napi::Value destination = TypedArray::New(fn->call.outType, fn->call.destination, len);
-  Local<Number> width = Napi::Number::New(node_gdal::napi_env, fn->call.width);
-  Local<Number> height = Napi::Number::New(node_gdal::napi_env, fn->call.height);
+  Local<Number> width = Napi::Number::New(node_gdal::napi_env(), fn->call.width);
+  Local<Number> height = Napi::Number::New(node_gdal::napi_env(), fn->call.height);
 
-  Napi::Object pfArgs = Napi::Object::New(node_gdal::napi_env);
+  Napi::Object pfArgs = Napi::Object::New(node_gdal::napi_env());
   if (fn->call.args.size() > 0) {
     for (auto const &el : fn->call.args) {
       char *end;
       double dval = std::strtod(el.second.c_str(), &end);
       if (*end == 0)
-        pfArgs.Set( Napi::String::New(node_gdal::napi_env, el.first), Napi::Number::New(node_gdal::napi_env, dval));
+        pfArgs.Set( Napi::String::New(node_gdal::napi_env(), el.first), Napi::Number::New(node_gdal::napi_env(), dval));
       else
-        pfArgs.Set( Napi::String::New(node_gdal::napi_env, el.first), Napi::String::New(node_gdal::napi_env, el.second));
+        pfArgs.Set( Napi::String::New(node_gdal::napi_env(), el.first), Napi::String::New(node_gdal::napi_env(), el.second));
     }
   }
 
@@ -801,19 +801,19 @@ NAN_METHOD(Algorithms::toPixelFunc) {
   pixelFuncs.push_back({pfn, {}, {}, {}, nullptr});
   int s = uv_mutex_init(&pixelFuncs[uid].callJS);
   if (s != 0) {
-    Napi::Error::New(node_gdal::napi_env, "Failed creating a mutex").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Failed creating a mutex").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   s = uv_sem_init(&pixelFuncs[uid].returnJS, 0);
   if (s != 0) {
-    Napi::Error::New(node_gdal::napi_env, "Failed creating a semaphore").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Failed creating a semaphore").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   pixelFuncs[uid].async = new uv_async_t;
   s = uv_async_init(uv_default_loop(), pixelFuncs[uid].async, callJSpfn);
   if (s != 0) {
-    Napi::Error::New(node_gdal::napi_env, "Failed creating libuv async").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Failed creating libuv async").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   uv_unref(reinterpret_cast<uv_handle_t *>(pixelFuncs[uid].async));
 
@@ -823,8 +823,8 @@ NAN_METHOD(Algorithms::toPixelFunc) {
 
   Napi::Value r = node_gdal::TypedArray::New(GDT_Byte, sizeof(node_gdal::pixel_func) + strlen(metadata.c_str()) + 1);
   if (r.IsEmpty() || !r->IsObject()) {
-    Napi::Error::New(node_gdal::napi_env, "Failed creating TypedArray").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Failed creating TypedArray").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   Nan::TypedArrayContents<GByte> contents(r);
   node_gdal::pixel_func *desc = reinterpret_cast<node_gdal::pixel_func *>(*contents);
@@ -837,7 +837,7 @@ NAN_METHOD(Algorithms::toPixelFunc) {
 
   return r;
 #else
-  Napi::Error::New(node_gdal::napi_env, "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
+  Napi::Error::New(node_gdal::napi_env(), "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
 #endif
 }
 

@@ -71,37 +71,10 @@ void MDArray::dispose() {
  *
  * @class MDArray
  */
-NAN_METHOD(MDArray::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  if (info.Length() == 2 && info[0].IsExternal() && info[1].IsObject()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    MDArray *f = static_cast<MDArray *>(ptr);
-    f->Wrap(info.This());
-
-    Napi::Value dims = ArrayDimensions::New(info.This(), info[1]);
-    GDAL_SET_PRIVATE(info.This(), "dims_", dims);
-    Napi::Value attrs = ArrayAttributes::New(info.This(), info[1]);
-    GDAL_SET_PRIVATE(info.This(), "attrs_", attrs);
-
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create MDArray directly. Create with dataset instead.").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  return info.This();
-}
 
 Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_ds) {
 
-  if (!raw) { return node_gdal::napi_env.Null(); }
+  if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
   MDArray *wrapped = new MDArray(raw);
@@ -113,8 +86,8 @@ Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_d
     ds = object_store.get(parent_ds);
   } else {
     LOG("MDArray's parent dataset disappeared from cache (array = %p, dataset = %p)", raw.get(), parent_ds);
-    Napi::Error::New(node_gdal::napi_env, "MDArray's parent dataset disappeared from cache").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "MDArray's parent dataset disappeared from cache").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Value ext = Nan::New<External>(wrapped);
@@ -127,18 +100,17 @@ Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_d
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(ds);
   long parent_uid = unwrapped_ds->uid;
 
-  wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid);
+  wrapped->uid = object_store.add(raw, *wrapped, parent_uid);
   wrapped->parent_ds = parent_ds;
   wrapped->parent_uid = parent_uid;
   wrapped->dimensions = dim;
 
-  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }
 
 NAN_METHOD(MDArray::toString) {
-  return Napi::String::New(node_gdal::napi_env, "MDArray");
+  return Napi::String::New(node_gdal::napi_env(), "MDArray");
 }
 
 /* Find the lowest possible element index for the given spans and strides */
@@ -277,24 +249,24 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
     gdal_span = NumberArrayToSharedPtr<int64_t, size_t>(span, self->dimensions);
     gdal_stride = NumberArrayToSharedPtr<int64_t, GPtrDiff_t>(stride, self->dimensions);
   } catch (const char *e) {
-    Napi::Error::New(node_gdal::napi_env, e).ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), e).ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   GPtrDiff_t highest = findHighest(self->dimensions, gdal_span, gdal_stride, offset);
   GPtrDiff_t lowest = findLowest(self->dimensions, gdal_span, gdal_stride, offset);
   size_t length = (highest - (lowest < 0 ? lowest : 0)) + 1;
 
-  Local<String> sym = Napi::String::New(node_gdal::napi_env, "data");
+  Local<String> sym = Napi::String::New(node_gdal::napi_env(), "data");
   Napi::Value data;
   Napi::Object array;
-  if (options.As<Napi::Object>().HasOwnProperty(sym).FromMaybe(false)) {
+  if (options.As<Napi::Object>().HasOwnProperty(sym)) {
     data = options.As<Napi::Object>().Get(sym);
     if (!data->IsUndefined() && !data->IsNull()) {
       array = data.As<Napi::Object>();
       type = node_gdal::TypedArray::Identify(array);
       if (type == GDT_Unknown) {
-        Napi::Error::New(node_gdal::napi_env, "Invalid array").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "Invalid array").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
     }
   }
@@ -306,28 +278,28 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
     if (type_name.empty()) {
       auto exType = gdal_mdarray->GetDataType();
       if (exType.GetClass() != GEDTC_NUMERIC) {
-        Napi::TypeError::New(node_gdal::napi_env, "Reading of extended data types is not supported yet").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::TypeError::New(node_gdal::napi_env(), "Reading of extended data types is not supported yet").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
       type = exType.GetNumericDataType();
     }
     data = node_gdal::TypedArray::New(type, length);
     if (data.IsEmpty() || !data->IsObject()) {
-      Napi::Error::New(node_gdal::napi_env, "Failed to allocate array").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined(); // TypedArray::New threw an error
+      Napi::Error::New(node_gdal::napi_env(), "Failed to allocate array").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined(); // TypedArray::New threw an error
     }
     array = data.As<Napi::Object>();
   }
 
   if (lowest < 0) {
-    Napi::RangeError::New(node_gdal::napi_env, "Will have to read before the start of the array").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::RangeError::New(node_gdal::napi_env(), "Will have to read before the start of the array").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   void *buffer = node_gdal::TypedArray::Validate(array, type, length);
   if (!buffer) {
-    Napi::Error::New(node_gdal::napi_env, "Failed to allocate array").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined(); // TypedArray::Validate threw an error
+    Napi::Error::New(node_gdal::napi_env(), "Failed to allocate array").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined(); // TypedArray::Validate threw an error
   }
 
   GDALAsyncableJob<bool> job(self->parent_uid);
@@ -377,8 +349,8 @@ NAN_METHOD(MDArray::getView) {
   CPLErrorReset();
   std::shared_ptr<GDALMDArray> view = raw->GetView(viewExpr);
   if (view == nullptr) {
-    Napi::Error::New(node_gdal::napi_env, CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   Napi::Value obj = New(view, array->parent_ds);
   return obj;
@@ -405,8 +377,8 @@ NAN_METHOD(MDArray::getMask) {
   CPLErrorReset();
   std::shared_ptr<GDALMDArray> mask = raw->GetMask(NULL);
   if (mask == nullptr) {
-    Napi::Error::New(node_gdal::napi_env, CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   Napi::Value obj = New(mask, array->parent_ds);
   return obj;
@@ -440,8 +412,8 @@ NAN_METHOD(MDArray::asDataset) {
   CPLErrorReset();
   GDALDataset *ds = raw->AsClassicDataset(x, y);
   if (ds == nullptr) {
-    Napi::Error::New(node_gdal::napi_env, CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), CPLGetLastErrorMsg()).ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
   Napi::Value obj = Dataset::New(ds, array->parent_ds);
   return obj;
@@ -463,8 +435,8 @@ NAN_GETTER(MDArray::srsGetter) {
   GDAL_LOCK_PARENT(array);
   std::shared_ptr<OGRSpatialReference> srs = raw->GetSpatialRef();
   if (srs == nullptr) {
-    return node_gdal::napi_env.Null();
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Null();
+    return node_gdal::napi_env().Undefined();
   }
 
   return SpatialReference::New(srs.get(), false);
@@ -485,9 +457,9 @@ NAN_GETTER(MDArray::offsetGetter) {
   GDAL_LOCK_PARENT(array);
   double result = array->this_->GetOffset(&hasOffset);
   if (hasOffset)
-    return Napi::Number::New(node_gdal::napi_env, result);
+    return Napi::Number::New(node_gdal::napi_env(), result);
   else
-    return Napi::Number::New(node_gdal::napi_env, 0);
+    return Napi::Number::New(node_gdal::napi_env(), 0);
 }
 
 /**
@@ -505,9 +477,9 @@ NAN_GETTER(MDArray::scaleGetter) {
   GDAL_LOCK_PARENT(array);
   double result = array->this_->GetScale(&hasScale);
   if (hasScale)
-    return Napi::Number::New(node_gdal::napi_env, result);
+    return Napi::Number::New(node_gdal::napi_env(), result);
   else
-    return Napi::Number::New(node_gdal::napi_env, 1);
+    return Napi::Number::New(node_gdal::napi_env(), 1);
 }
 
 /**
@@ -526,11 +498,11 @@ NAN_GETTER(MDArray::noDataValueGetter) {
   double result = array->this_->GetNoDataValueAsDouble(&hasNoData);
 
   if (hasNoData && !std::isnan(result)) {
-    return Napi::Number::New(node_gdal::napi_env, result);
-    return node_gdal::napi_env.Undefined();
+    return Napi::Number::New(node_gdal::napi_env(), result);
+    return node_gdal::napi_env().Undefined();
   } else {
-    return node_gdal::napi_env.Null();
-    return node_gdal::napi_env.Undefined();
+    return node_gdal::napi_env().Null();
+    return node_gdal::napi_env().Undefined();
   }
 }
 
@@ -571,7 +543,7 @@ NAN_GETTER(MDArray::typeGetter) {
     case GEDTC_NUMERIC: r = GDALGetDataTypeName(type.GetNumericDataType()); break;
     case GEDTC_STRING: r = "String"; break;
     case GEDTC_COMPOUND: r = "Compound"; break;
-    default: Napi::Error::New(node_gdal::napi_env, "Invalid attribute type").ThrowAsJavaScriptException(); return;
+    default: Napi::Error::New(node_gdal::napi_env(), "Invalid attribute type").ThrowAsJavaScriptException(); return node_gdal::napi_env().Undefined();
   }
   return SafeString::New(r);
 }
@@ -630,7 +602,7 @@ NODE_WRAPPED_GETTER_WITH_RESULT_LOCKED(MDArray, lengthGetter, Number, GetTotalEl
 
 NAN_GETTER(MDArray::uidGetter) {
   MDArray *ds = node_gdal::UnwrapWrapped<MDArray>(info.This().As<Napi::Object>());
-  return Napi::Number::New(node_gdal::napi_env, (int)ds->uid);
+  return Napi::Number::New(node_gdal::napi_env(), (int)ds->uid);
 }
 
 #endif

@@ -11,5 +11,5 @@ NAN_SETTER(READ_ONLY_SETTER) {
   // property ("name is a read-only property")
   const char *name = static_cast<const char *>(info.Data());
   std::string err = std::string(name ? name : "property") + " is a read-only property";
-  Napi::Error::New(node_gdal::napi_env, err.c_str()).ThrowAsJavaScriptException();
+  Napi::Error::New(node_gdal::napi_env(), err.c_str()).ThrowAsJavaScriptException();
 }

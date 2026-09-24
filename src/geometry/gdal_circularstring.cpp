@@ -47,7 +47,7 @@ void CircularString::Initialize(Napi::Object target) {
  */
 
 NAN_METHOD(CircularString::toString) {
-  return Napi::String::New(node_gdal::napi_env, "CircularString");
+  return Napi::String::New(node_gdal::napi_env(), "CircularString");
 }
 
 } // namespace node_gdal

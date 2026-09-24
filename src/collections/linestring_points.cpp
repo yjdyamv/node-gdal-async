@@ -31,6 +31,11 @@ void LineStringPoints::Initialize(Napi::Object target) {
 }
 
 LineStringPoints::LineStringPoints(const Napi::CallbackInfo &info) : GDALObject<LineStringPoints>(info) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::Error::New(info.Env(), "Cannot create LineStringPoints directly").ThrowAsJavaScriptException();
+    return;
+  }
+  GDAL_SET_PRIVATE(info.This(), "parent_", info[0]);
 }
 
 LineStringPoints::~LineStringPoints() {
@@ -41,36 +46,17 @@ LineStringPoints::~LineStringPoints() {
  *
  * @class LineStringPoints
  */
-NAN_METHOD(LineStringPoints::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env, "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    LineStringPoints *geom = static_cast<LineStringPoints *>(ptr);
-    geom->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env.Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env, "Cannot create LineStringPoints directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-}
 
 Napi::Value LineStringPoints::New(Napi::Value geom) {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {geom};
   Napi::Object obj = LineStringPoints::constructor.Value().New(args);
-  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
 
 NAN_METHOD(LineStringPoints::toString) {
-  return Napi::String::New(node_gdal::napi_env, "LineStringPoints");
+  return Napi::String::New(node_gdal::napi_env(), "LineStringPoints");
 }
 
 /**
@@ -87,7 +73,7 @@ NAN_METHOD(LineStringPoints::count) {
     GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
-  return Napi::Number::New(node_gdal::napi_env, geom->get()->getNumPoints());
+  return Napi::Number::New(node_gdal::napi_env(), geom->get()->getNumPoints());
 }
 
 /**
@@ -105,7 +91,7 @@ NAN_METHOD(LineStringPoints::reverse) {
 
   geom->get()->reversePoints();
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -126,7 +112,7 @@ NAN_METHOD(LineStringPoints::resize) {
   NODE_ARG_INT(0, "point count", count)
   geom->get()->setNumPoints(count);
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -150,8 +136,8 @@ NAN_METHOD(LineStringPoints::get) {
 
   NODE_ARG_INT(0, "index", i);
   if (i < 0 || i >= geom->get()->getNumPoints()) {
-    Napi::Error::New(node_gdal::napi_env, "Invalid point requested").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Invalid point requested").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   geom->get()->getPoint(i, &pt);
@@ -194,19 +180,19 @@ NAN_METHOD(LineStringPoints::set) {
   int i;
   NODE_ARG_INT(0, "index", i);
   if (i < 0 || i >= geom->get()->getNumPoints()) {
-    Napi::Error::New(node_gdal::napi_env, "Point index out of range").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Point index out of range").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   int n = info.Length() - 1;
 
   if (n == 0) {
-    Napi::Error::New(node_gdal::napi_env, "Point must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Point must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   } else if (n == 1) {
     if (!info[1].IsObject()) {
-      Napi::Error::New(node_gdal::napi_env, "Point or object expected for second argument").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Point or object expected for second argument").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     if (IS_WRAPPED(info[1], Point)) {
       // set from Point object
@@ -219,12 +205,12 @@ NAN_METHOD(LineStringPoints::set) {
       NODE_DOUBLE_FROM_OBJ(obj, "x", x);
       NODE_DOUBLE_FROM_OBJ(obj, "y", y);
 
-      Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env, "z");
-      if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name).FromMaybe(false)) {
+      Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
+      if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
         Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
         if (!z_val->IsNumber()) {
-          Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
-          return node_gdal::napi_env.Undefined();
+          Napi::Error::New(node_gdal::napi_env(), "z property must be number").ThrowAsJavaScriptException();
+          return node_gdal::napi_env().Undefined();
         }
         geom->get()->setPoint(i, x, y, z_val.As<Napi::Number>().DoubleValue());
       } else {
@@ -234,19 +220,19 @@ NAN_METHOD(LineStringPoints::set) {
   } else {
     // set x, y, z from numeric arguments
     if (!info[1].IsNumber()) {
-      Napi::Error::New(node_gdal::napi_env, "Number expected for second argument").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Number expected for second argument").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     if (!info[2].IsNumber()) {
-      Napi::Error::New(node_gdal::napi_env, "Number expected for third argument").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Number expected for third argument").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     if (n == 2) {
       geom->get()->setPoint(i, info[1].As<Napi::Number>().DoubleValue(), info[2].As<Napi::Number>().DoubleValue());
     } else {
       if (!info[3].IsNumber()) {
-        Napi::Error::New(node_gdal::napi_env, "Number expected for fourth argument").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "Number expected for fourth argument").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
 
       geom->get()->setPoint(
@@ -257,7 +243,7 @@ NAN_METHOD(LineStringPoints::set) {
     }
   }
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -298,12 +284,12 @@ NAN_METHOD(LineStringPoints::add) {
   int n = info.Length();
 
   if (n == 0) {
-    Napi::Error::New(node_gdal::napi_env, "Point must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Point must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   } else if (n == 1) {
     if (!info[0].IsObject()) {
-      Napi::Error::New(node_gdal::napi_env, "Point, object, or array of points expected").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Point, object, or array of points expected").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     if (IS_WRAPPED(info[0], Point)) {
       // set from Point object
@@ -316,8 +302,8 @@ NAN_METHOD(LineStringPoints::add) {
       for (int i = 0; i < length; i++) {
         Napi::Value element = array.As<Napi::Object>().Get(i);
         if (!element->IsObject()) {
-          Napi::Error::New(node_gdal::napi_env, "All points must be Point objects or objects").ThrowAsJavaScriptException();
-          return node_gdal::napi_env.Undefined();
+          Napi::Error::New(node_gdal::napi_env(), "All points must be Point objects or objects").ThrowAsJavaScriptException();
+          return node_gdal::napi_env().Undefined();
         }
         Napi::Object element_obj = element.As<Napi::Object>();
         if (IS_WRAPPED(element_obj, Point)) {
@@ -330,12 +316,12 @@ NAN_METHOD(LineStringPoints::add) {
           NODE_DOUBLE_FROM_OBJ(element_obj, "x", x);
           NODE_DOUBLE_FROM_OBJ(element_obj, "y", y);
 
-          Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env, "z");
-          if (element_obj.As<Napi::Object>().HasOwnProperty(z_prop_name).FromMaybe(false)) {
+          Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
+          if (element_obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
             Napi::Value z_val = element_obj.As<Napi::Object>().Get(z_prop_name);
             if (!z_val->IsNumber()) {
-              Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
-              return node_gdal::napi_env.Undefined();
+              Napi::Error::New(node_gdal::napi_env(), "z property must be number").ThrowAsJavaScriptException();
+              return node_gdal::napi_env().Undefined();
             }
             geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue());
           } else {
@@ -350,12 +336,12 @@ NAN_METHOD(LineStringPoints::add) {
       NODE_DOUBLE_FROM_OBJ(obj, "x", x);
       NODE_DOUBLE_FROM_OBJ(obj, "y", y);
 
-      Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env, "z");
-      if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name).FromMaybe(false)) {
+      Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
+      if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
         Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
         if (!z_val->IsNumber()) {
-          Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
-          return node_gdal::napi_env.Undefined();
+          Napi::Error::New(node_gdal::napi_env(), "z property must be number").ThrowAsJavaScriptException();
+          return node_gdal::napi_env().Undefined();
         }
         geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue());
       } else {
@@ -365,19 +351,19 @@ NAN_METHOD(LineStringPoints::add) {
   } else {
     // set x, y, z from numeric arguments
     if (!info[0].IsNumber()) {
-      Napi::Error::New(node_gdal::napi_env, "Number expected for first argument").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Number expected for first argument").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     if (!info[1].IsNumber()) {
-      Napi::Error::New(node_gdal::napi_env, "Number expected for second argument").ThrowAsJavaScriptException();
-      return node_gdal::napi_env.Undefined();
+      Napi::Error::New(node_gdal::napi_env(), "Number expected for second argument").ThrowAsJavaScriptException();
+      return node_gdal::napi_env().Undefined();
     }
     if (n == 2) {
       geom->get()->addPoint(info[0].As<Napi::Number>().DoubleValue(), info[1].As<Napi::Number>().DoubleValue());
     } else {
       if (!info[2].IsNumber()) {
-        Napi::Error::New(node_gdal::napi_env, "Number expected for third argument").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "Number expected for third argument").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
 
       geom->get()->addPoint(
@@ -387,7 +373,7 @@ NAN_METHOD(LineStringPoints::add) {
     }
   }
 
-  return node_gdal::napi_env.Undefined();
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

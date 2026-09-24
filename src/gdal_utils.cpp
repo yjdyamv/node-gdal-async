@@ -85,7 +85,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::translate) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
   Napi::Object options;
@@ -154,8 +154,8 @@ GDAL_ASYNCABLE_DEFINE(Utils::vectorTranslate) {
   std::string dst_filename("");
   Dataset *dst_ds = nullptr;
   if (info.Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "\"dst\" must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "\"dst\" must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   GDALDataset *dst_raw = nullptr;
@@ -166,8 +166,8 @@ GDAL_ASYNCABLE_DEFINE(Utils::vectorTranslate) {
     GDAL_RAW_CHECK(GDALDataset *, dst_ds, _dst_raw);
     dst_raw = _dst_raw;
   } else {
-    Napi::Error::New(node_gdal::napi_env, "\"dst\" must be an object or a gdal.Dataset").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "\"dst\" must be an object or a gdal.Dataset").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Object src;
@@ -179,7 +179,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::vectorTranslate) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
   Napi::Object options;
@@ -256,7 +256,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::info) {
   NODE_ARG_ARRAY_OPT(1, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
   GDALAsyncableJob<std::string> job(ds->uid);
@@ -334,18 +334,18 @@ GDAL_ASYNCABLE_DEFINE(Utils::warp) {
   }
 
   if (dst_path.length() == 0 && gdal_dst_ds == nullptr) {
-    Napi::Error::New(node_gdal::napi_env, "Either \"dst_path\" or \"dst_ds\" must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "Either \"dst_path\" or \"dst_ds\" must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Array src_ds;
   NODE_ARG_ARRAY(2, "src_ds", src_ds);
-  if (src_ds->Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "\"src_ds\" must contain at least one element").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+  if (src_ds.Length() < 1) {
+    Napi::Error::New(node_gdal::napi_env(), "\"src_ds\" must contain at least one element").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
-  auto gdal_src_ds = std::shared_ptr<GDALDatasetH[]>(new GDALDatasetH[src_ds->Length()]);
-  for (unsigned i = 0; i < src_ds->Length(); ++i) {
+  auto gdal_src_ds = std::shared_ptr<GDALDatasetH[]>(new GDALDatasetH[src_ds.Length()]);
+  for (unsigned i = 0; i < src_ds.Length(); ++i) {
     NODE_UNWRAP_CHECK(Dataset, src_ds.As<Napi::Object>().Get(i).As<Napi::Object>(), ds);
     GDAL_RAW_CHECK(GDALDataset *, ds, raw);
     gdal_src_ds.get()[i] = GDALDatasetToHandle(raw);
@@ -355,8 +355,8 @@ GDAL_ASYNCABLE_DEFINE(Utils::warp) {
   Napi::Array args;
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty())
-    for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+    for (unsigned i = 0; i < args.Length(); ++i) {
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
   Napi::Object options;
@@ -365,7 +365,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::warp) {
   if (!options.IsEmpty()) NODE_CB_FROM_OBJ_OPT(options, "progress_cb", progress_cb);
 
   GDALAsyncableJob<GDALDataset *> job(uids);
-  int src_count = src_ds->Length();
+  int src_count = src_ds.Length();
   job.progress = progress_cb;
   job.main =
     [dst_path, gdal_dst_ds, src_count, gdal_src_ds, aosOptions, progress_cb](const GDALExecutionProgress &progress) {
@@ -447,9 +447,9 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
 
   Napi::Array src_ds;
   NODE_ARG_ARRAY(1, "src_ds", src_ds);
-  if (src_ds->Length() < 1) {
-    Napi::Error::New(node_gdal::napi_env, "\"src_ds\" must contain at least one element").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+  if (src_ds.Length() < 1) {
+    Napi::Error::New(node_gdal::napi_env(), "\"src_ds\" must contain at least one element").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   std::shared_ptr<CPLStringList> aosSrcDs = nullptr;
@@ -458,10 +458,10 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
     aosSrcDs = std::make_shared<CPLStringList>();
     for (unsigned i = 0; i < src_ds->Length(); ++i) {
       if (!src_ds.As<Napi::Object>().Get(i)->IsString()) {
-        Napi::Error::New(node_gdal::napi_env, "All \"src_ds\" elements must have the same type").ThrowAsJavaScriptException();
-        return node_gdal::napi_env.Undefined();
+        Napi::Error::New(node_gdal::napi_env(), "All \"src_ds\" elements must have the same type").ThrowAsJavaScriptException();
+        return node_gdal::napi_env().Undefined();
       }
-      aosSrcDs->AddString(src_ds.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosSrcDs->AddString(src_ds.As<Napi::Object>().Get(i));
     }
     uids.push_back(0);
   } else {
@@ -479,7 +479,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
   Napi::Object options;
@@ -576,8 +576,8 @@ GDAL_ASYNCABLE_DEFINE(Utils::rasterize) {
     GDAL_RAW_CHECK(GDALDataset *, dst_obj, _dst_raw);
     dst_raw = _dst_raw;
   } else {
-    Napi::Error::New(node_gdal::napi_env, "dst must be given").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
+    Napi::Error::New(node_gdal::napi_env(), "dst must be given").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
   }
 
   Napi::Object src;
@@ -589,7 +589,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::rasterize) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
   Napi::Object options;
@@ -680,7 +680,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::dem) {
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty()) {
     for (unsigned i = 0; i < args->Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value()));
+      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
   }
 
