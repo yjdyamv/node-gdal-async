@@ -48,11 +48,17 @@ void Layer::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-Layer::Layer(OGRLayer *layer) : Nan::ObjectWrap(), uid(0), this_(layer), parent_ds(0) {
-  LOG("Created layer [%p]", layer);
-}
 
 Layer::Layer(const Napi::CallbackInfo &info) : GDALObject<Layer>(info), uid(0), this_(0), parent_ds(0) {
+}
+
+Layer::Layer(const Napi::CallbackInfo &info) : GDALObject<Layer>(info), uid(0), this_(nullptr), parent_ds(0) {
+  LOG("Created layer [%p]", layer);
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<OGRLayer *>(info[0].As<Napi::External<void>>().Data());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create Layer directly").ThrowAsJavaScriptException();
 }
 
 Layer::~Layer() {

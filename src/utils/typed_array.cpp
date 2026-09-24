@@ -16,7 +16,7 @@ namespace node_gdal {
 Napi::Value TypedArray::New(GDALDataType type, int64_t length) {
 
   Napi::Value val;
-  Local<Function> constructor;
+  Napi::Function constructor;
   Napi::Object global = Nan::GetCurrentContext()->Global();
 
   const char *name;
@@ -124,7 +124,7 @@ Napi::Value TypedArray::New(GDALDataType type, void *data, int64_t length) {
   // make TypedArray
   Napi::Value val = global.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), name));
   if (val.IsEmpty() || !val->IsFunction()) { throw "Error getting typed array constructor"; }
-  Local<Function> constructor = val.As<Napi::Function>();
+  Napi::Function constructor = val.As<Napi::Function>();
 
   Napi::Object array = Nan::NewInstance(constructor, 1, &underlyingAB);
 
@@ -137,7 +137,7 @@ Napi::Value TypedArray::New(GDALDataType type, void *data, int64_t length) {
 
 GDALDataType TypedArray::Identify(Napi::Object obj) {
 
-  Local<String> sym = Napi::String::New(node_gdal::napi_env(), "_gdal_type");
+  Napi::String sym = Napi::String::New(node_gdal::napi_env(), "_gdal_type");
   if (!obj.As<Napi::Object>().HasOwnProperty(sym)) return GDT_Unknown;
   Napi::Value val = obj.As<Napi::Object>().Get(sym);
   if (!val->IsNumber()) return GDT_Unknown;

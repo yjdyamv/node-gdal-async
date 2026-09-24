@@ -645,8 +645,8 @@ static void callJSpfn(uv_async_t *async) {
     sources.Set( i, TypedArray::New(fn->call.inType, fn->call.sources[i], len));
   }
   Napi::Value destination = TypedArray::New(fn->call.outType, fn->call.destination, len);
-  Local<Number> width = Napi::Number::New(node_gdal::napi_env(), fn->call.width);
-  Local<Number> height = Napi::Number::New(node_gdal::napi_env(), fn->call.height);
+  Napi::Number width = Napi::Number::New(node_gdal::napi_env(), fn->call.width);
+  Napi::Number height = Napi::Number::New(node_gdal::napi_env(), fn->call.height);
 
   Napi::Object pfArgs = Napi::Object::New(node_gdal::napi_env());
   if (fn->call.args.size() > 0) {

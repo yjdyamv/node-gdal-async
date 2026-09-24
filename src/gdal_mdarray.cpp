@@ -256,7 +256,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
   GPtrDiff_t lowest = findLowest(self->dimensions, gdal_span, gdal_stride, offset);
   size_t length = (highest - (lowest < 0 ? lowest : 0)) + 1;
 
-  Local<String> sym = Napi::String::New(node_gdal::napi_env(), "data");
+  Napi::String sym = Napi::String::New(node_gdal::napi_env(), "data");
   Napi::Value data;
   Napi::Object array;
   if (options.As<Napi::Object>().HasOwnProperty(sym)) {

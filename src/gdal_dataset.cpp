@@ -52,10 +52,15 @@ void Dataset::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-Dataset::Dataset(GDALDataset *ds) : Nan::ObjectWrap(), uid(0), parent_uid(0), this_dataset(ds), parent_ds(nullptr) {
-  LOG("Created Dataset [%p]", ds);
-}
 
+Dataset::Dataset(const Napi::CallbackInfo &info) : GDALObject<Dataset>(info), uid(0), parent_uid(0), this_dataset(nullptr), parent_ds(nullptr)  {
+  LOG("Created Dataset [%p]", this_dataset);
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_dataset = static_cast<GDALDataset *>(info[0].As<Napi::External<void>>().Data());
+    return;
+  }
+  Napi::Error::New(node_gdal::napi_env(), "Cannot create dataset directly").ThrowAsJavaScriptException();
+}
 Dataset::~Dataset() {
   // Destroy at garbage collection time if not already explicitly destroyed
   dispose(false);
@@ -87,50 +92,19 @@ void Dataset::dispose(bool manual) {
  *
  * @class Dataset
  */
-NAN_METHOD(Dataset::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    Dataset *f = static_cast<Dataset *>(ptr);
-    f->Wrap(info.This());
-
-    Napi::Value layers = DatasetLayers::New(info.This());
-    GDAL_SET_PRIVATE(info.This(), "layers_", layers);
-
-    Napi::Value bandsObj;
-#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-    GDALDataset *gdal_ds = f->get();
-    std::shared_ptr<GDALGroup> root = gdal_ds->GetRootGroup();
-    if (root == nullptr) {
-#endif
-      bandsObj = DatasetBands::New(info.This());
-#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-    } else {
-      bandsObj = node_gdal::napi_env().Null();
-    }
-#endif
-    GDAL_SET_PRIVATE(info.This(), "bands_", bandsObj);
-    if (f->parent_ds)
-      // For dependent Datasets, keep a reference on the parent to protect it from the GC
-      GDAL_SET_PRIVATE(info.This(), "parent_", object_store.get(f->parent_ds));
-
-    return info.This();
-    return node_gdal::napi_env().Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot create dataset directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-}
 
 Napi::Value Dataset::New(GDALDataset *raw, GDALDataset *parent, bool close) {
 
   if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
+
+  long parent_uid = 0;
+  if (parent != nullptr) {
+    /* A dependent Dataset shares the lock of its parent
+     */
+    Dataset *parent_ds = node_gdal::UnwrapWrapped<Dataset>(object_store.get(parent));
+    parent_uid = parent_ds->uid;
+  }
 
   std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), raw)};
   Napi::Object obj = Dataset::constructor.Value().New(args);
@@ -536,13 +510,13 @@ NAN_METHOD(Dataset::setGCPs) {
   NODE_ARG_ARRAY(0, "gcps", gcps);
   NODE_ARG_OPT_STR(1, "projection", projection);
 
-  std::shared_ptr<GDAL_GCP[]> list(new GDAL_GCP[gcps->Length()]);
-  std::shared_ptr<std::string[]> pszId_list(new std::string[gcps->Length()]);
-  std::shared_ptr<std::string[]> pszInfo_list(new std::string[gcps->Length()]);
+  std::shared_ptr<GDAL_GCP[]> list(new GDAL_GCP[gcps.Length()]);
+  std::shared_ptr<std::string[]> pszId_list(new std::string[gcps.Length()]);
+  std::shared_ptr<std::string[]> pszInfo_list(new std::string[gcps.Length()]);
   GDAL_GCP *gcp = list.get();
-  for (unsigned int i = 0; i < gcps->Length(); ++i) {
+  for (unsigned int i = 0; i < gcps.Length(); ++i) {
     Napi::Value val = gcps.As<Napi::Object>().Get(i);
-    if (!val->IsObject()) {
+    if (!val.IsObject()) {
       Napi::Error::New(node_gdal::napi_env(), "GCP array must only include objects").ThrowAsJavaScriptException();
       return node_gdal::napi_env().Undefined();
     }
@@ -563,7 +537,7 @@ NAN_METHOD(Dataset::setGCPs) {
   }
 
   AsyncGuard lock({ds->uid}, eventLoopWarn);
-  CPLErr err = raw->SetGCPs(gcps->Length(), list.get(), projection.c_str());
+  CPLErr err = raw->SetGCPs(gcps.Length(), list.get(), projection.c_str());
 
   if (err) {
     NODE_THROW_LAST_CPLERR;
@@ -618,14 +592,14 @@ GDAL_ASYNCABLE_DEFINE(Dataset::buildOverviews) {
   NODE_ARG_ARRAY(1, "overviews", overviews);
   NODE_ARG_ARRAY_OPT(2, "bands", bands);
 
-  int n_overviews = overviews->Length();
+  int n_overviews = overviews.Length();
   int i, n_bands = 0;
 
   std::shared_ptr<int[]> o(new int[n_overviews]);
   std::shared_ptr<int[]> b;
   for (i = 0; i < n_overviews; i++) {
     Napi::Value val = overviews.As<Napi::Object>().Get(i);
-    if (!val->IsNumber()) {
+    if (!val.IsNumber()) {
       Napi::Error::New(node_gdal::napi_env(), "overviews array must only contain numbers").ThrowAsJavaScriptException();
       return node_gdal::napi_env().Undefined();
     }
@@ -633,11 +607,11 @@ GDAL_ASYNCABLE_DEFINE(Dataset::buildOverviews) {
   }
 
   if (!bands.IsEmpty()) {
-    n_bands = bands->Length();
+    n_bands = bands.Length();
     b = std::shared_ptr<int[]>(new int[n_bands]);
     for (i = 0; i < n_bands; i++) {
       Napi::Value val = bands.As<Napi::Object>().Get(i);
-      if (!val->IsNumber()) {
+      if (!val.IsNumber()) {
         Napi::Error::New(node_gdal::napi_env(), "band array must only contain numbers").ThrowAsJavaScriptException();
         return node_gdal::napi_env().Undefined();
       }

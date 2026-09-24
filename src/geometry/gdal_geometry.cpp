@@ -1683,12 +1683,12 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
   // goes to text to pass it in, there isn't a performant way to
   // go from v8 JSON -> CPLJSON anyways
   Nan::JSON NanJSON;
-  Nan::MaybeLocal<String> result = NanJSON.Stringify(geo_obj);
+  Nan::MaybeNapi::String result = NanJSON.Stringify(geo_obj);
   if (result.IsEmpty()) {
     Napi::Error::New(node_gdal::napi_env(), "Invalid GeoJSON").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
-  Local<String> stringified = result;
+  Napi::String stringified = result;
   std::string *val = new std::string(stringified.As<Napi::String>().Utf8Value());
 
   GDALAsyncableJob<OGRGeometry *> job(0);

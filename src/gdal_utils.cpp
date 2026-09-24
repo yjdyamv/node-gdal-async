@@ -456,8 +456,8 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
   std::shared_ptr<GDALDatasetH[]> gdalSrcDs = nullptr;
   if (src_ds.As<Napi::Object>().Get(0)->IsString()) {
     aosSrcDs = std::make_shared<CPLStringList>();
-    for (unsigned i = 0; i < src_ds->Length(); ++i) {
-      if (!src_ds.As<Napi::Object>().Get(i)->IsString()) {
+    for (unsigned i = 0; i < src_ds.Length(); ++i) {
+      if (!src_ds.As<Napi::Object>().Get(i).IsString()) {
         Napi::Error::New(node_gdal::napi_env(), "All \"src_ds\" elements must have the same type").ThrowAsJavaScriptException();
         return node_gdal::napi_env().Undefined();
       }

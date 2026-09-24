@@ -33,7 +33,13 @@ void ColorTable::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-ColorTable::ColorTable(GDALColorTable *raw, long parent_uid) : Nan::ObjectWrap(), parent_uid(parent_uid), this_(raw) {
+
+ColorTable::ColorTable(const Napi::CallbackInfo &info) : GDALObject<ColorTable>(info), parent_uid(parent_uid), this_(nullptr) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<GDALColorTable *>(info[0].As<Napi::External<void>>().Data());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create ColorTable directly").ThrowAsJavaScriptException();
 }
 
 ColorTable::~ColorTable() {

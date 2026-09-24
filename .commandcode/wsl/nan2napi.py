@@ -81,6 +81,10 @@ RULES = [
     (r"Local<Object>", "Napi::Object"),
     (r"Local<Value>", "Napi::Value"),
     (r"Local<Array>", "Napi::Array"),
+    (r"Local<String>", "Napi::String"),
+    (r"Local<Number>", "Napi::Number"),
+    (r"Local<Boolean>", "Napi::Boolean"),
+    (r"Local<Function>", "Napi::Function"),
     (r"Nan::Callback", "Napi::FunctionReference"),
     # scalar conversions
     (r"Nan::To<double>\((.*?)\)\.FromJust\(\)", r"\1.As<Napi::Number>().DoubleValue()"),

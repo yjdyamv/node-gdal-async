@@ -193,20 +193,20 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "srcNodata"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "srcNodata"));
-    if (prop->IsNumber()) {
+    if (prop.IsNumber()) {
       src_nodata = new double(prop.As<Napi::Number>().DoubleValue());
       options->padfSrcNoDataReal = src_nodata;
-    } else if (!prop->IsUndefined() && !prop->IsNull()) {
+    } else if (!prop.IsUndefined() && !prop.IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "srcNodata property must be a number").ThrowAsJavaScriptException();
       return 1;
     }
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "dstNodata"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "dstNodata"));
-    if (prop->IsNumber()) {
+    if (prop.IsNumber()) {
       dst_nodata = new double(prop.As<Napi::Number>().DoubleValue());
       options->padfDstNoDataReal = dst_nodata;
-    } else if (!prop->IsUndefined() && !prop->IsNull()) {
+    } else if (!prop.IsUndefined() && !prop.IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "dstNodata property must be a number").ThrowAsJavaScriptException();
       return 1;
     }

@@ -67,11 +67,17 @@ void RasterBand::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-RasterBand::RasterBand(GDALRasterBand *band) : Nan::ObjectWrap(), uid(0), this_(band), parent_ds(0) {
-  LOG("Created band [%p] (dataset = %p)", band, band->GetDataset());
-}
 
 RasterBand::RasterBand(const Napi::CallbackInfo &info) : GDALObject<RasterBand>(info), uid(0), this_(0), parent_ds(0) {
+}
+
+RasterBand::RasterBand(const Napi::CallbackInfo &info) : GDALObject<RasterBand>(info), uid(0), this_(nullptr), parent_ds(0) {
+  LOG("Created band [%p] (dataset = %p)", band, band->GetDataset());
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<GDALRasterBand *>(info[0].As<Napi::External<void>>().Data());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create RasterBand directly").ThrowAsJavaScriptException();
 }
 
 RasterBand::~RasterBand() {

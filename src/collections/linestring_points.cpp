@@ -205,7 +205,7 @@ NAN_METHOD(LineStringPoints::set) {
       NODE_DOUBLE_FROM_OBJ(obj, "x", x);
       NODE_DOUBLE_FROM_OBJ(obj, "y", y);
 
-      Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
+      Napi::String z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
       if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
         Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
         if (!z_val->IsNumber()) {
@@ -316,7 +316,7 @@ NAN_METHOD(LineStringPoints::add) {
           NODE_DOUBLE_FROM_OBJ(element_obj, "x", x);
           NODE_DOUBLE_FROM_OBJ(element_obj, "y", y);
 
-          Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
+          Napi::String z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
           if (element_obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
             Napi::Value z_val = element_obj.As<Napi::Object>().Get(z_prop_name);
             if (!z_val->IsNumber()) {
@@ -336,7 +336,7 @@ NAN_METHOD(LineStringPoints::add) {
       NODE_DOUBLE_FROM_OBJ(obj, "x", x);
       NODE_DOUBLE_FROM_OBJ(obj, "y", y);
 
-      Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
+      Napi::String z_prop_name = Napi::String::New(node_gdal::napi_env(), "z");
       if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name)) {
         Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
         if (!z_val->IsNumber()) {
