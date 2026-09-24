@@ -52,7 +52,7 @@ Layer::Layer(OGRLayer *layer) : Nan::ObjectWrap(), uid(0), this_(layer), parent_
   LOG("Created layer [%p]", layer);
 }
 
-Layer::Layer() : Nan::ObjectWrap(), uid(0), this_(0), parent_ds(0) {
+Layer::Layer(const Napi::CallbackInfo &info) : GDALObject<Layer>(info), uid(0), this_(0), parent_ds(0) {
 }
 
 Layer::~Layer() {
@@ -84,16 +84,16 @@ NAN_METHOD(Layer::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     Layer *f = static_cast<Layer *>(ptr);
     f->Wrap(info.This());
 
     Napi::Value features = LayerFeatures::New(info.This());
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "features_"), features);
+    GDAL_SET_PRIVATE(info.This(), "features_", features);
 
     Napi::Value fields = LayerFields::New(info.This());
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "fields_"), fields);
+    GDAL_SET_PRIVATE(info.This(), "fields_", fields);
 
     return info.This();
     return node_gdal::napi_env.Undefined();
@@ -114,11 +114,9 @@ Napi::Value Layer::New(OGRLayer *raw, GDALDataset *raw_parent, bool result_set) 
   if (!raw) { return node_gdal::napi_env.Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  Layer *wrapped = new Layer(raw);
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Layer::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, raw)};
+  Napi::Object obj = Layer::constructor.Value().New(args);
+  Layer *wrapped = node_gdal::UnwrapWrapped<Layer>(obj);
 
   // add reference to datasource so datasource doesnt get GC'ed while layer is
   // alive
@@ -138,7 +136,7 @@ Napi::Value Layer::New(OGRLayer *raw, GDALDataset *raw_parent, bool result_set) 
   wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid, result_set);
   wrapped->parent_ds = raw_parent;
   wrapped->parent_uid = parent_uid;
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "ds_"), ds);
+  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }
@@ -401,7 +399,7 @@ false));
  * @type {Dataset}
  */
 NAN_GETTER(Layer::dsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "ds_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "ds_");
 }
 
 /**
@@ -508,7 +506,7 @@ NAN_GETTER(Layer::geomTypeGetter) {
  * @type {LayerFeatures}
  */
 NAN_GETTER(Layer::featuresGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "features_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "features_");
 }
 
 /**
@@ -520,7 +518,7 @@ NAN_GETTER(Layer::featuresGetter) {
  * @type {LayerFields}
  */
 NAN_GETTER(Layer::fieldsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "fields_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "fields_");
 }
 
 NAN_GETTER(Layer::uidGetter) {

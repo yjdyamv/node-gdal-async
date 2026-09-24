@@ -62,11 +62,11 @@ void Initialize(Napi::Object target) {
     return;                                                                                                            \
   }                                                                                                                    \
   if (info[num].IsNumber()) {                                                                                         \
-    var##_number = info[num].As<Napi::Number>().DoubleValue().ToChecked();                                                             \
+    var##_number = info[num].As<Napi::Number>().DoubleValue();                                                             \
     var##_band = nullptr;                                                                                              \
   } else if (info[num].IsObject() && Napi::Number::New(node_gdal::napi_env, RasterBand::constructor)->HasInstance(info[num])) {                     \
     var##_number = NAN;                                                                                                \
-    var##_band = node_gdal::UnwrapWrapped<RasterBand>(info[num].As<Object>());                                          \
+    var##_band = node_gdal::UnwrapWrapped<RasterBand>(info[num].As<Napi::Object>());                                          \
   } else {                                                                                                             \
     Napi::Error::New(node_gdal::napi_env, "Argument must be either a number or a RasterBand").ThrowAsJavaScriptException();                                               \
     return;                                                                                                            \

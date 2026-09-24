@@ -32,7 +32,7 @@ void DatasetLayers::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-DatasetLayers::DatasetLayers() : Nan::ObjectWrap() {
+DatasetLayers::DatasetLayers(const Napi::CallbackInfo &info) : GDALObject<DatasetLayers>(info) {
 }
 
 DatasetLayers::~DatasetLayers() {
@@ -54,8 +54,8 @@ NAN_METHOD(DatasetLayers::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     DatasetLayers *f = static_cast<DatasetLayers *>(ptr);
     f->Wrap(info.This());
     return info.This();
@@ -68,13 +68,10 @@ NAN_METHOD(DatasetLayers::New) {
 
 Napi::Value DatasetLayers::New(Napi::Value ds_obj) {
 
-  DatasetLayers *wrapped = new DatasetLayers();
+  std::vector<napi_value> args;
+  Napi::Object obj = DatasetLayers::constructor.Value().New(args);
 
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, DatasetLayers::constructor)), 1, &ext).ToLocalChecked();
-
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), ds_obj);
+  GDAL_SET_PRIVATE(obj, "parent_", ds_obj);
 
   return obj;
 }
@@ -110,7 +107,7 @@ NAN_METHOD(DatasetLayers::toString) {
 GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -137,7 +134,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
       return lyr;
     };
   } else if (info[0].IsNumber()) {
-    int64_t id = Nan::To<int64_t>(info[0]).ToChecked();
+    int64_t id = info[0].As<Napi::Number>().Int64Value();
     job.main = [raw, id](const GDALExecutionProgress &) {
       CPLErrorReset();
       OGRLayer *lyr = raw->GetLayer(id);
@@ -199,7 +196,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::get) {
 GDAL_ASYNCABLE_DEFINE(DatasetLayers::create) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -263,7 +260,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::create) {
 GDAL_ASYNCABLE_DEFINE(DatasetLayers::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -313,7 +310,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::count) {
 GDAL_ASYNCABLE_DEFINE(DatasetLayers::copy) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -333,7 +330,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::copy) {
 
   OGRLayer *src = layer_to_copy->get();
   GDALAsyncableJob<OGRLayer *> job(ds->uid);
-  job.persist(parent, info[0].As<Object>());
+  job.persist(parent, info[0].As<Napi::Object>());
   job.main = [raw, src, new_name, options](const GDALExecutionProgress &) {
     std::unique_ptr<StringList> options_ptr(options);
     std::unique_ptr<std::string> new_name_ptr(new_name);
@@ -374,7 +371,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::copy) {
 GDAL_ASYNCABLE_DEFINE(DatasetLayers::remove) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -394,7 +391,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::remove) {
     return err;
   };
 
-  job.rval = [](int count, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](int count, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -409,7 +406,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::remove) {
  * @type {Dataset}
  */
 NAN_GETTER(DatasetLayers::dsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "parent_");
 }
 
 } // namespace node_gdal

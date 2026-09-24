@@ -31,8 +31,8 @@ void CompoundCurve::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-void CompoundCurve::SetPrivate(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE _this, Napi::Value value) {
-  Nan::SetPrivate(_this, Napi::String::New(node_gdal::napi_env, "curves_"), value);
+void CompoundCurve::SetPrivate(Napi::Object _this, Napi::Value value) {
+  GDAL_SET_PRIVATE(_this, "curves_", value);
 };
 
 /**
@@ -63,7 +63,7 @@ NAN_METHOD(CompoundCurve::toString) {
  * @type {CompoundCurveCurves}
  */
 NAN_GETTER(CompoundCurve::curvesGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "curves_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "curves_");
 }
 
 } // namespace node_gdal

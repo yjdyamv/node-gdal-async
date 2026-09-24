@@ -391,10 +391,10 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
 
   NODE_ARG_OBJECT(0, "Warp options", obj);
 
-  if (Nan::HasOwnProperty(obj, Napi::String::New(node_gdal::napi_env, "src")).FromMaybe(false)) {
-    prop = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "src")).ToLocalChecked();
-    if (prop->IsObject() && !prop->IsNull() && Napi::Number::New(node_gdal::napi_env, Dataset::constructor)->HasInstance(prop)) {
-      ds = node_gdal::UnwrapWrapped<Dataset>(prop.As<Object>());
+  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "src")).FromMaybe(false)) {
+    prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "src"));
+    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env, Dataset::constructor)->HasInstance(prop)) {
+      ds = node_gdal::UnwrapWrapped<Dataset>(prop.As<Napi::Object>());
       if (!ds->get()) {
         Napi::Error::New(node_gdal::napi_env, "src dataset already closed").ThrowAsJavaScriptException();
         return node_gdal::napi_env.Undefined();

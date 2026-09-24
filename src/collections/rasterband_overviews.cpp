@@ -25,7 +25,7 @@ void RasterBandOverviews::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-RasterBandOverviews::RasterBandOverviews() : Nan::ObjectWrap() {
+RasterBandOverviews::RasterBandOverviews(const Napi::CallbackInfo &info) : GDALObject<RasterBandOverviews>(info) {
 }
 
 RasterBandOverviews::~RasterBandOverviews() {
@@ -43,8 +43,8 @@ NAN_METHOD(RasterBandOverviews::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     RasterBandOverviews *f = static_cast<RasterBandOverviews *>(ptr);
     f->Wrap(info.This());
     return info.This();
@@ -57,13 +57,9 @@ NAN_METHOD(RasterBandOverviews::New) {
 
 Napi::Value RasterBandOverviews::New(Napi::Value band_obj) {
 
-  RasterBandOverviews *wrapped = new RasterBandOverviews();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, RasterBandOverviews::constructor)), 1, &ext)
-      .ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), band_obj);
+  std::vector<napi_value> args;
+  Napi::Object obj = RasterBandOverviews::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", band_obj);
 
   return obj;
 }
@@ -98,7 +94,7 @@ NAN_METHOD(RasterBandOverviews::toString) {
 GDAL_ASYNCABLE_DEFINE(RasterBandOverviews::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
 
   NODE_UNWRAP_CHECK(RasterBand, parent, band);
 
@@ -155,7 +151,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBandOverviews::get) {
 GDAL_ASYNCABLE_DEFINE(RasterBandOverviews::getBySampleCount) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   NODE_UNWRAP_CHECK(RasterBand, parent, band);
 
   int n_samples;
@@ -197,7 +193,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBandOverviews::getBySampleCount) {
 GDAL_ASYNCABLE_DEFINE(RasterBandOverviews::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   NODE_UNWRAP_CHECK(RasterBand, parent, band);
 
   GDALAsyncableJob<int> job(band->parent_uid);

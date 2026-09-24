@@ -31,7 +31,7 @@ void LayerFeatures::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-LayerFeatures::LayerFeatures() : Nan::ObjectWrap() {
+LayerFeatures::LayerFeatures(const Napi::CallbackInfo &info) : GDALObject<LayerFeatures>(info) {
 }
 
 LayerFeatures::~LayerFeatures() {
@@ -50,8 +50,8 @@ NAN_METHOD(LayerFeatures::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     LayerFeatures *f = static_cast<LayerFeatures *>(ptr);
     f->Wrap(info.This());
     return info.This();
@@ -64,12 +64,9 @@ NAN_METHOD(LayerFeatures::New) {
 
 Napi::Value LayerFeatures::New(Napi::Value layer_obj) {
 
-  LayerFeatures *wrapped = new LayerFeatures();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, LayerFeatures::constructor)), 1, &ext).ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), layer_obj);
+  std::vector<napi_value> args;
+  Napi::Object obj = LayerFeatures::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", layer_obj);
 
   return obj;
 }
@@ -112,7 +109,7 @@ NAN_METHOD(LayerFeatures::toString) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -158,7 +155,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::get) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::first) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -207,7 +204,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::first) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::next) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -267,7 +264,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::next) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::add) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -315,7 +312,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::add) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -381,7 +378,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::count) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::set) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -401,12 +398,12 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::set) {
   Napi::Object feature;
   if (info[0].IsObject()) {
     NODE_ARG_WRAPPED(0, "feature", Feature, f);
-    feature = info[0].As<Object>();
+    feature = info[0].As<Napi::Object>();
   } else if (info[0].IsNumber()) {
     int i = 0;
     NODE_ARG_INT(0, "feature id", i);
     NODE_ARG_WRAPPED(1, "feature", Feature, f);
-    feature = info[1].As<Object>();
+    feature = info[1].As<Napi::Object>();
     err = f->get()->SetFID(i);
     if (err) {
       Napi::Error::New(node_gdal::napi_env, "Error setting feature id").ThrowAsJavaScriptException();
@@ -462,7 +459,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::set) {
 GDAL_ASYNCABLE_DEFINE(LayerFeatures::remove) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Layer *layer = node_gdal::UnwrapWrapped<Layer>(parent);
   if (!layer->isAlive()) {
     Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
@@ -496,7 +493,7 @@ GDAL_ASYNCABLE_DEFINE(LayerFeatures::remove) {
  * @type {Layer}
  */
 NAN_GETTER(LayerFeatures::layerGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "parent_");
 }
 
 } // namespace node_gdal

@@ -89,7 +89,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::fillNodata) {
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -177,20 +177,20 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::contourGenerate) {
   NODE_DOUBLE_FROM_OBJ_OPT(obj, "interval", interval);
   NODE_DOUBLE_FROM_OBJ_OPT(obj, "offset", base);
   NODE_CB_FROM_OBJ_OPT(obj, "progress_cb", progress_cb);
-  if (Nan::HasOwnProperty(obj, Napi::String::New(node_gdal::napi_env, "fixedLevels")).FromMaybe(false)) {
-    if (fixed_level_array.parse(Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "fixedLevels")).ToLocalChecked())) {
+  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "fixedLevels")).FromMaybe(false)) {
+    if (fixed_level_array.parse(obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "fixedLevels")))) {
       return node_gdal::napi_env.Undefined(); // error parsing double list
     } else {
       fixed_levels = fixed_level_array.get();
       n_fixed_levels = fixed_level_array.length();
     }
   }
-  if (Nan::HasOwnProperty(obj, Napi::String::New(node_gdal::napi_env, "nodata")).FromMaybe(false)) {
-    prop = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "nodata")).ToLocalChecked();
-    if (prop->IsNumber()) {
+  if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "nodata")).FromMaybe(false)) {
+    prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "nodata"));
+    if (prop.IsNumber()) {
       use_nodata = 1;
-      nodata = prop.As<Napi::Number>().DoubleValue().ToChecked();
-    } else if (!prop->IsNull() && !prop->IsUndefined()) {
+      nodata = prop.As<Napi::Number>().DoubleValue();
+    } else if (!prop.IsNull() && !prop.IsUndefined()) {
       Napi::TypeError::New(node_gdal::napi_env, "nodata property must be a number").ThrowAsJavaScriptException();
     }
   }
@@ -231,7 +231,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::contourGenerate) {
     if (err) { throw CPLGetLastErrorMsg(); }
     return err;
   };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -324,7 +324,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::sieveFilter) {
       if (err) { throw CPLGetLastErrorMsg(); }
       return err;
     };
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -492,8 +492,8 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::polygonize) {
   job.progress = progress_cb;
 
   if (
-    Nan::HasOwnProperty(obj, Napi::String::New(node_gdal::napi_env, "useFloats")).FromMaybe(false) &&
-    Nan::To<bool>(Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "useFloats")).ToLocalChecked()).ToChecked()) {
+    obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env, "useFloats")).FromMaybe(false) &&
+    obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "useFloats")).As<Napi::Boolean>().Value()) {
     job.main =
       [gdal_src, gdal_mask, gdal_dst, pix_val_field, papszOptions, progress_cb](const GDALExecutionProgress &progress) {
         CPLErrorReset();
@@ -526,7 +526,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::polygonize) {
         return err;
       };
   }
-  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](CPLErr r, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 1);
 }
 
@@ -546,7 +546,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::_acquireLocks) {
     for (i = 0; i < 1e4; i++) sum += i;
     return sum;
   };
-  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 3);
 }
 

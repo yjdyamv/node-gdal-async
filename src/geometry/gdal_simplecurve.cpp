@@ -93,7 +93,7 @@ NODE_WRAPPED_METHOD_WITH_RESULT(SimpleCurve, getLength, Number, get_Length);
  * @type {LineStringPoints}
  */
 NAN_GETTER(SimpleCurve::pointsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "points_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "points_");
 }
 
 /**

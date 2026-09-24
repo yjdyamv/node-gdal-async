@@ -53,8 +53,8 @@ NAN_METHOD(Point::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     f = static_cast<Point *>(ptr);
 
   } else {
@@ -99,11 +99,11 @@ NAN_GETTER(Point::xGetter) {
 NAN_SETTER(Point::xSetter) {
   Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
 
-  if (!value->IsNumber()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env, "y must be a number").ThrowAsJavaScriptException();
     return;
   }
-  double x = value.As<Napi::Number>().DoubleValue().ToChecked();
+  double x = value.As<Napi::Number>().DoubleValue();
 
   ((OGRPoint *)geom->this_)->setX(x);
 }
@@ -123,11 +123,11 @@ NAN_GETTER(Point::yGetter) {
 NAN_SETTER(Point::ySetter) {
   Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
 
-  if (!value->IsNumber()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env, "y must be a number").ThrowAsJavaScriptException();
     return;
   }
-  double y = value.As<Napi::Number>().DoubleValue().ToChecked();
+  double y = value.As<Napi::Number>().DoubleValue();
 
   ((OGRPoint *)geom->this_)->setY(y);
 }
@@ -147,11 +147,11 @@ NAN_GETTER(Point::zGetter) {
 NAN_SETTER(Point::zSetter) {
   Point *geom = node_gdal::UnwrapWrapped<Point>(info.This().As<Napi::Object>());
 
-  if (!value->IsNumber()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env, "z must be a number").ThrowAsJavaScriptException();
     return;
   }
-  double z = value.As<Napi::Number>().DoubleValue().ToChecked();
+  double z = value.As<Napi::Number>().DoubleValue();
 
   ((OGRPoint *)geom->this_)->setZ(z);
 }

@@ -34,7 +34,7 @@ FeatureDefn::FeatureDefn(OGRFeatureDefn *def) : Nan::ObjectWrap(), this_(def), o
   LOG("Created FeatureDefn [%p]", def);
 }
 
-FeatureDefn::FeatureDefn() : Nan::ObjectWrap(), this_(0), owned_(true) {
+FeatureDefn::FeatureDefn(const Napi::CallbackInfo &info) : GDALObject<FeatureDefn>(info), this_(0), owned_(true) {
 }
 
 FeatureDefn::~FeatureDefn() {
@@ -61,8 +61,8 @@ NAN_METHOD(FeatureDefn::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     f = static_cast<FeatureDefn *>(ptr);
   } else {
     if (info.Length() != 0) {
@@ -74,7 +74,7 @@ NAN_METHOD(FeatureDefn::New) {
   }
 
   Napi::Value fields = FeatureDefnFields::New(info.This());
-  Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "fields_"), fields);
+  GDAL_SET_PRIVATE(info.This(), "fields_", fields);
 
   f->Wrap(info.This());
   return info.This();
@@ -96,13 +96,9 @@ Napi::Value FeatureDefn::New(OGRFeatureDefn *def, bool owned) {
   if (!def) { return node_gdal::napi_env.Null(); }
   if (!owned) { def = def->Clone(); }
 
-  FeatureDefn *wrapped = new FeatureDefn(def);
-  wrapped->owned_ = true;
-  def->Reference();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, FeatureDefn::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, def)};
+  Napi::Object obj = FeatureDefn::constructor.Value().New(args);
+  FeatureDefn *wrapped = node_gdal::UnwrapWrapped<FeatureDefn>(obj);
 
   return obj;
 }
@@ -184,7 +180,7 @@ NAN_GETTER(FeatureDefn::styleIgnoredGetter) {
  * @type {FeatureDefnFields}
  */
 NAN_GETTER(FeatureDefn::fieldsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "fields_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "fields_");
 }
 
 NAN_SETTER(FeatureDefn::geomTypeSetter) {
@@ -193,7 +189,7 @@ NAN_SETTER(FeatureDefn::geomTypeSetter) {
     Napi::Error::New(node_gdal::napi_env, "geomType must be an integer").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetGeomType(OGRwkbGeometryType(Nan::To<int64_t>(value).ToChecked()));
+  def->this_->SetGeomType(OGRwkbGeometryType(value.As<Napi::Number>().Int64Value()));
 }
 
 NAN_SETTER(FeatureDefn::geomIgnoredSetter) {
@@ -202,7 +198,7 @@ NAN_SETTER(FeatureDefn::geomIgnoredSetter) {
     Napi::Error::New(node_gdal::napi_env, "geomIgnored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetGeometryIgnored(Nan::To<int64_t>(value).ToChecked());
+  def->this_->SetGeometryIgnored(value.As<Napi::Number>().Int64Value());
 }
 
 NAN_SETTER(FeatureDefn::styleIgnoredSetter) {
@@ -211,7 +207,7 @@ NAN_SETTER(FeatureDefn::styleIgnoredSetter) {
     Napi::Error::New(node_gdal::napi_env, "styleIgnored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetStyleIgnored(Nan::To<int64_t>(value).ToChecked());
+  def->this_->SetStyleIgnored(value.As<Napi::Number>().Int64Value());
 }
 
 } // namespace node_gdal

@@ -30,7 +30,7 @@ void LineStringPoints::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-LineStringPoints::LineStringPoints() : Nan::ObjectWrap() {
+LineStringPoints::LineStringPoints(const Napi::CallbackInfo &info) : GDALObject<LineStringPoints>(info) {
 }
 
 LineStringPoints::~LineStringPoints() {
@@ -48,8 +48,8 @@ NAN_METHOD(LineStringPoints::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     LineStringPoints *geom = static_cast<LineStringPoints *>(ptr);
     geom->Wrap(info.This());
     return info.This();
@@ -62,13 +62,9 @@ NAN_METHOD(LineStringPoints::New) {
 
 Napi::Value LineStringPoints::New(Napi::Value geom) {
 
-  LineStringPoints *wrapped = new LineStringPoints();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, LineStringPoints::constructor)), 1, &ext)
-      .ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), geom);
+  std::vector<napi_value> args;
+  Napi::Object obj = LineStringPoints::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
@@ -88,7 +84,7 @@ NAN_METHOD(LineStringPoints::toString) {
 NAN_METHOD(LineStringPoints::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
   return Napi::Number::New(node_gdal::napi_env, geom->get()->getNumPoints());
@@ -104,7 +100,7 @@ NAN_METHOD(LineStringPoints::count) {
 NAN_METHOD(LineStringPoints::reverse) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
   geom->get()->reversePoints();
@@ -123,7 +119,7 @@ NAN_METHOD(LineStringPoints::reverse) {
 NAN_METHOD(LineStringPoints::resize) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
   int count;
@@ -146,7 +142,7 @@ NAN_METHOD(LineStringPoints::resize) {
 NAN_METHOD(LineStringPoints::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
   OGRPoint pt;
@@ -192,7 +188,7 @@ NAN_METHOD(LineStringPoints::get) {
 NAN_METHOD(LineStringPoints::set) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
   int i;
@@ -214,23 +210,23 @@ NAN_METHOD(LineStringPoints::set) {
     }
     if (IS_WRAPPED(info[1], Point)) {
       // set from Point object
-      Point *pt = node_gdal::UnwrapWrapped<Point>(info[1].As<Object>());
+      Point *pt = node_gdal::UnwrapWrapped<Point>(info[1].As<Napi::Object>());
       geom->get()->setPoint(i, pt->get());
     } else {
-      Napi::Object obj = info[1].As<Object>();
+      Napi::Object obj = info[1].As<Napi::Object>();
       // set from object {x: 0, y: 5}
       double x, y;
       NODE_DOUBLE_FROM_OBJ(obj, "x", x);
       NODE_DOUBLE_FROM_OBJ(obj, "y", y);
 
       Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env, "z");
-      if (Nan::HasOwnProperty(obj, z_prop_name).FromMaybe(false)) {
-        Napi::Value z_val = Nan::Get(obj, z_prop_name).ToLocalChecked();
+      if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name).FromMaybe(false)) {
+        Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
         if (!z_val->IsNumber()) {
           Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
           return node_gdal::napi_env.Undefined();
         }
-        geom->get()->setPoint(i, x, y, z_val.As<Napi::Number>().DoubleValue().ToChecked());
+        geom->get()->setPoint(i, x, y, z_val.As<Napi::Number>().DoubleValue());
       } else {
         geom->get()->setPoint(i, x, y);
       }
@@ -246,7 +242,7 @@ NAN_METHOD(LineStringPoints::set) {
       return node_gdal::napi_env.Undefined();
     }
     if (n == 2) {
-      geom->get()->setPoint(i, info[1].As<Napi::Number>().DoubleValue().ToChecked(), info[2].As<Napi::Number>().DoubleValue().ToChecked());
+      geom->get()->setPoint(i, info[1].As<Napi::Number>().DoubleValue(), info[2].As<Napi::Number>().DoubleValue());
     } else {
       if (!info[3].IsNumber()) {
         Napi::Error::New(node_gdal::napi_env, "Number expected for fourth argument").ThrowAsJavaScriptException();
@@ -255,9 +251,9 @@ NAN_METHOD(LineStringPoints::set) {
 
       geom->get()->setPoint(
         i,
-        info[1].As<Napi::Number>().DoubleValue().ToChecked(),
-        info[2].As<Napi::Number>().DoubleValue().ToChecked(),
-        info[3].As<Napi::Number>().DoubleValue().ToChecked());
+        info[1].As<Napi::Number>().DoubleValue(),
+        info[2].As<Napi::Number>().DoubleValue(),
+        info[3].As<Napi::Number>().DoubleValue());
     }
   }
 
@@ -296,7 +292,7 @@ NAN_METHOD(LineStringPoints::set) {
 NAN_METHOD(LineStringPoints::add) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   LineString *geom = node_gdal::UnwrapWrapped<LineString>(parent);
 
   int n = info.Length();
@@ -311,19 +307,19 @@ NAN_METHOD(LineStringPoints::add) {
     }
     if (IS_WRAPPED(info[0], Point)) {
       // set from Point object
-      Point *pt = node_gdal::UnwrapWrapped<Point>(info[0].As<Object>());
+      Point *pt = node_gdal::UnwrapWrapped<Point>(info[0].As<Napi::Object>());
       geom->get()->addPoint(pt->get());
     } else if (info[0].IsArray()) {
       // set from array of points
-      Napi::Array array = info[0].As<Array>();
+      Napi::Array array = info[0].As<Napi::Array>();
       int length = array->Length();
       for (int i = 0; i < length; i++) {
-        Napi::Value element = Nan::Get(array, i).ToLocalChecked();
+        Napi::Value element = array.As<Napi::Object>().Get(i);
         if (!element->IsObject()) {
           Napi::Error::New(node_gdal::napi_env, "All points must be Point objects or objects").ThrowAsJavaScriptException();
           return node_gdal::napi_env.Undefined();
         }
-        Napi::Object element_obj = element.As<Object>();
+        Napi::Object element_obj = element.As<Napi::Object>();
         if (IS_WRAPPED(element_obj, Point)) {
           // set from Point object
           Point *pt = node_gdal::UnwrapWrapped<Point>(element_obj);
@@ -335,13 +331,13 @@ NAN_METHOD(LineStringPoints::add) {
           NODE_DOUBLE_FROM_OBJ(element_obj, "y", y);
 
           Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env, "z");
-          if (Nan::HasOwnProperty(element_obj, z_prop_name).FromMaybe(false)) {
-            Napi::Value z_val = Nan::Get(element_obj, z_prop_name).ToLocalChecked();
+          if (element_obj.As<Napi::Object>().HasOwnProperty(z_prop_name).FromMaybe(false)) {
+            Napi::Value z_val = element_obj.As<Napi::Object>().Get(z_prop_name);
             if (!z_val->IsNumber()) {
               Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
               return node_gdal::napi_env.Undefined();
             }
-            geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue().ToChecked());
+            geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue());
           } else {
             geom->get()->addPoint(x, y);
           }
@@ -349,19 +345,19 @@ NAN_METHOD(LineStringPoints::add) {
       }
     } else {
       // set from object {x: 0, y: 5}
-      Napi::Object obj = info[0].As<Object>();
+      Napi::Object obj = info[0].As<Napi::Object>();
       double x, y;
       NODE_DOUBLE_FROM_OBJ(obj, "x", x);
       NODE_DOUBLE_FROM_OBJ(obj, "y", y);
 
       Local<String> z_prop_name = Napi::String::New(node_gdal::napi_env, "z");
-      if (Nan::HasOwnProperty(obj, z_prop_name).FromMaybe(false)) {
-        Napi::Value z_val = Nan::Get(obj, z_prop_name).ToLocalChecked();
+      if (obj.As<Napi::Object>().HasOwnProperty(z_prop_name).FromMaybe(false)) {
+        Napi::Value z_val = obj.As<Napi::Object>().Get(z_prop_name);
         if (!z_val->IsNumber()) {
           Napi::Error::New(node_gdal::napi_env, "z property must be number").ThrowAsJavaScriptException();
           return node_gdal::napi_env.Undefined();
         }
-        geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue().ToChecked());
+        geom->get()->addPoint(x, y, z_val.As<Napi::Number>().DoubleValue());
       } else {
         geom->get()->addPoint(x, y);
       }
@@ -377,7 +373,7 @@ NAN_METHOD(LineStringPoints::add) {
       return node_gdal::napi_env.Undefined();
     }
     if (n == 2) {
-      geom->get()->addPoint(info[0].As<Napi::Number>().DoubleValue().ToChecked(), info[1].As<Napi::Number>().DoubleValue().ToChecked());
+      geom->get()->addPoint(info[0].As<Napi::Number>().DoubleValue(), info[1].As<Napi::Number>().DoubleValue());
     } else {
       if (!info[2].IsNumber()) {
         Napi::Error::New(node_gdal::napi_env, "Number expected for third argument").ThrowAsJavaScriptException();
@@ -385,9 +381,9 @@ NAN_METHOD(LineStringPoints::add) {
       }
 
       geom->get()->addPoint(
-        info[0].As<Napi::Number>().DoubleValue().ToChecked(),
-        info[1].As<Napi::Number>().DoubleValue().ToChecked(),
-        info[2].As<Napi::Number>().DoubleValue().ToChecked());
+        info[0].As<Napi::Number>().DoubleValue(),
+        info[1].As<Napi::Number>().DoubleValue(),
+        info[2].As<Napi::Number>().DoubleValue());
     }
   }
 

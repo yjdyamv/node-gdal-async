@@ -27,7 +27,7 @@ void PolygonRings::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-PolygonRings::PolygonRings() : Nan::ObjectWrap() {
+PolygonRings::PolygonRings(const Napi::CallbackInfo &info) : GDALObject<PolygonRings>(info) {
 }
 
 PolygonRings::~PolygonRings() {
@@ -45,8 +45,8 @@ NAN_METHOD(PolygonRings::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     PolygonRings *geom = static_cast<PolygonRings *>(ptr);
     geom->Wrap(info.This());
     return info.This();
@@ -59,12 +59,9 @@ NAN_METHOD(PolygonRings::New) {
 
 Napi::Value PolygonRings::New(Napi::Value geom) {
 
-  PolygonRings *wrapped = new PolygonRings();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, PolygonRings::constructor)), 1, &ext).ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), geom);
+  std::vector<napi_value> args;
+  Napi::Object obj = PolygonRings::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
@@ -84,7 +81,7 @@ NAN_METHOD(PolygonRings::toString) {
 NAN_METHOD(PolygonRings::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Polygon *geom = node_gdal::UnwrapWrapped<Polygon>(parent);
 
   int i = geom->get()->getExteriorRing() ? 1 : 0;
@@ -112,7 +109,7 @@ NAN_METHOD(PolygonRings::count) {
 NAN_METHOD(PolygonRings::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Polygon *geom = node_gdal::UnwrapWrapped<Polygon>(parent);
 
   int i;
@@ -157,7 +154,7 @@ NAN_METHOD(PolygonRings::get) {
 NAN_METHOD(PolygonRings::add) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Polygon *geom = node_gdal::UnwrapWrapped<Polygon>(parent);
 
   LinearRing *ring;
@@ -168,12 +165,12 @@ NAN_METHOD(PolygonRings::add) {
   }
   if (info[0].IsArray()) {
     // set from array of geometry objects
-    Napi::Array array = info[0].As<Array>();
-    int length = array->Length();
+    Napi::Array array = info[0].As<Napi::Array>();
+    int length = array.Length();
     for (int i = 0; i < length; i++) {
-      Napi::Value element = Nan::Get(array, i).ToLocalChecked();
+      Napi::Value element = array.As<Napi::Object>().Get(i);
       if (IS_WRAPPED(element, LinearRing)) {
-        ring = node_gdal::UnwrapWrapped<LinearRing>(element.As<Object>());
+        ring = node_gdal::UnwrapWrapped<LinearRing>(element.As<Napi::Object>());
         OGRErr err = geom->get()->addRing(ring->get());
         if (err) {
           NODE_THROW_OGRERR(err);
@@ -185,7 +182,7 @@ NAN_METHOD(PolygonRings::add) {
       }
     }
   } else if (IS_WRAPPED(info[0], LinearRing)) {
-    ring = node_gdal::UnwrapWrapped<LinearRing>(info[0].As<Object>());
+    ring = node_gdal::UnwrapWrapped<LinearRing>(info[0].As<Napi::Object>());
     OGRErr err = geom->get()->addRing(ring->get());
     if (err) {
       NODE_THROW_OGRERR(err);

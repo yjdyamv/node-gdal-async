@@ -28,7 +28,7 @@ void CompoundCurveCurves::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-CompoundCurveCurves::CompoundCurveCurves() : Nan::ObjectWrap() {
+CompoundCurveCurves::CompoundCurveCurves(const Napi::CallbackInfo &info) : GDALObject<CompoundCurveCurves>(info) {
 }
 
 CompoundCurveCurves::~CompoundCurveCurves() {
@@ -46,8 +46,8 @@ NAN_METHOD(CompoundCurveCurves::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     CompoundCurveCurves *geom = static_cast<CompoundCurveCurves *>(ptr);
     geom->Wrap(info.This());
     return info.This();
@@ -60,13 +60,9 @@ NAN_METHOD(CompoundCurveCurves::New) {
 
 Napi::Value CompoundCurveCurves::New(Napi::Value geom) {
 
-  CompoundCurveCurves *wrapped = new CompoundCurveCurves();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, CompoundCurveCurves::constructor)), 1, &ext)
-      .ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), geom);
+  std::vector<napi_value> args;
+  Napi::Object obj = CompoundCurveCurves::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
@@ -86,7 +82,7 @@ NAN_METHOD(CompoundCurveCurves::toString) {
 NAN_METHOD(CompoundCurveCurves::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   CompoundCurve *geom = node_gdal::UnwrapWrapped<CompoundCurve>(parent);
 
   return Napi::Number::New(node_gdal::napi_env, geom->get()->getNumCurves());
@@ -110,7 +106,7 @@ NAN_METHOD(CompoundCurveCurves::count) {
 NAN_METHOD(CompoundCurveCurves::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   CompoundCurve *geom = node_gdal::UnwrapWrapped<CompoundCurve>(parent);
 
   int i;
@@ -148,7 +144,7 @@ NAN_METHOD(CompoundCurveCurves::get) {
 NAN_METHOD(CompoundCurveCurves::add) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   CompoundCurve *geom = node_gdal::UnwrapWrapped<CompoundCurve>(parent);
 
   SimpleCurve *ring;
@@ -159,12 +155,12 @@ NAN_METHOD(CompoundCurveCurves::add) {
   }
   if (info[0].IsArray()) {
     // set from array of geometry objects
-    Napi::Array array = info[0].As<Array>();
-    int length = array->Length();
+    Napi::Array array = info[0].As<Napi::Array>();
+    int length = array.Length();
     for (int i = 0; i < length; i++) {
-      Napi::Value element = Nan::Get(array, i).ToLocalChecked();
+      Napi::Value element = array.As<Napi::Object>().Get(i);
       if (IS_WRAPPED(element, SimpleCurve)) {
-        ring = node_gdal::UnwrapWrapped<SimpleCurve>(element.As<Object>());
+        ring = node_gdal::UnwrapWrapped<SimpleCurve>(element.As<Napi::Object>());
         OGRErr err = geom->get()->addCurve(ring->get());
         if (err) {
           NODE_THROW_OGRERR(err);
@@ -176,7 +172,7 @@ NAN_METHOD(CompoundCurveCurves::add) {
       }
     }
   } else if (IS_WRAPPED(info[0], SimpleCurve)) {
-    ring = node_gdal::UnwrapWrapped<SimpleCurve>(info[0].As<Object>());
+    ring = node_gdal::UnwrapWrapped<SimpleCurve>(info[0].As<Napi::Object>());
     OGRErr err = geom->get()->addCurve(ring->get());
     if (err) {
       NODE_THROW_OGRERR(err);

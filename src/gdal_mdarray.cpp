@@ -79,15 +79,15 @@ NAN_METHOD(MDArray::New) {
   }
 
   if (info.Length() == 2 && info[0].IsExternal() && info[1].IsObject()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     MDArray *f = static_cast<MDArray *>(ptr);
     f->Wrap(info.This());
 
     Napi::Value dims = ArrayDimensions::New(info.This(), info[1]);
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "dims_"), dims);
+    GDAL_SET_PRIVATE(info.This(), "dims_", dims);
     Napi::Value attrs = ArrayAttributes::New(info.This(), info[1]);
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "attrs_"), attrs);
+    GDAL_SET_PRIVATE(info.This(), "attrs_", attrs);
 
     return info.This();
     return node_gdal::napi_env.Undefined();
@@ -120,7 +120,7 @@ Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_d
   Napi::Value ext = Nan::New<External>(wrapped);
   Napi::Value argv[] = {ext, ds};
   Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, MDArray::constructor)), 2, argv).ToLocalChecked();
+    Nan::NewInstance(MDArray::constructor.Value(), 2, argv);
 
   size_t dim = raw->GetDimensionCount();
 
@@ -132,7 +132,7 @@ Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_d
   wrapped->parent_uid = parent_uid;
   wrapped->dimensions = dim;
 
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "ds_"), ds);
+  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }
@@ -287,10 +287,10 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
   Local<String> sym = Napi::String::New(node_gdal::napi_env, "data");
   Napi::Value data;
   Napi::Object array;
-  if (Nan::HasOwnProperty(options, sym).FromMaybe(false)) {
-    data = Nan::Get(options, sym).ToLocalChecked();
+  if (options.As<Napi::Object>().HasOwnProperty(sym).FromMaybe(false)) {
+    data = options.As<Napi::Object>().Get(sym);
     if (!data->IsUndefined() && !data->IsNull()) {
-      array = data.As<Object>();
+      array = data.As<Napi::Object>();
       type = node_gdal::TypedArray::Identify(array);
       if (type == GDT_Unknown) {
         Napi::Error::New(node_gdal::napi_env, "Invalid array").ThrowAsJavaScriptException();
@@ -316,7 +316,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
       Napi::Error::New(node_gdal::napi_env, "Failed to allocate array").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined(); // TypedArray::New threw an error
     }
-    array = data.As<Object>();
+    array = data.As<Napi::Object>();
   }
 
   if (lowest < 0) {
@@ -585,7 +585,7 @@ NAN_GETTER(MDArray::typeGetter) {
  * @type {GroupDimensions}
  */
 NAN_GETTER(MDArray::dimensionsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "dims_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "dims_");
 }
 
 /**
@@ -597,7 +597,7 @@ NAN_GETTER(MDArray::dimensionsGetter) {
  * @type {ArrayAttributes}
  */
 NAN_GETTER(MDArray::attributesGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "attrs_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "attrs_");
 }
 
 /**

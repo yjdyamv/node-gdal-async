@@ -33,7 +33,7 @@ CoordinateTransformation::CoordinateTransformation(OGRCoordinateTransformation *
   LOG("Created CoordinateTransformation [%p]", transform);
 }
 
-CoordinateTransformation::CoordinateTransformation() : Nan::ObjectWrap(), this_(0) {
+CoordinateTransformation::CoordinateTransformation(const Napi::CallbackInfo &info) : GDALObject<CoordinateTransformation>(info), this_(0) {
 }
 
 CoordinateTransformation::~CoordinateTransformation() {
@@ -65,8 +65,8 @@ NAN_METHOD(CoordinateTransformation::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     f = static_cast<CoordinateTransformation *>(ptr);
   } else {
     if (info.Length() < 2) {
@@ -98,7 +98,7 @@ NAN_METHOD(CoordinateTransformation::New) {
       char **papszTO = NULL;
       char *src_wkt;
 
-      ds = node_gdal::UnwrapWrapped<Dataset>(info[1].As<Object>());
+      ds = node_gdal::UnwrapWrapped<Dataset>(info[1].As<Napi::Object>());
 
       if (!ds->get()) {
         Napi::Error::New(node_gdal::napi_env, "Dataset already closed").ThrowAsJavaScriptException();
@@ -139,12 +139,9 @@ Napi::Value CoordinateTransformation::New(OGRCoordinateTransformation *transform
 
   if (!transform) { return node_gdal::napi_env.Null(); }
 
-  CoordinateTransformation *wrapped = new CoordinateTransformation(transform);
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, CoordinateTransformation::constructor)), 1, &ext)
-      .ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, transform)};
+  Napi::Object obj = CoordinateTransformation::constructor.Value().New(args);
+  CoordinateTransformation *wrapped = node_gdal::UnwrapWrapped<CoordinateTransformation>(obj);
 
   return obj;
 }
@@ -188,17 +185,17 @@ NAN_METHOD(CoordinateTransformation::transformPoint) {
   double x, y, z = 0;
 
   if (info.Length() == 1 && info[0].IsObject()) {
-    Napi::Object obj = info[0].As<Object>();
-    Napi::Value arg_x = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "x")).ToLocalChecked();
-    Napi::Value arg_y = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "y")).ToLocalChecked();
-    Napi::Value arg_z = Nan::Get(obj, Napi::String::New(node_gdal::napi_env, "z")).ToLocalChecked();
-    if (!arg_x->IsNumber() || !arg_y->IsNumber()) {
+    Napi::Object obj = info[0].As<Napi::Object>();
+    Napi::Value arg_x = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "x"));
+    Napi::Value arg_y = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "y"));
+    Napi::Value arg_z = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env, "z"));
+    if (!arg_x.IsNumber() || !arg_y.IsNumber()) {
       Napi::Error::New(node_gdal::napi_env, "point must contain numerical properties x and y").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
-    x = static_cast<double>(arg_x.As<Napi::Number>().DoubleValue().ToChecked());
-    y = static_cast<double>(arg_y.As<Napi::Number>().DoubleValue().ToChecked());
-    if (arg_z->IsNumber()) { z = static_cast<double>(arg_z.As<Napi::Number>().DoubleValue().ToChecked()); }
+    x = static_cast<double>(arg_x.As<Napi::Number>().DoubleValue());
+    y = static_cast<double>(arg_y.As<Napi::Number>().DoubleValue());
+    if (arg_z->IsNumber()) { z = static_cast<double>(arg_z.As<Napi::Number>().DoubleValue()); }
   } else {
     NODE_ARG_DOUBLE(0, "x", x);
     NODE_ARG_DOUBLE(1, "y", y);

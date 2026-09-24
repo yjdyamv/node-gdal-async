@@ -31,8 +31,8 @@ void Polygon::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-void Polygon::SetPrivate(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE _this, Napi::Value value) {
-  Nan::SetPrivate(_this, Napi::String::New(node_gdal::napi_env, "rings_"), value);
+void Polygon::SetPrivate(Napi::Object _this, Napi::Value value) {
+  GDAL_SET_PRIVATE(_this, "rings_", value);
 };
 
 /**
@@ -67,7 +67,7 @@ NODE_WRAPPED_METHOD_WITH_RESULT(Polygon, getArea, Number, get_Area);
  * @type {PolygonRings}
  */
 NAN_GETTER(Polygon::ringsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "rings_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "rings_");
 }
 
 } // namespace node_gdal

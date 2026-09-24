@@ -94,13 +94,13 @@ NAN_METHOD(Dataset::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     Dataset *f = static_cast<Dataset *>(ptr);
     f->Wrap(info.This());
 
     Napi::Value layers = DatasetLayers::New(info.This());
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "layers_"), layers);
+    GDAL_SET_PRIVATE(info.This(), "layers_", layers);
 
     Napi::Value bandsObj;
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
@@ -114,10 +114,10 @@ NAN_METHOD(Dataset::New) {
       bandsObj = node_gdal::napi_env.Null();
     }
 #endif
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "bands_"), bandsObj);
+    GDAL_SET_PRIVATE(info.This(), "bands_", bandsObj);
     if (f->parent_ds)
       // For dependent Datasets, keep a reference on the parent to protect it from the GC
-      Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_"), object_store.get(f->parent_ds));
+      GDAL_SET_PRIVATE(info.This(), "parent_", object_store.get(f->parent_ds));
 
     return info.This();
     return node_gdal::napi_env.Undefined();
@@ -132,19 +132,9 @@ Napi::Value Dataset::New(GDALDataset *raw, GDALDataset *parent, bool close) {
   if (!raw) { return node_gdal::napi_env.Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  Dataset *wrapped = new Dataset(raw);
-
-  long parent_uid = 0;
-  if (parent != nullptr) {
-    /* A dependent Dataset shares the lock of its parent
-     */
-    Dataset *parent_ds = node_gdal::UnwrapWrapped<Dataset>(object_store.get(parent));
-    parent_uid = parent_ds->uid;
-  }
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Dataset::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, raw)};
+  Napi::Object obj = Dataset::constructor.Value().New(args);
+  Dataset *wrapped = node_gdal::UnwrapWrapped<Dataset>(obj);
 
   wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid, close);
 
@@ -346,7 +336,7 @@ GDAL_ASYNCABLE_DEFINE(Dataset::flush) {
     raw->FlushCache();
     return 0;
   };
-  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](int, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
   return job.run(info, async, 0);
 
   return node_gdal::napi_env.Undefined();
@@ -551,12 +541,12 @@ NAN_METHOD(Dataset::setGCPs) {
   std::shared_ptr<std::string[]> pszInfo_list(new std::string[gcps->Length()]);
   GDAL_GCP *gcp = list.get();
   for (unsigned int i = 0; i < gcps->Length(); ++i) {
-    Napi::Value val = Nan::Get(gcps, i).ToLocalChecked();
+    Napi::Value val = gcps.As<Napi::Object>().Get(i);
     if (!val->IsObject()) {
       Napi::Error::New(node_gdal::napi_env, "GCP array must only include objects").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
-    Napi::Object obj = val.As<Object>();
+    Napi::Object obj = val.As<Napi::Object>();
 
     NODE_DOUBLE_FROM_OBJ(obj, "dfGCPPixel", gcp->dfGCPPixel);
     NODE_DOUBLE_FROM_OBJ(obj, "dfGCPLine", gcp->dfGCPLine);
@@ -634,24 +624,24 @@ GDAL_ASYNCABLE_DEFINE(Dataset::buildOverviews) {
   std::shared_ptr<int[]> o(new int[n_overviews]);
   std::shared_ptr<int[]> b;
   for (i = 0; i < n_overviews; i++) {
-    Napi::Value val = Nan::Get(overviews, i).ToLocalChecked();
+    Napi::Value val = overviews.As<Napi::Object>().Get(i);
     if (!val->IsNumber()) {
       Napi::Error::New(node_gdal::napi_env, "overviews array must only contain numbers").ThrowAsJavaScriptException();
       return node_gdal::napi_env.Undefined();
     }
-    o.get()[i] = Nan::To<int32_t>(val).ToChecked();
+    o.get()[i] = val.As<Napi::Number>().Int32Value();
   }
 
   if (!bands.IsEmpty()) {
     n_bands = bands->Length();
     b = std::shared_ptr<int[]>(new int[n_bands]);
     for (i = 0; i < n_bands; i++) {
-      Napi::Value val = Nan::Get(bands, i).ToLocalChecked();
+      Napi::Value val = bands.As<Napi::Object>().Get(i);
       if (!val->IsNumber()) {
         Napi::Error::New(node_gdal::napi_env, "band array must only contain numbers").ThrowAsJavaScriptException();
         return node_gdal::napi_env.Undefined();
       }
-      b.get()[i] = Nan::To<int32_t>(val).ToChecked();
+      b.get()[i] = val.As<Napi::Number>().Int32Value();
     }
   }
 
@@ -682,7 +672,7 @@ GDAL_ASYNCABLE_DEFINE(Dataset::buildOverviews) {
     if (err != CE_None) { throw CPLGetLastErrorMsg(); }
     return err;
   };
-  job.rval = [](CPLErr, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Value>(); };
+  job.rval = [](CPLErr, const GetFromPersistentFunc &) { return node_gdal::napi_env.Undefined().As<Napi::Value>(); };
 
   return job.run(info, async, 4);
 }
@@ -766,11 +756,11 @@ GDAL_ASYNCABLE_GETTER_DEFINE(Dataset::rasterSizeGetter) {
   };
 
   job.rval = [](xy xy, const GetFromPersistentFunc &) {
-    if (xy.null) return node_gdal::napi_env.Null().As<Value>();
+    if (xy.null) return node_gdal::napi_env.Null().As<Napi::Value>();
     Napi::Object result = Napi::Object::New(node_gdal::napi_env);
     result.Set( Napi::String::New(node_gdal::napi_env, "x"), Napi::Number::New(node_gdal::napi_env, xy.x));
     result.Set( Napi::String::New(node_gdal::napi_env, "y"), Napi::Number::New(node_gdal::napi_env, xy.y));
-    return result.As<Value>();
+    return result.As<Napi::Value>();
   };
 
   return job.run(info, async);
@@ -828,7 +818,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(Dataset::srsGetter) {
     if (srs != nullptr)
       return SpatialReference::New(srs, true);
     else
-      return node_gdal::napi_env.Null().As<Value>();
+      return node_gdal::napi_env.Null().As<Napi::Value>();
   };
   return job.run(info, async);
 }
@@ -960,7 +950,7 @@ NAN_SETTER(Dataset::srsSetter) {
   std::string wkt("");
   if (IS_WRAPPED(value, SpatialReference)) {
 
-    SpatialReference *srs_obj = node_gdal::UnwrapWrapped<SpatialReference>(value.As<Object>());
+    SpatialReference *srs_obj = node_gdal::UnwrapWrapped<SpatialReference>(value.As<Napi::Object>());
     OGRSpatialReference *srs = srs_obj->get();
     // Get wkt from OGRSpatialReference
     char *str;
@@ -996,7 +986,7 @@ NAN_SETTER(Dataset::geoTransformSetter) {
     Napi::Error::New(node_gdal::napi_env, "Transform must be an array").ThrowAsJavaScriptException();
     return;
   }
-  Napi::Array transform = value.As<Array>();
+  Napi::Array transform = value.As<Napi::Array>();
 
   if (transform->Length() != 6) {
     Napi::Error::New(node_gdal::napi_env, "Transform array must have 6 elements").ThrowAsJavaScriptException();
@@ -1005,12 +995,12 @@ NAN_SETTER(Dataset::geoTransformSetter) {
 
   double buffer[6];
   for (int i = 0; i < 6; i++) {
-    Napi::Value val = Nan::Get(transform, i).ToLocalChecked();
+    Napi::Value val = transform.As<Napi::Object>().Get(i);
     if (!val->IsNumber()) {
       Napi::Error::New(node_gdal::napi_env, "Transform array must only contain numbers").ThrowAsJavaScriptException();
       return;
     }
-    buffer[i] = val.As<Napi::Number>().DoubleValue().ToChecked();
+    buffer[i] = val.As<Napi::Number>().DoubleValue();
   }
 
   AsyncGuard lock({ds->uid}, eventLoopWarn);
@@ -1028,7 +1018,7 @@ NAN_SETTER(Dataset::geoTransformSetter) {
  * @type {DatasetBands}
  */
 NAN_GETTER(Dataset::bandsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "bands_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "bands_");
 }
 
 /**
@@ -1040,7 +1030,7 @@ NAN_GETTER(Dataset::bandsGetter) {
  * @type {DatasetLayers}
  */
 NAN_GETTER(Dataset::layersGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "layers_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "layers_");
 }
 
 /**
@@ -1052,7 +1042,7 @@ NAN_GETTER(Dataset::layersGetter) {
  * @type {Group}
  */
 NAN_GETTER(Dataset::rootGetter) {
-  Napi::Value rootObj = Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "root_")).ToLocalChecked();
+  Napi::Value rootObj = GDAL_GET_PRIVATE(info.This(), "root_");
   if (rootObj->IsUndefined()) {
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
     NODE_UNWRAP_CHECK(Dataset, info.This(), ds);
@@ -1067,7 +1057,7 @@ NAN_GETTER(Dataset::rootGetter) {
       rootObj = Group::New(root, info.This());
     }
 #endif
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "root_"), rootObj);
+    GDAL_SET_PRIVATE(info.This(), "root_", rootObj);
   }
   return rootObj;
 }

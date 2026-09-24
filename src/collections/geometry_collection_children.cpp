@@ -27,7 +27,7 @@ void GeometryCollectionChildren::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-GeometryCollectionChildren::GeometryCollectionChildren() : Nan::ObjectWrap() {
+GeometryCollectionChildren::GeometryCollectionChildren(const Napi::CallbackInfo &info) : GDALObject<GeometryCollectionChildren>(info) {
 }
 
 GeometryCollectionChildren::~GeometryCollectionChildren() {
@@ -45,8 +45,8 @@ NAN_METHOD(GeometryCollectionChildren::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     GeometryCollectionChildren *geom = static_cast<GeometryCollectionChildren *>(ptr);
     geom->Wrap(info.This());
     return info.This();
@@ -59,13 +59,9 @@ NAN_METHOD(GeometryCollectionChildren::New) {
 
 Napi::Value GeometryCollectionChildren::New(Napi::Value geom) {
 
-  GeometryCollectionChildren *wrapped = new GeometryCollectionChildren();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, GeometryCollectionChildren::constructor)), 1, &ext)
-      .ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), geom);
+  std::vector<napi_value> args;
+  Napi::Object obj = GeometryCollectionChildren::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", geom);
 
   return obj;
 }
@@ -85,7 +81,7 @@ NAN_METHOD(GeometryCollectionChildren::toString) {
 NAN_METHOD(GeometryCollectionChildren::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   return Napi::Number::New(node_gdal::napi_env, geom->get()->getNumGeometries());
@@ -104,7 +100,7 @@ NAN_METHOD(GeometryCollectionChildren::count) {
 NAN_METHOD(GeometryCollectionChildren::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   int i;
@@ -129,7 +125,7 @@ NAN_METHOD(GeometryCollectionChildren::get) {
 NAN_METHOD(GeometryCollectionChildren::remove) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   int i;
@@ -166,7 +162,7 @@ NAN_METHOD(GeometryCollectionChildren::remove) {
 NAN_METHOD(GeometryCollectionChildren::add) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   GeometryCollection *geom = node_gdal::UnwrapWrapped<GeometryCollection>(parent);
 
   Geometry *child;
@@ -177,12 +173,12 @@ NAN_METHOD(GeometryCollectionChildren::add) {
   }
   if (info[0].IsArray()) {
     // set from array of geometry objects
-    Napi::Array array = info[0].As<Array>();
-    int length = array->Length();
+    Napi::Array array = info[0].As<Napi::Array>();
+    int length = array.Length();
     for (int i = 0; i < length; i++) {
-      Napi::Value element = Nan::Get(array, i).ToLocalChecked();
+      Napi::Value element = array.As<Napi::Object>().Get(i);
       if (IS_WRAPPED(element, Geometry)) {
-        child = node_gdal::UnwrapWrapped<Geometry>(element.As<Object>());
+        child = node_gdal::UnwrapWrapped<Geometry>(element.As<Napi::Object>());
         OGRErr err = geom->get()->addGeometry(child->get());
         if (err) {
           NODE_THROW_OGRERR(err);
@@ -194,7 +190,7 @@ NAN_METHOD(GeometryCollectionChildren::add) {
       }
     }
   } else if (IS_WRAPPED(info[0], Geometry)) {
-    child = node_gdal::UnwrapWrapped<Geometry>(info[0].As<Object>());
+    child = node_gdal::UnwrapWrapped<Geometry>(info[0].As<Napi::Object>());
     OGRErr err = geom->get()->addGeometry(child->get());
     if (err) {
       NODE_THROW_OGRERR(err);

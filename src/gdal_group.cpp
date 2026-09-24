@@ -43,7 +43,7 @@ Group::Group(std::shared_ptr<GDALGroup> group) : Nan::ObjectWrap(), uid(0), this
   LOG("Created group [%p]", group.get());
 }
 
-Group::Group() : Nan::ObjectWrap(), uid(0), this_(0), parent_ds(0) {
+Group::Group(const Napi::CallbackInfo &info) : GDALObject<Group>(info), uid(0), this_(0), parent_ds(0) {
 }
 
 Group::~Group() {
@@ -74,19 +74,19 @@ NAN_METHOD(Group::New) {
   }
 
   if (info.Length() > 1 && info[0].IsExternal() && info[1].IsObject()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     Group *f = static_cast<Group *>(ptr);
     f->Wrap(info.This());
 
     Napi::Value groups = GroupGroups::New(info.This(), info[1]);
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "groups_"), groups);
+    GDAL_SET_PRIVATE(info.This(), "groups_", groups);
     Napi::Value arrays = GroupArrays::New(info.This(), info[1]);
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "arrays_"), arrays);
+    GDAL_SET_PRIVATE(info.This(), "arrays_", arrays);
     Napi::Value dims = GroupDimensions::New(info.This(), info[1]);
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "dims_"), dims);
+    GDAL_SET_PRIVATE(info.This(), "dims_", dims);
     Napi::Value attrs = GroupAttributes::New(info.This(), info[1]);
-    Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "attrs_"), attrs);
+    GDAL_SET_PRIVATE(info.This(), "attrs_", attrs);
 
     return info.This();
     return node_gdal::napi_env.Undefined();
@@ -123,7 +123,7 @@ Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, Napi::Object parent_ds) {
   Napi::Value ext = Nan::New<External>(wrapped);
   Napi::Value argv[] = {ext, parent_ds};
   Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Group::constructor)), 2, argv).ToLocalChecked();
+    Nan::NewInstance(Group::constructor.Value(), 2, argv);
 
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(parent_ds);
   long parent_uid = unwrapped_ds->uid;
@@ -131,8 +131,8 @@ Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, Napi::Object parent_ds) {
   wrapped->uid = object_store.add(raw, wrapped->persistent(), parent_uid);
   wrapped->parent_ds = unwrapped_ds->get();
   wrapped->parent_uid = parent_uid;
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "ds_"), parent_ds);
-  if (parent_group_uid != 0) Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), parent);
+  GDAL_SET_PRIVATE(obj, "ds_", parent_ds);
+  if (parent_group_uid != 0) GDAL_SET_PRIVATE(obj, "parent_", parent);
 
   return obj;
 }
@@ -160,7 +160,7 @@ NODE_WRAPPED_GETTER_WITH_STRING_LOCKED(Group, descriptionGetter, GetFullName);
  * @type {GroupGroups}
  */
 NAN_GETTER(Group::groupsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "groups_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "groups_");
 }
 
 /**
@@ -172,7 +172,7 @@ NAN_GETTER(Group::groupsGetter) {
  * @type {GroupArrays}
  */
 NAN_GETTER(Group::arraysGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "arrays_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "arrays_");
 }
 
 /**
@@ -184,7 +184,7 @@ NAN_GETTER(Group::arraysGetter) {
  * @type {GroupDimensions}
  */
 NAN_GETTER(Group::dimensionsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "dims_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "dims_");
 }
 
 /**
@@ -196,7 +196,7 @@ NAN_GETTER(Group::dimensionsGetter) {
  * @type {GroupAttributes}
  */
 NAN_GETTER(Group::attributesGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "attrs_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "attrs_");
 }
 
 NAN_GETTER(Group::uidGetter) {

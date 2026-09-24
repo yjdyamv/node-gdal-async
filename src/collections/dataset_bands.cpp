@@ -29,7 +29,7 @@ void DatasetBands::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-DatasetBands::DatasetBands() : Nan::ObjectWrap() {
+DatasetBands::DatasetBands(const Napi::CallbackInfo &info) : GDALObject<DatasetBands>(info) {
 }
 
 DatasetBands::~DatasetBands() {
@@ -51,8 +51,8 @@ NAN_METHOD(DatasetBands::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     DatasetBands *f = static_cast<DatasetBands *>(ptr);
     f->Wrap(info.This());
     return info.This();
@@ -65,12 +65,9 @@ NAN_METHOD(DatasetBands::New) {
 
 Napi::Value DatasetBands::New(Napi::Value ds_obj) {
 
-  DatasetBands *wrapped = new DatasetBands();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, DatasetBands::constructor)), 1, &ext).ToLocalChecked();
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "parent_"), ds_obj);
+  std::vector<napi_value> args;
+  Napi::Object obj = DatasetBands::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", ds_obj);
 
   return obj;
 }
@@ -106,7 +103,7 @@ NAN_METHOD(DatasetBands::toString) {
 GDAL_ASYNCABLE_DEFINE(DatasetBands::get) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -159,7 +156,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::get) {
 GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -226,7 +223,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::create) {
 GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
 
   Napi::Object parent =
-    Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked().As<Object>();
+    GDAL_GET_PRIVATE(info.This(), "parent_").As<Napi::Object>();
   Dataset *ds = node_gdal::UnwrapWrapped<Dataset>(parent);
 
   if (!ds->isAlive()) {
@@ -256,7 +253,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetBands::count) {
  * @type {Dataset}
  */
 NAN_GETTER(DatasetBands::dsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "parent_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "parent_");
 }
 
 } // namespace node_gdal

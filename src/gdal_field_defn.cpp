@@ -33,7 +33,7 @@ FieldDefn::FieldDefn(OGRFieldDefn *def) : Nan::ObjectWrap(), this_(def), owned_(
   LOG("Created FieldDefn [%p]", def);
 }
 
-FieldDefn::FieldDefn() : Nan::ObjectWrap(), this_(0), owned_(false) {
+FieldDefn::FieldDefn(const Napi::CallbackInfo &info) : GDALObject<FieldDefn>(info), this_(0), owned_(false) {
 }
 
 FieldDefn::~FieldDefn() {
@@ -59,8 +59,8 @@ NAN_METHOD(FieldDefn::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     FieldDefn *f = static_cast<FieldDefn *>(ptr);
     f->Wrap(info.This());
     return info.This();
@@ -102,12 +102,9 @@ Napi::Value FieldDefn::New(OGRFieldDefn *def, bool owned) {
   if (!def) { return node_gdal::napi_env.Null(); }
   if (!owned) { def = new OGRFieldDefn(def); }
 
-  FieldDefn *wrapped = new FieldDefn(def);
-  wrapped->owned_ = true;
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, FieldDefn::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, def)};
+  Napi::Object obj = FieldDefn::constructor.Value().New(args);
+  FieldDefn *wrapped = node_gdal::UnwrapWrapped<FieldDefn>(obj);
 
   return obj;
 }
@@ -258,7 +255,7 @@ NAN_SETTER(FieldDefn::widthSetter) {
     Napi::Error::New(node_gdal::napi_env, "width must be an integer").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetWidth(Nan::To<int64_t>(value).ToChecked());
+  def->this_->SetWidth(value.As<Napi::Number>().Int64Value());
 }
 
 NAN_SETTER(FieldDefn::precisionSetter) {
@@ -267,7 +264,7 @@ NAN_SETTER(FieldDefn::precisionSetter) {
     Napi::Error::New(node_gdal::napi_env, "precision must be an integer").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetPrecision(Nan::To<int64_t>(value).ToChecked());
+  def->this_->SetPrecision(value.As<Napi::Number>().Int64Value());
 }
 
 NAN_SETTER(FieldDefn::ignoredSetter) {
@@ -276,7 +273,7 @@ NAN_SETTER(FieldDefn::ignoredSetter) {
     Napi::Error::New(node_gdal::napi_env, "ignored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetIgnored(Nan::To<int64_t>(value).ToChecked());
+  def->this_->SetIgnored(value.As<Napi::Number>().Int64Value());
 }
 
 } // namespace node_gdal

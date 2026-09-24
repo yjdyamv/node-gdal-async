@@ -27,7 +27,7 @@ void GDALDrivers::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-GDALDrivers::GDALDrivers() : Nan::ObjectWrap() {
+GDALDrivers::GDALDrivers(const Napi::CallbackInfo &info) : GDALObject<GDALDrivers>(info) {
 }
 
 GDALDrivers::~GDALDrivers() {
@@ -46,8 +46,8 @@ NAN_METHOD(GDALDrivers::New) {
     return node_gdal::napi_env.Undefined();
   }
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     GDALDrivers *f = static_cast<GDALDrivers *>(ptr);
     f->Wrap(info.This());
     return info.This();
@@ -60,11 +60,8 @@ NAN_METHOD(GDALDrivers::New) {
 
 Napi::Value GDALDrivers::New() {
 
-  GDALDrivers *wrapped = new GDALDrivers();
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  v8::Local<v8::Object> obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, GDALDrivers::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args;
+  Napi::Object obj = GDALDrivers::constructor.Value().New(args);
 
   return obj;
 }
@@ -112,7 +109,7 @@ NAN_METHOD(GDALDrivers::get) {
     }
 
   } else if (info[0].IsNumber()) {
-    int i = static_cast<int>(Nan::To<int64_t>(info[0]).ToChecked());
+    int i = static_cast<int>(info[0].As<Napi::Number>().Int64Value());
 
     gdal_driver = GetGDALDriverManager()->GetDriver(i);
     if (gdal_driver) {

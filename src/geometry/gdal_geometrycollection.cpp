@@ -73,7 +73,7 @@ NODE_WRAPPED_METHOD_WITH_RESULT(GeometryCollection, getLength, Number, get_Lengt
  * @type {GeometryCollectionChildren}
  */
 NAN_GETTER(GeometryCollection::childrenGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "children_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "children_");
 }
 
 } // namespace node_gdal

@@ -50,7 +50,7 @@ Feature::Feature(OGRFeature *feature) : Nan::ObjectWrap(), this_(feature), owned
   LOG("Created Feature[%p]", feature);
 }
 
-Feature::Feature() : Nan::ObjectWrap(), this_(0), owned_(true) {
+Feature::Feature(const Napi::CallbackInfo &info) : GDALObject<Feature>(info), this_(0), owned_(true) {
 }
 
 Feature::~Feature() {
@@ -98,8 +98,8 @@ NAN_METHOD(Feature::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     f = static_cast<Feature *>(ptr);
 
   } else {
@@ -112,14 +112,14 @@ NAN_METHOD(Feature::New) {
     OGRFeatureDefn *def;
 
     if (IS_WRAPPED(info[0], Layer)) {
-      Layer *layer = node_gdal::UnwrapWrapped<Layer>(info[0].As<Object>());
+      Layer *layer = node_gdal::UnwrapWrapped<Layer>(info[0].As<Napi::Object>());
       if (!layer->isAlive()) {
         Napi::Error::New(node_gdal::napi_env, "Layer object already destroyed").ThrowAsJavaScriptException();
         return node_gdal::napi_env.Undefined();
       }
       def = layer->get()->GetLayerDefn();
     } else if (IS_WRAPPED(info[0], FeatureDefn)) {
-      FeatureDefn *feature_def = node_gdal::UnwrapWrapped<FeatureDefn>(info[0].As<Object>());
+      FeatureDefn *feature_def = node_gdal::UnwrapWrapped<FeatureDefn>(info[0].As<Napi::Object>());
       if (!feature_def->isAlive()) {
         Napi::Error::New(node_gdal::napi_env, "FeatureDefn object already destroyed").ThrowAsJavaScriptException();
         return node_gdal::napi_env.Undefined();
@@ -135,7 +135,7 @@ NAN_METHOD(Feature::New) {
   }
 
   Napi::Value fields = FeatureFields::New(info.This());
-  Nan::SetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "fields_"), fields);
+  GDAL_SET_PRIVATE(info.This(), "fields_", fields);
 
   f->Wrap(info.This());
   return info.This();
@@ -149,11 +149,9 @@ Napi::Value Feature::New(OGRFeature *feature, bool owned) {
 
   if (!feature) { return node_gdal::napi_env.Null(); }
 
-  Feature *wrapped = new Feature(feature);
-  wrapped->owned_ = owned;
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Feature::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, feature)};
+  Napi::Object obj = Feature::constructor.Value().New(args);
+  Feature *wrapped = node_gdal::UnwrapWrapped<Feature>(obj);
   return obj;
 }
 
@@ -340,7 +338,7 @@ NAN_METHOD(Feature::setFrom) {
     int *index_map_ptr = new int[index_map->Length()];
 
     for (unsigned index = 0; index < index_map->Length(); index++) {
-      Napi::Value field_index(Nan::Get(index_map, Napi::Number::New(node_gdal::napi_env, index)).ToLocalChecked());
+      Napi::Value field_index(index_map.As<Napi::Object>().Get(Napi::Number::New(node_gdal::napi_env, index)));
 
       if (!field_index->IsInt32()) {
         delete[] index_map_ptr;
@@ -348,7 +346,7 @@ NAN_METHOD(Feature::setFrom) {
         return node_gdal::napi_env.Undefined();
       }
 
-      int val = (int)Nan::To<int32_t>(field_index).ToChecked(); // todo: validate index? perhaps ogr already
+      int val = (int)field_index.As<Napi::Number>().Int32Value(); // todo: validate index? perhaps ogr already
                                                                 // does this and throws an error
 
       index_map_ptr[index] = val;
@@ -375,7 +373,7 @@ NAN_METHOD(Feature::setFrom) {
  * @type {FeatureFields}
  */
 NAN_GETTER(Feature::fieldsGetter) {
-  return Nan::GetPrivate(info.This(), Napi::String::New(node_gdal::napi_env, "fields_")).ToLocalChecked();
+  return GDAL_GET_PRIVATE(info.This(), "fields_");
 }
 
 /**
@@ -474,7 +472,7 @@ NAN_SETTER(Feature::fidSetter) {
     Napi::Error::New(node_gdal::napi_env, "fid must be an integer").ThrowAsJavaScriptException();
     return;
   }
-  feature->this_->SetFID(Nan::To<int64_t>(value).ToChecked());
+  feature->this_->SetFID(value.As<Napi::Number>().Int64Value());
 }
 
 } // namespace node_gdal

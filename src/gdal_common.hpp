@@ -310,8 +310,11 @@ inline Napi::Symbol PrivateKey(Napi::Env env, const char *name) {
 
 } // namespace node_gdal
 
-#define GDAL_SET_PRIVATE(obj, name, value) obj.Set(node_gdal::PrivateKey(obj.Env(), name), value)
-#define GDAL_GET_PRIVATE(obj, name) (obj).Get(node_gdal::PrivateKey(obj.Env(), name))
+// `.As<Napi::Object>()` keeps these usable with either an Object or a Value
+// (call sites pass info.This() and plain locals alike)
+#define GDAL_SET_PRIVATE(obj, name, value)                                                                             \
+  (obj).As<Napi::Object>().Set(node_gdal::PrivateKey((obj).Env(), name), value)
+#define GDAL_GET_PRIVATE(obj, name) (obj).As<Napi::Object>().Get(node_gdal::PrivateKey((obj).Env(), name))
 
 // ----- inheritance -------
 

@@ -42,7 +42,7 @@ Dimension::Dimension(std::shared_ptr<GDALDimension> dimension)
   LOG("Created dimension [%p]", dimension.get());
 }
 
-Dimension::Dimension() : Nan::ObjectWrap(), uid(0), this_(0), parent_ds(0) {
+Dimension::Dimension(const Napi::CallbackInfo &info) : GDALObject<Dimension>(info), uid(0), this_(0), parent_ds(0) {
 }
 
 Dimension::~Dimension() {
@@ -73,8 +73,8 @@ NAN_METHOD(Dimension::New) {
   }
 
   if (info.Length() == 1 && info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     Dimension *f = static_cast<Dimension *>(ptr);
     f->Wrap(info.This());
 
@@ -93,20 +93,9 @@ Napi::Value Dimension::New(std::shared_ptr<GDALDimension> raw, GDALDataset *pare
   if (!raw) { return node_gdal::napi_env.Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  Dimension *wrapped = new Dimension(raw);
-
-  Napi::Object ds;
-  if (object_store.has(parent_ds)) {
-    ds = object_store.get(parent_ds);
-  } else {
-    LOG("Dimension's parent dataset disappeared from cache (array = %p, dataset = %p)", raw.get(), parent_ds);
-    Napi::Error::New(node_gdal::napi_env, "Dimension's parent dataset disappeared from cache").ThrowAsJavaScriptException();
-    return node_gdal::napi_env.Undefined();
-  }
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Dimension::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, raw)};
+  Napi::Object obj = Dimension::constructor.Value().New(args);
+  Dimension *wrapped = node_gdal::UnwrapWrapped<Dimension>(obj);
 
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(ds);
   long parent_uid = unwrapped_ds->uid;
@@ -115,7 +104,7 @@ Napi::Value Dimension::New(std::shared_ptr<GDALDimension> raw, GDALDataset *pare
   wrapped->parent_ds = parent_ds;
   wrapped->parent_uid = parent_uid;
 
-  Nan::SetPrivate(obj, Napi::String::New(node_gdal::napi_env, "ds_"), ds);
+  GDAL_SET_PRIVATE(obj, "ds_", ds);
 
   return obj;
 }

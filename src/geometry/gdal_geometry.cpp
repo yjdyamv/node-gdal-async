@@ -110,8 +110,8 @@ NAN_METHOD(Geometry::New) {
   }
 
   if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<External>();
-    void *ptr = ext->Value(V8_TYPE_TAG);
+    Local<External> ext = info[0].As<Napi::External<void>>();
+    void *ptr = ext->Value();
     f = static_cast<Geometry *>(ptr);
 
   } else {
@@ -1103,7 +1103,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKT) {
       CPLFree(text);
       return r;
     }
-    return node_gdal::napi_env.Undefined().As<Value>();
+    return node_gdal::napi_env.Undefined().As<Napi::Value>();
   };
 
   return job.run(info, async, 0);
@@ -1201,7 +1201,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKB) {
                               free(data);
                             },
                             hint)
-                            .ToLocalChecked();
+                            ;
     return result;
   };
   return job.run(info, async, 2);
@@ -1250,7 +1250,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToKML) {
       CPLFree(text);
       return result;
     }
-    return node_gdal::napi_env.Undefined().As<Value>();
+    return node_gdal::napi_env.Undefined().As<Napi::Value>();
   };
   return job.run(info, async, 0);
 }
@@ -1298,7 +1298,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToGML) {
       CPLFree(text);
       return result;
     }
-    return node_gdal::napi_env.Undefined().As<Value>();
+    return node_gdal::napi_env.Undefined().As<Napi::Value>();
   };
   return job.run(info, async, 0);
 }
@@ -1346,7 +1346,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToJSON) {
       CPLFree(text);
       return result;
     }
-    return node_gdal::napi_env.Undefined().As<Value>();
+    return node_gdal::napi_env.Undefined().As<Napi::Value>();
   };
   return job.run(info, async, 0);
 }
@@ -1688,7 +1688,7 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
     Napi::Error::New(node_gdal::napi_env, "Invalid GeoJSON").ThrowAsJavaScriptException();
     return node_gdal::napi_env.Undefined();
   }
-  Local<String> stringified = result.ToLocalChecked();
+  Local<String> stringified = result;
   std::string *val = new std::string(stringified.As<Napi::String>().Utf8Value());
 
   GDALAsyncableJob<OGRGeometry *> job(0);
@@ -1809,7 +1809,7 @@ NAN_SETTER(Geometry::srsSetter) {
 
   OGRSpatialReference *srs = NULL;
   if (IS_WRAPPED(value, SpatialReference)) {
-    SpatialReference *srs_obj = node_gdal::UnwrapWrapped<SpatialReference>(value.As<Object>());
+    SpatialReference *srs_obj = node_gdal::UnwrapWrapped<SpatialReference>(value.As<Napi::Object>());
     srs = srs_obj->get();
   } else if (!value->IsNull() && !value->IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env, "srs must be SpatialReference object").ThrowAsJavaScriptException();
@@ -1901,7 +1901,7 @@ NAN_SETTER(Geometry::coordinateDimensionSetter) {
     Napi::Error::New(node_gdal::napi_env, "coordinateDimension must be an integer").ThrowAsJavaScriptException();
     return;
   }
-  int dim = Nan::To<int64_t>(value).ToChecked();
+  int dim = value.As<Napi::Number>().Int64Value();
   if (dim != 2 && dim != 3) {
     Napi::Error::New(node_gdal::napi_env, "coordinateDimension must be 2 or 3").ThrowAsJavaScriptException();
     return;
@@ -1914,20 +1914,20 @@ Napi::Value Geometry::getConstructor(OGRwkbGeometryType type) {
 
   type = wkbFlatten(type);
   switch (type) {
-    case wkbPoint: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Point::constructor));
-    case wkbLineString: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, LineString::constructor));
-    case wkbLinearRing: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, LinearRing::constructor));
-    case wkbPolygon: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, Polygon::constructor));
+    case wkbPoint: return Point::constructor.Value();
+    case wkbLineString: return LineString::constructor.Value();
+    case wkbLinearRing: return LinearRing::constructor.Value();
+    case wkbPolygon: return Polygon::constructor.Value();
     case wkbGeometryCollection:
-      return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, GeometryCollection::constructor));
-    case wkbMultiPoint: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, MultiPoint::constructor));
+      return GeometryCollection::constructor.Value();
+    case wkbMultiPoint: return MultiPoint::constructor.Value();
     case wkbMultiLineString:
-      return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, MultiLineString::constructor));
-    case wkbMultiPolygon: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, MultiPolygon::constructor));
+      return MultiLineString::constructor.Value();
+    case wkbMultiPolygon: return MultiPolygon::constructor.Value();
     case wkbCircularString:
-      return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, CircularString::constructor));
-    case wkbCompoundCurve: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, CompoundCurve::constructor));
-    case wkbMultiCurve: return Nan::GetFunction(Napi::String::New(node_gdal::napi_env, MultiCurve::constructor));
+      return CircularString::constructor.Value();
+    case wkbCompoundCurve: return CompoundCurve::constructor.Value();
+    case wkbMultiCurve: return MultiCurve::constructor.Value();
     default: return node_gdal::napi_env.Null();
   }
 }

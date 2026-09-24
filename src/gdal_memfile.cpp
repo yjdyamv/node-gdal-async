@@ -194,7 +194,7 @@ NAN_METHOD(Memfile::vsimemAnonymous) {
   if (memfile == nullptr)
     Napi::Error::New(node_gdal::napi_env, "Failed creating in-memory file").ThrowAsJavaScriptException();
   else
-    return Nan::New<String>(memfile->filename).ToLocalChecked();
+    return Nan::New<String>(memfile->filename);
 }
 
 /**
@@ -261,7 +261,7 @@ NAN_METHOD(Memfile::vsimemRelease) {
                                   CPLFree(data);
                                 },
                                 nullptr)
-                                .ToLocalChecked());
+                                );
   }
 }
 

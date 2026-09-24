@@ -44,12 +44,9 @@ Napi::Value LinearRing::New(OGRLinearRing *geom, bool owned) {
 
   if (!owned) { geom = static_cast<OGRLinearRing *>(geom->clone()); }
 
-  LinearRing *wrapped = new LinearRing(geom);
-  wrapped->owned_ = true;
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(Nan::GetFunction(Napi::String::New(node_gdal::napi_env, LinearRing::constructor)), 1, &ext).ToLocalChecked();
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env, geom)};
+  Napi::Object obj = LinearRing::constructor.Value().New(args);
+  LinearRing *wrapped = node_gdal::UnwrapWrapped<LinearRing>(obj);
 
   return obj;
 }
