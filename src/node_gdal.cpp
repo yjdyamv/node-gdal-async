@@ -345,10 +345,13 @@ void Cleanup(void *) {
 Napi::Object Init(Napi::Env env, Napi::Object target) {
   static bool initialized = false;
   if (initialized) {
-    Napi::Error::New(env, "gdal-async does not yet support multiple instances per V8 isolate").ThrowAsJavaScriptException();
+    // The addon can be pulled in twice by the same process (the CJS and the ESM
+    // loader both resolve it). The exports are already built, so hand them back.
     return target;
   }
   initialized = true;
+  // everything that goes through the ambient node_gdal::napi_env() needs this
+  napi_env_storage = env;
   mainV8ThreadId = std::this_thread::get_id();
 
   GDAL_SetAsyncableMethod(env, target, "open", gdal_open);
