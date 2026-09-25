@@ -30,11 +30,22 @@ void FeatureDefn::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-FeatureDefn::FeatureDefn(OGRFeatureDefn *def) : Nan::ObjectWrap(), this_(def), owned_(true) {
-  LOG("Created FeatureDefn [%p]", def);
-}
+FeatureDefn::FeatureDefn(const Napi::CallbackInfo &info) : GDALObject<FeatureDefn>(info), this_(nullptr), owned_(true) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<OGRFeatureDefn *>(info[0].As<Napi::External<void>>().Data());
+  } else if (info.Length() == 0) {
+    // constructed from JS: new gdal.FeatureDefn()
+    this_ = new OGRFeatureDefn();
+    this_->Reference();
+  } else {
+    Napi::Error::New(info.Env(), "FeatureDefn constructor doesn't take any arguments").ThrowAsJavaScriptException();
+    return;
+  }
+  LOG("Created FeatureDefn [%p]", this_);
 
-FeatureDefn::FeatureDefn(const Napi::CallbackInfo &info) : GDALObject<FeatureDefn>(info), this_(0), owned_(true) {
+  // the fields collection is kept as a private (JS-invisible) property
+  Napi::Value fields = FeatureDefnFields::New(info.This());
+  GDAL_SET_PRIVATE(info.This(), "fields_", fields);
 }
 
 FeatureDefn::~FeatureDefn() {
@@ -44,40 +55,6 @@ FeatureDefn::~FeatureDefn() {
     this_ = NULL;
     LOG("Disposed FeatureDefn [%p]", this_);
   }
-}
-
-/**
- * Definition of a feature class or feature layer.
- *
- * @constructor
- * @class FeatureDefn
- */
-NAN_METHOD(FeatureDefn::New) {
-  FeatureDefn *f;
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    f = static_cast<FeatureDefn *>(ptr);
-  } else {
-    if (info.Length() != 0) {
-      Napi::Error::New(node_gdal::napi_env(), "FeatureDefn constructor doesn't take any arguments").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-    f = new FeatureDefn(new OGRFeatureDefn());
-    f->this_->Reference();
-  }
-
-  Napi::Value fields = FeatureDefnFields::New(info.This());
-  GDAL_SET_PRIVATE(info.This(), "fields_", fields);
-
-  f->Wrap(info.This());
-  return info.This();
 }
 
 // Currently read-only feature definitions are copied.

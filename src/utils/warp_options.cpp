@@ -240,16 +240,16 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "cutline"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "cutline"));
-    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env(), Geometry::constructor)->HasInstance(prop)) {
+    if (prop.IsObject() && !prop.IsNull() && prop.As<Napi::Object>().InstanceOf(Geometry::constructor.Value())) {
       options->hCutline = node_gdal::UnwrapWrapped<Geometry>(prop.As<Napi::Object>())->get();
-    } else if (!prop->IsUndefined() && !prop->IsNull()) {
+    } else if (!prop.IsUndefined() && !prop.IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "cutline property must be a Geometry object").ThrowAsJavaScriptException();
       return 1;
     }
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "multi"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "multi"));
-    if (prop->IsTrue()) { multi = true; }
+    if (prop.IsTrue()) { multi = true; }
   }
   return 0;
 }

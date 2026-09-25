@@ -1205,7 +1205,7 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::colorInterpretationGetter) {
 
 NAN_SETTER(RasterBand::unitTypeSetter) {
   NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
-  if (!value->IsString()) {
+  if (!value.IsString()) {
     Napi::Error::New(node_gdal::napi_env(), "Unit type must be a string").ThrowAsJavaScriptException();
     return;
   }

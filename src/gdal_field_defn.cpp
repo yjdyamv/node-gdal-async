@@ -29,11 +29,30 @@ void FieldDefn::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-FieldDefn::FieldDefn(OGRFieldDefn *def) : Nan::ObjectWrap(), this_(def), owned_(false) {
-  LOG("Created FieldDefn [%p]", def);
-}
+FieldDefn::FieldDefn(const Napi::CallbackInfo &info) : GDALObject<FieldDefn>(info), this_(nullptr), owned_(false) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<OGRFieldDefn *>(info[0].As<Napi::External<void>>().Data());
+    LOG("Created FieldDefn [%p]", this_);
+    return;
+  }
 
-FieldDefn::FieldDefn(const Napi::CallbackInfo &info) : GDALObject<FieldDefn>(info), this_(0), owned_(false) {
+  // Constructed from JS: FieldDefn(name, type). The NODE_ARG_* macros cannot be
+  // used here - they return a value on error, which a constructor cannot do
+  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsString()) {
+    Napi::Error::New(info.Env(), "FieldDefn requires a field name and a field type").ThrowAsJavaScriptException();
+    return;
+  }
+  std::string field_name = info[0].As<Napi::String>().Utf8Value();
+  std::string type_name = info[1].As<Napi::String>().Utf8Value();
+
+  int field_type = getFieldTypeByName(type_name);
+  if (field_type < 0) {
+    Napi::Error::New(info.Env(), "Unrecognized field type").ThrowAsJavaScriptException();
+    return;
+  }
+
+  this_ = new OGRFieldDefn(field_name.c_str(), static_cast<OGRFieldType>(field_type));
+  owned_ = true;
 }
 
 FieldDefn::~FieldDefn() {
@@ -43,47 +62,6 @@ FieldDefn::~FieldDefn() {
     LOG("Disposed FieldDefn [%p]", this_);
     this_ = NULL;
   }
-}
-
-/**
- * @constructor
- * @class FieldDefn
- * @param {string} name Field name
- * @param {string} type Data type (see {@link Constants (OFT)|OFT}
- */
-NAN_METHOD(FieldDefn::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    FieldDefn *f = static_cast<FieldDefn *>(ptr);
-    f->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env().Undefined();
-  } else {
-    std::string field_name("");
-    std::string type_name("string");
-
-    NODE_ARG_STR(0, "field name", field_name);
-    NODE_ARG_STR(1, "field type", type_name);
-
-    int field_type = getFieldTypeByName(type_name);
-    if (field_type < 0) {
-      Napi::Error::New(node_gdal::napi_env(), "Unrecognized field type").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-
-    FieldDefn *def = new FieldDefn(new OGRFieldDefn(field_name.c_str(), static_cast<OGRFieldType>(field_type)));
-    def->owned_ = true;
-    def->Wrap(info.This());
-  }
-
-  return info.This();
 }
 
 // Currently read-only field definitions are copied.
@@ -200,7 +178,7 @@ NAN_GETTER(FieldDefn::precisionGetter) {
 
 NAN_SETTER(FieldDefn::nameSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value->IsString()) {
+  if (!value.IsString()) {
     Napi::Error::New(node_gdal::napi_env(), "Name must be string").ThrowAsJavaScriptException();
     return;
   }
@@ -210,7 +188,7 @@ NAN_SETTER(FieldDefn::nameSetter) {
 
 NAN_SETTER(FieldDefn::typeSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value->IsString()) {
+  if (!value.IsString()) {
     Napi::Error::New(node_gdal::napi_env(), "type must be a string").ThrowAsJavaScriptException();
     return;
   }
@@ -228,7 +206,7 @@ NAN_SETTER(FieldDefn::justificationSetter) {
 
   OGRJustification justification;
   std::string str = value.As<Napi::String>().Utf8Value();
-  if (value->IsString()) {
+  if (value.IsString()) {
     if (str == "Left") {
       justification = OJLeft;
     } else if (str == "Right") {
@@ -251,7 +229,7 @@ NAN_SETTER(FieldDefn::justificationSetter) {
 
 NAN_SETTER(FieldDefn::widthSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value->IsInt32()) {
+  if (!value.IsInt32()) {
     Napi::Error::New(node_gdal::napi_env(), "width must be an integer").ThrowAsJavaScriptException();
     return;
   }
@@ -260,7 +238,7 @@ NAN_SETTER(FieldDefn::widthSetter) {
 
 NAN_SETTER(FieldDefn::precisionSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value->IsInt32()) {
+  if (!value.IsInt32()) {
     Napi::Error::New(node_gdal::napi_env(), "precision must be an integer").ThrowAsJavaScriptException();
     return;
   }
@@ -269,7 +247,7 @@ NAN_SETTER(FieldDefn::precisionSetter) {
 
 NAN_SETTER(FieldDefn::ignoredSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value->IsBoolean()) {
+  if (!value.IsBoolean()) {
     Napi::Error::New(node_gdal::napi_env(), "ignored must be a boolean").ThrowAsJavaScriptException();
     return;
   }

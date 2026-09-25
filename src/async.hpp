@@ -412,8 +412,12 @@ template <class GDALType> class GDALAsyncableJob {
     persistent[key] = obj;
   }
 
-  inline void persist(const Napi::Object &obj) {
-    persistent[std::to_string(autoIndex++)] = obj;
+  inline void persist(const std::string &key, const Napi::Value &v) {
+    persistent[key] = v.As<Napi::Object>();
+  }
+
+  inline void persist(const Napi::Value &v) {
+    persistent[std::to_string(autoIndex++)] = v.As<Napi::Object>();
   }
 
   inline void persist(const Napi::Object &obj1, const Napi::Object &obj2) {

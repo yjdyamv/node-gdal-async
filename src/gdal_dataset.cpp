@@ -856,13 +856,13 @@ GDAL_ASYNCABLE_GETTER_DEFINE(Dataset::geoTransformGetter) {
     if (transform == nullptr) return node_gdal::napi_env().Null().As<v8::Value>();
     Napi::Array result = Napi::Array::New(node_gdal::napi_env(), 6);
     result.Set(static_cast<uint32_t>(0), Napi::Number::New(node_gdal::napi_env(), transform.get()[0]));
-    result.Set( 1, Napi::Number::New(node_gdal::napi_env(), transform.get()[1]));
-    result.Set( 2, Napi::Number::New(node_gdal::napi_env(), transform.get()[2]));
-    result.Set( 3, Napi::Number::New(node_gdal::napi_env(), transform.get()[3]));
-    result.Set( 4, Napi::Number::New(node_gdal::napi_env(), transform.get()[4]));
-    result.Set( 5, Napi::Number::New(node_gdal::napi_env(), transform.get()[5]));
+    result.Set(static_cast<uint32_t>(1), Napi::Number::New(node_gdal::napi_env(), transform.get()[1]));
+    result.Set(static_cast<uint32_t>(2), Napi::Number::New(node_gdal::napi_env(), transform.get()[2]));
+    result.Set(static_cast<uint32_t>(3), Napi::Number::New(node_gdal::napi_env(), transform.get()[3]));
+    result.Set(static_cast<uint32_t>(4), Napi::Number::New(node_gdal::napi_env(), transform.get()[4]));
+    result.Set(static_cast<uint32_t>(5), Napi::Number::New(node_gdal::napi_env(), transform.get()[5]));
 
-    return result.As<v8::Value>();
+    return result;
   };
 
   return job.run(info, async);
