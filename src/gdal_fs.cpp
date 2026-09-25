@@ -147,22 +147,22 @@ GDAL_ASYNCABLE_DEFINE(VSI::stat) {
     job.rval = [](VSIStatBufL stat, const GetFromPersistentFunc &) {
 
       Napi::Object result = Napi::Object::New(node_gdal::napi_env());
-      result.Set( Napi::String::New(node_gdal::napi_env(), "dev"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_dev));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "mode"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_mode));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "nlink"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_nlink));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "uid"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_uid));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "gid"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_gid));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "rdev"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_rdev));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "dev"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_dev)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "mode"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_mode)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "nlink"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_nlink)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "uid"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_uid)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "gid"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_gid)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "rdev"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_rdev)));
 
 #ifndef WIN32
-      result.Set( Napi::String::New(node_gdal::napi_env(), "blksize"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_blksize));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "ino"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_ino));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "size"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_size));
-      result.Set( Napi::String::New(node_gdal::napi_env(), "blocks"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_blocks));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "blksize"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_blksize)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "ino"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_ino)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "size"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_size)));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "blocks"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_blocks)));
 #else
       result.Set( Napi::String::New(node_gdal::napi_env(), "blksize"), node_gdal::napi_env().Undefined());
       result.Set( Napi::String::New(node_gdal::napi_env(), "ino"), node_gdal::napi_env().Undefined());
-      result.Set( Napi::String::New(node_gdal::napi_env(), "size"), v8::BigInt::New(v8::Isolate::GetCurrent(), stat.st_size));
+      result.Set( Napi::String::New(node_gdal::napi_env(), "size"), Napi::BigInt::New(node_gdal::napi_env(), static_cast<int64_t>(stat.st_size)));
       result.Set( Napi::String::New(node_gdal::napi_env(), "blocks"), node_gdal::napi_env().Undefined());
 #endif
 

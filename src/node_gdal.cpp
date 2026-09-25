@@ -1758,7 +1758,7 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
    *
    * @var {object} lastError
    */
-  target.DefineProperty(Napi::PropertyDescriptor::Accessor("lastError", LastErrorGetter, LastErrorSetter));
+  GDAL_DEFINE_ACCESSOR(target, "lastError", LastErrorGetter, LastErrorSetter);
 
   /**
    * Should a warning be emitted to stderr when a synchronous operation
@@ -1768,8 +1768,7 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
    *
    * @var {boolean} eventLoopWarning
    */
-  target.DefineProperty(
-    Napi::PropertyDescriptor::Accessor("eventLoopWarning", EventLoopWarningGetter, EventLoopWarningSetter));
+  GDAL_DEFINE_ACCESSOR(target, "eventLoopWarning", EventLoopWarningGetter, EventLoopWarningSetter);
 
   // Napi::Object versions = Napi::Object::New(env);
   // versions.Set( Napi::String::New(env, "node"),

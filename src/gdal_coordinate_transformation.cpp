@@ -138,85 +138,6 @@ CoordinateTransformation::~CoordinateTransformation() {
  * @param {SpatialReference|Dataset} target If a raster Dataset, the
  * conversion will represent a conversion to pixel coordinates.
  */
-NAN_METHOD(CoordinateTransformation::New) {
-  CoordinateTransformation *f;
-  SpatialReference *source, *target;
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    f = static_cast<CoordinateTransformation *>(ptr);
-  } else {
-    if (info.Length() < 2) {
-      Napi::Error::New(node_gdal::napi_env(), "Invalid number of arguments").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-
-    NODE_ARG_WRAPPED(0, "source", SpatialReference, source);
-
-    if (!info[1].IsObject() || info[1].IsNull()) {
-      Napi::TypeError::New(node_gdal::napi_env(), "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-    if (Napi::Number::New(node_gdal::napi_env(), SpatialReference::constructor)->HasInstance(info[1])) {
-      // srs -> srs
-      NODE_ARG_WRAPPED(1, "target", SpatialReference, target);
-
-      OGRCoordinateTransformation *transform = OGRCreateCoordinateTransformation(source->get(), target->get());
-      if (!transform) {
-        NODE_THROW_LAST_CPLERR;
-        return node_gdal::napi_env().Undefined();
-      }
-      f = new CoordinateTransformation(transform);
-    } else if (Napi::Number::New(node_gdal::napi_env(), Dataset::constructor)->HasInstance(info[1])) {
-      // srs -> px/line
-      // todo: allow additional options using StringList
-
-      Dataset *ds;
-      char **papszTO = NULL;
-      char *src_wkt;
-
-      ds = node_gdal::UnwrapWrapped<Dataset>(info[1].As<Napi::Object>());
-
-      if (!ds->get()) {
-        Napi::Error::New(node_gdal::napi_env(), "Dataset already closed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env().Undefined();
-      }
-
-      OGRErr err = source->get()->exportToWkt(&src_wkt);
-      if (err) {
-        NODE_THROW_OGRERR(err);
-        return node_gdal::napi_env().Undefined();
-      }
-
-      papszTO = CSLSetNameValue(papszTO, "DST_SRS", src_wkt);
-      papszTO = CSLSetNameValue(papszTO, "INSERT_CENTER_LONG", "FALSE");
-
-      GeoTransformTransformer *transform = new GeoTransformTransformer();
-      transform->hSrcImageTransformer = GDALCreateGenImgProjTransformer2(ds->get(), NULL, papszTO);
-      if (!transform->hSrcImageTransformer) {
-        NODE_THROW_LAST_CPLERR;
-        return node_gdal::napi_env().Undefined();
-      }
-
-      f = new CoordinateTransformation(transform);
-
-      CPLFree(src_wkt);
-      CSLDestroy(papszTO);
-    } else {
-      Napi::TypeError::New(node_gdal::napi_env(), "target must be a SpatialReference or Dataset object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-  }
-
-  f->Wrap(info.This());
-  return info.This();
-}
 
 Napi::Value CoordinateTransformation::New(OGRCoordinateTransformation *transform) {
 
@@ -289,8 +210,10 @@ NAN_METHOD(CoordinateTransformation::transformPoint) {
   int proj_error_code = 0;
   int r = transform->this_->TransformWithErrorCodes(1, &x, &y, &z, nullptr, &proj_error_code);
   if (!r || proj_error_code != 0) {
-    Nan::ThrowError(
-      ("Error transforming point: " + std::string(proj_context_errno_string(nullptr, proj_error_code))).c_str());
+    Napi::Error::New(
+      node_gdal::napi_env(),
+      ("Error transforming point: " + std::string(proj_context_errno_string(nullptr, proj_error_code))).c_str())
+      .ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
 #else

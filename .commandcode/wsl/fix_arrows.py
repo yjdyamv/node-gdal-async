@@ -36,7 +36,10 @@ NAPI_T = r"Napi::(?:Value|Object|Array|Function|String|Number|Boolean|BigInt|Sym
 for path, line_numbers in sorted(sites.items()):
     with open(path, encoding="utf-8") as f:
         lines = f.read().split("\n")
-    napi_vars = set(re.findall(r"%s\s*\**\s*(\w+)" % NAPI_T, "\n".join(lines)))
+    napi_vars = set(re.findall(r"%s\s*[\*&]*\s*(\w+)" % NAPI_T, "\n".join(lines)))
+    if "NAN_SETTER(" in "\n".join(lines):
+        # NAN_SETTER expands to (const CallbackInfo&, const Napi::Value& value)
+        napi_vars.add("value")
     changed = 0
     for ln in sorted(line_numbers):
         text = lines[ln - 1]

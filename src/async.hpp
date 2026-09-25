@@ -73,6 +73,19 @@ extern std::thread::id mainV8ThreadId;
     return info.Env().Undefined();                                                                                     \
   }
 
+// GDAL_LOCK_PARENT returns a value on error, so a setter (void) needs this
+#define GDAL_LOCK_PARENT_VOID(p)                                                                                       \
+  AsyncGuard lock;                                                                                                     \
+  try {                                                                                                                \
+    lock.acquire((p)->parent_uid);                                                                                     \
+  } catch (const char *err) {                                                                                          \
+    Napi::Error::New(info.Env(), err).ThrowAsJavaScriptException();                                                    \
+    return;                                                                                                            \
+  } catch (const std::exception &err) {                                                                                \
+    Napi::Error::New(info.Env(), err.what()).ThrowAsJavaScriptException();                                             \
+    return;                                                                                                            \
+  }
+
 static const char eventLoopWarning[] =
   "Synchronous method called while an asynchronous operation is running in the background, check node_modules/gdal-async/ASYNCIO.md, event loop blocked for ";
 // These constructors throw

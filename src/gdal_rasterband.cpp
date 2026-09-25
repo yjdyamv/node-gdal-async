@@ -1204,26 +1204,26 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::colorInterpretationGetter) {
 }
 
 NAN_SETTER(RasterBand::unitTypeSetter) {
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
   if (!value.IsString()) {
     Napi::Error::New(node_gdal::napi_env(), "Unit type must be a string").ThrowAsJavaScriptException();
     return;
   }
   std::string input = value.As<Napi::String>().Utf8Value();
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   CPLErr err = band->this_->SetUnitType(input.c_str());
   if (err) { NODE_THROW_LAST_CPLERR; }
 }
 
 NAN_SETTER(RasterBand::noDataValueSetter) {
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
 
   CPLErr err;
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   CPLErrorReset();
-  if (value->IsNull() || value->IsUndefined()) {
+  if (value.IsNull() || value.IsUndefined()) {
     err = band->this_->DeleteNoDataValue();
-  } else if (value->IsNumber()) {
+  } else if (value.IsNumber()) {
     err = band->this_->SetNoDataValue(value.As<Napi::Number>().DoubleValue());
   } else {
     Napi::Error::New(node_gdal::napi_env(), "No data value must be a number").ThrowAsJavaScriptException();
@@ -1234,35 +1234,35 @@ NAN_SETTER(RasterBand::noDataValueSetter) {
 }
 
 NAN_SETTER(RasterBand::scaleSetter) {
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
 
-  if (!value->IsNumber()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "Scale must be a number").ThrowAsJavaScriptException();
     return;
   }
   double input = value.As<Napi::Number>().DoubleValue();
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   CPLErr err = band->this_->SetScale(input);
   if (err) { NODE_THROW_LAST_CPLERR; }
 }
 
 NAN_SETTER(RasterBand::offsetSetter) {
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
 
-  if (!value->IsNumber()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "Offset must be a number").ThrowAsJavaScriptException();
     return;
   }
   double input = value.As<Napi::Number>().DoubleValue();
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   CPLErr err = band->this_->SetOffset(input);
   if (err) { NODE_THROW_LAST_CPLERR; }
 }
 
 NAN_SETTER(RasterBand::categoryNamesSetter) {
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
 
-  if (!value->IsArray()) {
+  if (!value.IsArray()) {
     Napi::Error::New(node_gdal::napi_env(), "Category names must be an array").ThrowAsJavaScriptException();
     return;
   }
@@ -1271,18 +1271,18 @@ NAN_SETTER(RasterBand::categoryNamesSetter) {
   char **list = NULL;
   std::shared_ptr<std::string[]> strlist;
 
-  if (names->Length() > 0) {
-    list = new char *[names->Length() + 1];
-    strlist = std::shared_ptr<std::string[]>(new std::string[names->Length()]);
+  if (names.Length() > 0) {
+    list = new char *[names.Length() + 1];
+    strlist = std::shared_ptr<std::string[]>(new std::string[names.Length()]);
     unsigned int i;
-    for (i = 0; i < names->Length(); i++) {
-      strlist.get()[i] = names.As<Napi::Object>().Get(i.As<Napi::String>().Utf8Value());
+    for (i = 0; i < names.Length(); i++) {
+      strlist.get()[i] = names.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value();
       list[i] = (char *)strlist.get()[i].c_str();
     }
     list[i] = NULL;
   }
 
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   int err = band->this_->SetCategoryNames(list);
 
   if (list) { delete[] list; }
@@ -1291,19 +1291,19 @@ NAN_SETTER(RasterBand::categoryNamesSetter) {
 }
 
 NAN_SETTER(RasterBand::colorInterpretationSetter) {
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
 
   GDALColorInterp ci = GCI_Undefined;
 
-  if (value->IsString()) {
+  if (value.IsString()) {
     std::string name = value.As<Napi::String>().Utf8Value();
     ci = GDALGetColorInterpretationByName(name.c_str());
-  } else if (!value->IsNull() && !value->IsUndefined()) {
+  } else if (!value.IsNull() && !value.IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env(), "color interpretation must be a string or undefined").ThrowAsJavaScriptException();
     return;
   }
 
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   CPLErr err = band->this_->SetColorInterpretation(ci);
   if (err) { NODE_THROW_LAST_CPLERR; }
 }
@@ -1346,21 +1346,21 @@ GDAL_ASYNCABLE_GETTER_DEFINE(RasterBand::colorTableGetter) {
 
 NAN_SETTER(RasterBand::colorTableSetter) {
 
-  NODE_UNWRAP_CHECK(RasterBand, info.This(), band);
+  NODE_UNWRAP_CHECK_VOID(RasterBand, info.This(), band);
 
   GDALColorTable *raw;
-  if (value->IsNullOrUndefined()) {
+  if (value.IsNull() || value.IsUndefined()) {
     raw = nullptr;
   } else if (IS_WRAPPED(value, ColorTable)) {
-    NODE_UNWRAP_CHECK(ColorTable, value.As<Napi::Object>(), ct);
-    GDAL_RAW_CHECK(GDALColorTable *, ct, _raw);
+    NODE_UNWRAP_CHECK_VOID(ColorTable, value.As<Napi::Object>(), ct);
+    GDAL_RAW_CHECK_VOID(GDALColorTable *, ct, _raw);
     raw = _raw;
   } else {
     Napi::TypeError::New(node_gdal::napi_env(), "color table must be a gdal.ColorTable object or null").ThrowAsJavaScriptException();
     return;
   }
 
-  GDAL_LOCK_PARENT(band);
+  GDAL_LOCK_PARENT_VOID(band);
   CPLErr err = band->this_->SetColorTable(raw);
   if (err != CE_None) { NODE_THROW_LAST_CPLERR; }
 }

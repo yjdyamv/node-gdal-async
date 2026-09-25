@@ -529,7 +529,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBandPixels::write) {
   job.persist("array", passed_array);
   job.persist(band->Value());
   if (cb) {
-    job.persist(cb->GetFunction());
+    job.persist(cb->Value());
     job.progress = cb;
   }
 

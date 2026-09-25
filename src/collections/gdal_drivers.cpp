@@ -28,6 +28,10 @@ void GDALDrivers::Initialize(Napi::Object target) {
 }
 
 GDALDrivers::GDALDrivers(const Napi::CallbackInfo &info) : GDALObject<GDALDrivers>(info) {
+  // `gdal.drivers` is created by the module; the class is not constructible
+  // from JS, which the test suite asserts
+  if (info.Length() > 0 && info[0].IsBoolean()) return;
+  Napi::Error::New(info.Env(), "Cannot create GDALDrivers directly").ThrowAsJavaScriptException();
 }
 
 GDALDrivers::~GDALDrivers() {
@@ -39,28 +43,10 @@ GDALDrivers::~GDALDrivers() {
  *
  * @class GDALDrivers
  */
-NAN_METHOD(GDALDrivers::New) {
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    GDALDrivers *f = static_cast<GDALDrivers *>(ptr);
-    f->Wrap(info.This());
-    return info.This();
-    return node_gdal::napi_env().Undefined();
-  } else {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot create GDALDrivers directly").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-}
 
 Napi::Value GDALDrivers::New() {
 
-  std::vector<napi_value> args;
+  std::vector<napi_value> args = {Napi::Boolean::New(node_gdal::napi_env(), true)};
   Napi::Object obj = GDALDrivers::constructor.Value().New(args);
 
   return obj;

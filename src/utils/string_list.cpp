@@ -41,7 +41,7 @@ int StringList::parse(Napi::Value value) {
     }
     list[i] = NULL;
   } else {
-    Napi::TypeError::New(node_gdal::napi_env(), "String list must be an array or object").ThrowAsJavaScriptException();
+    Napi::TypeError::New(value.Env(), "String list must be an array or object").ThrowAsJavaScriptException();
     return 1;
   }
   return 0;

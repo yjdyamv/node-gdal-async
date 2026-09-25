@@ -393,7 +393,7 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
 
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "src"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "src"));
-    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env(), Dataset::constructor)->HasInstance(prop)) {
+    if (prop.IsObject() && !prop.IsNull() && prop.As<Napi::Object>().InstanceOf(Dataset::constructor.Value())) {
       ds = node_gdal::UnwrapWrapped<Dataset>(prop.As<Napi::Object>());
       if (!ds->get()) {
         Napi::Error::New(node_gdal::napi_env(), "src dataset already closed").ThrowAsJavaScriptException();
@@ -474,12 +474,12 @@ GDAL_ASYNCABLE_DEFINE(Warper::suggestedWarpOutput) {
 
   job.rval = [](warpOutputResult r, const GetFromPersistentFunc &) {
     Napi::Array result_geotransform = Napi::Array::New(node_gdal::napi_env());
-    result_geotransform.Set( 0, Napi::Number::New(node_gdal::napi_env(), r.geotransform[0]));
-    result_geotransform.Set( 1, Napi::Number::New(node_gdal::napi_env(), r.geotransform[1]));
-    result_geotransform.Set( 2, Napi::Number::New(node_gdal::napi_env(), r.geotransform[2]));
-    result_geotransform.Set( 3, Napi::Number::New(node_gdal::napi_env(), r.geotransform[3]));
-    result_geotransform.Set( 4, Napi::Number::New(node_gdal::napi_env(), r.geotransform[4]));
-    result_geotransform.Set( 5, Napi::Number::New(node_gdal::napi_env(), r.geotransform[5]));
+    result_geotransform.Set(static_cast<uint32_t>(0), Napi::Number::New(node_gdal::napi_env(), r.geotransform[0]));
+    result_geotransform.Set(static_cast<uint32_t>(1), Napi::Number::New(node_gdal::napi_env(), r.geotransform[1]));
+    result_geotransform.Set(static_cast<uint32_t>(2), Napi::Number::New(node_gdal::napi_env(), r.geotransform[2]));
+    result_geotransform.Set(static_cast<uint32_t>(3), Napi::Number::New(node_gdal::napi_env(), r.geotransform[3]));
+    result_geotransform.Set(static_cast<uint32_t>(4), Napi::Number::New(node_gdal::napi_env(), r.geotransform[4]));
+    result_geotransform.Set(static_cast<uint32_t>(5), Napi::Number::New(node_gdal::napi_env(), r.geotransform[5]));
 
     Napi::Object result_size = Napi::Object::New(node_gdal::napi_env());
     result_size.Set( Napi::String::New(node_gdal::napi_env(), "x"), Napi::Number::New(node_gdal::napi_env(), r.w));

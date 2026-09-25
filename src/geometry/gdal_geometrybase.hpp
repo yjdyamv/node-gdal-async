@@ -58,6 +58,18 @@ namespace node_gdal {
     geom->size_ = new_size;                                                                                            \
   }
 
+// OGRSimpleCurve and OGRGeometry are abstract (Geometry/SimpleCurve only exist
+// so that the concrete classes can be `instanceof` them) - nothing to construct
+template <typename OGRT> inline OGRT *MakeGeometry() {
+  return new OGRT();
+}
+template <> inline OGRSimpleCurve *MakeGeometry<OGRSimpleCurve>() {
+  return nullptr;
+}
+template <> inline OGRGeometry *MakeGeometry<OGRGeometry>() {
+  return nullptr;
+}
+
 template <class T, class OGRT> class GeometryBase : public GDALObject<T> {
     public:
   static Napi::Value New(OGRT *geom);
@@ -121,7 +133,7 @@ GeometryBase<T, OGRT>::GeometryBase(const Napi::CallbackInfo &info)
     this_ = info[0].As<Napi::External<OGRT>>().Data();
   } else {
     // Constructed from JS: the derived class interprets its own arguments
-    this_ = new OGRT();
+    this_ = MakeGeometry<OGRT>();
   }
   LOG("Created Geometry %s [%p]", typeid(T).name(), this_);
 }

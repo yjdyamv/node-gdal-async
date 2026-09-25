@@ -249,7 +249,7 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "multi"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "multi"));
-    if (prop.IsTrue()) { multi = true; }
+    if (prop.IsBoolean() && prop.As<Napi::Boolean>().Value()) { multi = true; }
   }
   return 0;
 }

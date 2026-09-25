@@ -1024,6 +1024,19 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
 
 #define IS_WRAPPED(obj, type) node_gdal::IsInstanceOf<type>(obj)
 
+// NODE_UNWRAP_CHECK returns a value on error, so a setter (which returns void)
+// needs the _VOID spelling
+#define NODE_UNWRAP_CHECK_VOID(type, obj, var)                                                                         \
+  if (!node_gdal::IsInstanceOf<type>(obj)) {                                                                           \
+    Napi::TypeError::New(info.Env(), "Object must be a " #type " object").ThrowAsJavaScriptException();                \
+    return;                                                                                                            \
+  }                                                                                                                    \
+  type *var = node_gdal::UnwrapWrapped<type>(obj.As<Napi::Object>());                                                  \
+  if (!var->isAlive()) {                                                                                               \
+    Napi::Error::New(info.Env(), #type " object has already been destroyed").ThrowAsJavaScriptException();             \
+    return;                                                                                                            \
+  }
+
 #define NODE_UNWRAP_CHECK(type, obj, var)                                                                              \
   if (!node_gdal::IsInstanceOf<type>(obj)) {                                                                           \
     Napi::TypeError::New(info.Env(), "Object must be a " #type " object").ThrowAsJavaScriptException();                \
@@ -1047,6 +1060,27 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
   if (!obj) {                                                                                                          \
     Napi::Error::New(info.Env(), #type " object has already been destroyed").ThrowAsJavaScriptException();             \
     return info.Env().Undefined();                                                                                     \
+  }
+
+// Module-level accessor. `PropertyDescriptor::Accessor(name, getter, setter)`
+// is not usable: node-addon-api 8.5's own trampoline calls the setter with a
+// single argument, so the raw descriptor is built here.
+#define GDAL_DEFINE_ACCESSOR(target, name, get, set)                                                                   \
+  {                                                                                                                    \
+    napi_property_descriptor d = {};                                                                                   \
+    d.utf8name = name;                                                                                                 \
+    d.getter = &node_gdal::MethodTrampoline<get>;                                                                      \
+    d.setter = &node_gdal::SetterTrampoline<set>;                                                                      \
+    d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable);          \
+    (target).DefineProperty(Napi::PropertyDescriptor(d));                                                              \
+  }
+
+// GDAL_RAW_CHECK returns a value on error, so a setter (void) needs this
+#define GDAL_RAW_CHECK_VOID(type, obj, var)                                                                            \
+  type var = obj->get();                                                                                               \
+  if (!obj) {                                                                                                          \
+    Napi::Error::New(info.Env(), #type " object has already been destroyed").ThrowAsJavaScriptException();             \
+    return;                                                                                                            \
   }
 
 #define GDAL_RAW_CHECK_ASYNC(type, obj, var)                                                                           \

@@ -607,7 +607,7 @@ struct pixelFnCall {
   GDALDataType inType;
   GDALDataType outType;
   std::map<std::string, std::string> args;
-  Nan::Utf8String *err;
+  std::string *err;
 };
 
 // This is the pixel function descriptor
@@ -660,13 +660,15 @@ static void callJSpfn(uv_async_t *async) {
     }
   }
 
-  Napi::Value args[] = {sources, destination, pfArgs, width, height};
+  std::vector<napi_value> args = {sources, destination, pfArgs, width, height};
 
   fn->call.err = nullptr;
-  Nan::TryCatch try_catch;
-  // async_hooks do not make any sense for pixel functions
-  Nan::Call(*fn->fn, 5, args);
-  if (try_catch.HasCaught()) fn->call.err = new try_catch.Message(.As<Napi::String>().Utf8Value()->Get());
+  try {
+    // async_hooks do not make any sense for pixel functions
+    fn->fn->Value().Call(args);
+  } catch (const Napi::Error &e) {
+    fn->call.err = new std::string(e.Message());
+  }
 
   // unlock the worker thread (the function below)
   uv_sem_post(&fn->returnJS);
@@ -749,7 +751,7 @@ static CPLErr pixelFunc(
   uv_mutex_unlock(&pixelFuncs[id].callJS);
 
   if (pixelFuncs[id].call.err != nullptr) {
-    CPLError(CE_Failure, CPLE_AppDefined, "Pixel function error: %s", **pixelFuncs[id].call.err);
+    CPLError(CE_Failure, CPLE_AppDefined, "Pixel function error: %s", pixelFuncs[id].call.err->c_str());
     delete pixelFuncs[id].call.err;
     pixelFuncs[id].call.err = nullptr;
     return CE_Failure;
@@ -822,12 +824,12 @@ NAN_METHOD(Algorithms::toPixelFunc) {
   snprintf(&metadata[0], metadata.capacity(), metadataTemplate, static_cast<unsigned>(uid));
 
   Napi::Value r = node_gdal::TypedArray::New(GDT_Byte, sizeof(node_gdal::pixel_func) + strlen(metadata.c_str()) + 1);
-  if (r.IsEmpty() || !r->IsObject()) {
+  if (r.IsEmpty() || !r.IsObject()) {
     Napi::Error::New(node_gdal::napi_env(), "Failed creating TypedArray").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
-  Nan::TypedArrayContents<GByte> contents(r);
-  node_gdal::pixel_func *desc = reinterpret_cast<node_gdal::pixel_func *>(*contents);
+  Napi::TypedArrayOf<GByte> contents = r.As<Napi::TypedArrayOf<GByte>>();
+  node_gdal::pixel_func *desc = reinterpret_cast<node_gdal::pixel_func *>(contents.Data());
 
   desc->magic = NODE_GDAL_CAPI_MAGIC;
   desc->fn = pixelFunc;

@@ -559,7 +559,7 @@ Napi::Value FeatureFields::getFieldAsBinary(OGRFeature *feature, int field_index
     // The lifetime of this internal buffer does not match the lifetime of
     // the returned buffer
     // So we copy
-    return Nan::CopyBuffer(data, count_of_bytes);
+    return Napi::Buffer<char>::Copy(node_gdal::napi_env(), data, count_of_bytes);
   }
 
   return node_gdal::napi_env().Undefined();

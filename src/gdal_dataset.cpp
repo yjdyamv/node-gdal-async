@@ -852,8 +852,8 @@ GDAL_ASYNCABLE_GETTER_DEFINE(Dataset::geoTransformGetter) {
     return transform;
   };
 
-  job.rval = [](std::shared_ptr<double[]> transform, const GetFromPersistentFunc &) {
-    if (transform == nullptr) return node_gdal::napi_env().Null().As<v8::Value>();
+  job.rval = [](std::shared_ptr<double[]> transform, const GetFromPersistentFunc &) -> Napi::Value {
+    if (transform == nullptr) return node_gdal::napi_env().Null();
     Napi::Array result = Napi::Array::New(node_gdal::napi_env(), 6);
     result.Set(static_cast<uint32_t>(0), Napi::Number::New(node_gdal::napi_env(), transform.get()[0]));
     result.Set(static_cast<uint32_t>(1), Napi::Number::New(node_gdal::napi_env(), transform.get()[1]));
@@ -885,7 +885,8 @@ NAN_GETTER(Dataset::driverGetter) {
   }
 
   GDALDataset *raw = ds->get();
-  if (raw->GetDriver() != nullptr) { info.GetReturnValue().Set(Driver::New(raw->GetDriver())); }
+  if (raw->GetDriver() != nullptr) { return Driver::New(raw->GetDriver()); }
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -906,7 +907,8 @@ NAN_GETTER(Dataset::threadSafeGetter) {
   }
 
   GDALDataset *raw = ds->get();
-  if (raw->GetDriver() != nullptr) { info.GetReturnValue().Set(Napi::Boolean::New(node_gdal::napi_env(), raw->IsThreadSafe(GDAL_OF_RASTER))); }
+  if (raw->GetDriver() != nullptr) { return Napi::Boolean::New(node_gdal::napi_env(), raw->IsThreadSafe(GDAL_OF_RASTER)); }
+  return node_gdal::napi_env().Undefined();
 #else
   return Napi::Boolean::New(node_gdal::napi_env(), false);
 #endif
@@ -935,7 +937,7 @@ NAN_SETTER(Dataset::srsSetter) {
     wkt = str; // copy string
     CPLFree(str);
 
-  } else if (!value->IsNull() && !value->IsUndefined()) {
+  } else if (!value.IsNull() && !value.IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env(), "srs must be SpatialReference object").ThrowAsJavaScriptException();
     return;
   }
@@ -956,13 +958,13 @@ NAN_SETTER(Dataset::geoTransformSetter) {
 
   GDALDataset *raw = ds->get();
 
-  if (!value->IsArray()) {
+  if (!value.IsArray()) {
     Napi::Error::New(node_gdal::napi_env(), "Transform must be an array").ThrowAsJavaScriptException();
     return;
   }
   Napi::Array transform = value.As<Napi::Array>();
 
-  if (transform->Length() != 6) {
+  if (transform.Length() != 6) {
     Napi::Error::New(node_gdal::napi_env(), "Transform array must have 6 elements").ThrowAsJavaScriptException();
     return;
   }
@@ -970,7 +972,7 @@ NAN_SETTER(Dataset::geoTransformSetter) {
   double buffer[6];
   for (int i = 0; i < 6; i++) {
     Napi::Value val = transform.As<Napi::Object>().Get(i);
-    if (!val->IsNumber()) {
+    if (!val.IsNumber()) {
       Napi::Error::New(node_gdal::napi_env(), "Transform array must only contain numbers").ThrowAsJavaScriptException();
       return;
     }
@@ -1017,7 +1019,7 @@ NAN_GETTER(Dataset::layersGetter) {
  */
 NAN_GETTER(Dataset::rootGetter) {
   Napi::Value rootObj = GDAL_GET_PRIVATE(info.This(), "root_");
-  if (rootObj->IsUndefined()) {
+  if (rootObj.IsUndefined()) {
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
     NODE_UNWRAP_CHECK(Dataset, info.This(), ds);
     GDAL_RAW_CHECK(GDALDataset *, ds, gdal_ds);
@@ -1028,7 +1030,7 @@ NAN_GETTER(Dataset::rootGetter) {
       rootObj = node_gdal::napi_env().Null();
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
     } else {
-      rootObj = Group::New(root, info.This());
+      rootObj = Group::New(root, info.This().As<Napi::Object>());
     }
 #endif
     GDAL_SET_PRIVATE(info.This(), "root_", rootObj);

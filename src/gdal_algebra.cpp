@@ -19,57 +19,58 @@ namespace node_gdal {
 namespace Algebra {
 
 void Initialize(Napi::Object target) {
-  Napi::Object algebra = Napi::Object::New(node_gdal::napi_env());
-  target.Set( Napi::String::New(node_gdal::napi_env(), "algebra"), algebra);
+  Napi::Env env = target.Env();
+  Napi::Object algebra = Napi::Object::New(env);
+  target.Set("algebra", algebra);
 
   // Unary ops
-  Nan__SetAsyncableMethod(algebra, "abs", abs);
-  Nan__SetAsyncableMethod(algebra, "sqrt", sqrt);
-  Nan__SetAsyncableMethod(algebra, "log", log);
-  Nan__SetAsyncableMethod(algebra, "log10", log10);
-  Nan__SetAsyncableMethod(algebra, "not", gdal_not);
+  GDAL_SetAsyncableMethod(env, algebra, "abs", abs);
+  GDAL_SetAsyncableMethod(env, algebra, "sqrt", sqrt);
+  GDAL_SetAsyncableMethod(env, algebra, "log", log);
+  GDAL_SetAsyncableMethod(env, algebra, "log10", log10);
+  GDAL_SetAsyncableMethod(env, algebra, "not", gdal_not);
 
   // Binary ops
-  Nan__SetAsyncableMethod(algebra, "add", add);
-  Nan__SetAsyncableMethod(algebra, "sub", sub);
-  Nan__SetAsyncableMethod(algebra, "mul", mul);
-  Nan__SetAsyncableMethod(algebra, "div", div);
-  Nan__SetAsyncableMethod(algebra, "pow", pow);
-  Nan__SetAsyncableMethod(algebra, "lt", lt);
-  Nan__SetAsyncableMethod(algebra, "lte", lte);
-  Nan__SetAsyncableMethod(algebra, "gt", gt);
-  Nan__SetAsyncableMethod(algebra, "gte", gte);
-  Nan__SetAsyncableMethod(algebra, "eq", eq);
-  Nan__SetAsyncableMethod(algebra, "notEq", notEq);
-  Nan__SetAsyncableMethod(algebra, "and", gdal_and);
-  Nan__SetAsyncableMethod(algebra, "or", gdal_or);
+  GDAL_SetAsyncableMethod(env, algebra, "add", add);
+  GDAL_SetAsyncableMethod(env, algebra, "sub", sub);
+  GDAL_SetAsyncableMethod(env, algebra, "mul", mul);
+  GDAL_SetAsyncableMethod(env, algebra, "div", div);
+  GDAL_SetAsyncableMethod(env, algebra, "pow", pow);
+  GDAL_SetAsyncableMethod(env, algebra, "lt", lt);
+  GDAL_SetAsyncableMethod(env, algebra, "lte", lte);
+  GDAL_SetAsyncableMethod(env, algebra, "gt", gt);
+  GDAL_SetAsyncableMethod(env, algebra, "gte", gte);
+  GDAL_SetAsyncableMethod(env, algebra, "eq", eq);
+  GDAL_SetAsyncableMethod(env, algebra, "notEq", notEq);
+  GDAL_SetAsyncableMethod(env, algebra, "and", gdal_and);
+  GDAL_SetAsyncableMethod(env, algebra, "or", gdal_or);
 
   // Variadic ops
-  Nan__SetAsyncableMethod(algebra, "min", gdal_min);
-  Nan__SetAsyncableMethod(algebra, "max", gdal_max);
-  Nan__SetAsyncableMethod(algebra, "mean", gdal_mean);
+  GDAL_SetAsyncableMethod(env, algebra, "min", gdal_min);
+  GDAL_SetAsyncableMethod(env, algebra, "max", gdal_max);
+  GDAL_SetAsyncableMethod(env, algebra, "mean", gdal_mean);
 
   // Ternary op
-  Nan__SetAsyncableMethod(algebra, "ifThenElse", ifThenElse);
+  GDAL_SetAsyncableMethod(env, algebra, "ifThenElse", ifThenElse);
 
   // Special case
-  Nan__SetAsyncableMethod(algebra, "asType", asType);
+  GDAL_SetAsyncableMethod(env, algebra, "asType", asType);
 }
 
 #define NODE_ALGEBRA_ARG(num, var)                                                                                     \
   if (info.Length() < num + 1) {                                                                                       \
     Napi::Error::New(node_gdal::napi_env(), "Two arguments must be given").ThrowAsJavaScriptException();                                                                    \
-    return;                                                                                                            \
+    return node_gdal::napi_env().Undefined();                                                                                                            \
   }                                                                                                                    \
   if (info[num].IsNumber()) {                                                                                         \
     var##_number = info[num].As<Napi::Number>().DoubleValue();                                                             \
     var##_band = nullptr;                                                                                              \
-  } else if (info[num].IsObject() && Napi::Number::New(node_gdal::napi_env(), RasterBand::constructor)->HasInstance(info[num])) {                     \
+  } else if (info[num].IsObject() && info[num].As<Napi::Object>().InstanceOf(RasterBand::constructor.Value())) {                     \
     var##_number = NAN;                                                                                                \
     var##_band = node_gdal::UnwrapWrapped<RasterBand>(info[num].As<Napi::Object>());                                          \
   } else {                                                                                                             \
     Napi::Error::New(node_gdal::napi_env(), "Argument must be either a number or a RasterBand").ThrowAsJavaScriptException();                                               \
-    return;                                                                                                            \
+    return node_gdal::napi_env().Undefined();                                                                          \
   }
 
 #define GDAL_ALGEBRA_UNARY_OP(NAME, OPERATOR)                                                                          \
@@ -128,7 +129,7 @@ void Initialize(Napi::Object target) {
       };                                                                                                               \
     } else {                                                                                                           \
       Napi::Error::New(node_gdal::napi_env(), "At least one RasterBand must be given").ThrowAsJavaScriptException();                                                        \
-      return;                                                                                                          \
+      return node_gdal::napi_env().Undefined();                                                                        \
     }                                                                                                                  \
                                                                                                                        \
     job.rval = [](GDALRasterBand *r, const GetFromPersistentFunc &) {                                                  \
@@ -155,7 +156,7 @@ void Initialize(Napi::Object target) {
     }                                                                                                                  \
     if (args_band.size() < 2) {                                                                                        \
       Napi::Error::New(node_gdal::napi_env(), "At least two arguments must be given").ThrowAsJavaScriptException();                                                         \
-      return;                                                                                                          \
+      return node_gdal::napi_env().Undefined();                                                                        \
     }                                                                                                                  \
     GDALAsyncableJob<GDALRasterBand *> job(uids);                                                                      \
     GDALRasterBandH *handles = new GDALRasterBandH[args_band.size()];                                                  \

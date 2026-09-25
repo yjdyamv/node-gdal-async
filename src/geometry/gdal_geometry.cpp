@@ -101,31 +101,15 @@ void Geometry::Initialize(Napi::Object target) {
  *
  * @class Geometry
  */
-NAN_METHOD(Geometry::New) {
-  Geometry *f;
+Geometry::Geometry(const Napi::CallbackInfo &info) : GeometryBase<Geometry, OGRGeometry>(info) {
+  // The factory hands the OGR object over through an External; the class is
+  // otherwise abstract in JS
+  if (info.Length() > 0 && info[0].IsExternal()) return;
 
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    f = static_cast<Geometry *>(ptr);
-
-  } else {
-    Nan::ThrowError(
-      "Geometry doesnt have a constructor, use Geometry.fromWKT(), Geometry.fromWKB() or type-specific constructor. ie. new ogr.Point()");
-    return node_gdal::napi_env().Undefined();
-    // OGRwkbGeometryType geometry_type;
-    // NODE_ARG_ENUM(0, "geometry type", OGRwkbGeometryType, geometry_type);
-    // OGRGeometry *geom = OGRGeometryFactory::createGeometry(geometry_type);
-    // f = new Geometry(geom);
-  }
-
-  f->Wrap(info.This());
-  return info.This();
+  Napi::Error::New(
+    info.Env(),
+    "Geometry doesnt have a constructor, use Geometry.fromWKT(), Geometry.fromWKB() or type-specific constructor. ie. new ogr.Point()")
+    .ThrowAsJavaScriptException();
 }
 
 Napi::Value Geometry::New(OGRGeometry *geom, bool owned) {
@@ -1191,17 +1175,17 @@ GDAL_ASYNCABLE_DEFINE(Geometry::exportToWKB) {
 
   job.rval = [size](unsigned char *data, const GetFromPersistentFunc &) {
     int *hint = new int{static_cast<int>(size)};
-    Napi::Value result = Nan::NewBuffer(
+    Napi::Value result = Napi::Buffer<char>::New(
+                            node_gdal::napi_env(),
                             reinterpret_cast<char *>(data),
                             size,
-                            [](char *data, void *hint) {
+                            [](Napi::Env, char *data, void *hint) {
                               int *size = reinterpret_cast<int *>(hint);
                               Napi::MemoryManagement::AdjustExternalMemory(node_gdal::napi_env(), -(*size));
                               delete size;
                               free(data);
                             },
-                            hint)
-                            ;
+                            hint);
     return result;
   };
   return job.run(info, async, 2);
@@ -1612,15 +1596,14 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromWkb) {
   NODE_ARG_OBJECT(0, "wkb", wkb_obj);
   NODE_ARG_WRAPPED_OPT(1, "srs", SpatialReference, srs);
 
-  std::string obj_type = wkb_obj->GetConstructorName(.As<Napi::String>().Utf8Value());
-
-  if (obj_type != "Buffer" && obj_type != "Uint8Array") {
+  // N-API has no GetConstructorName: check the type directly
+  if (!wkb_obj.IsBuffer() && !wkb_obj.IsTypedArray()) {
     Napi::Error::New(node_gdal::napi_env(), "Argument must be a buffer object").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
 
-  unsigned char *data = (unsigned char *)Buffer::Data(wkb_obj);
-  size_t length = Buffer::Length(wkb_obj);
+  unsigned char *data = (unsigned char *)wkb_obj.As<Napi::Buffer<uint8_t>>().Data();
+  size_t length = wkb_obj.As<Napi::Buffer<uint8_t>>().Length();
 
   OGRSpatialReference *ogr_srs = NULL;
   if (srs) { ogr_srs = srs->get(); }
@@ -1682,14 +1665,19 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJson) {
 
   // goes to text to pass it in, there isn't a performant way to
   // go from v8 JSON -> CPLJSON anyways
-  Nan::JSON NanJSON;
-  Nan::MaybeNapi::String result = NanJSON.Stringify(geo_obj);
-  if (result.IsEmpty()) {
+  // node-addon-api has no JSON class: reach the global JSON.stringify
+  Napi::Value json_stringified = node_gdal::napi_env()
+                                   .Global()
+                                   .Get("JSON")
+                                   .As<Napi::Object>()
+                                   .Get("stringify")
+                                   .As<Napi::Function>()
+                                   .Call({geo_obj});
+  if (json_stringified.IsEmpty() || !json_stringified.IsString()) {
     Napi::Error::New(node_gdal::napi_env(), "Invalid GeoJSON").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
-  Napi::String stringified = result;
-  std::string *val = new std::string(stringified.As<Napi::String>().Utf8Value());
+  std::string *val = new std::string(json_stringified.As<Napi::String>().Utf8Value());
 
   GDALAsyncableJob<OGRGeometry *> job(0);
   job.main = [val](const GDALExecutionProgress &) {
@@ -1740,15 +1728,14 @@ GDAL_ASYNCABLE_DEFINE(Geometry::createFromGeoJsonBuffer) {
   Napi::Object geojson_obj;
   NODE_ARG_OBJECT(0, "geojson", geojson_obj);
 
-  std::string obj_type = geojson_obj->GetConstructorName(.As<Napi::String>().Utf8Value());
-
-  if (obj_type != "Buffer" && obj_type != "Uint8Array") {
+  // N-API has no GetConstructorName
+  if (!geojson_obj.IsBuffer() && !geojson_obj.IsTypedArray()) {
     Napi::Error::New(node_gdal::napi_env(), "Argument must be a buffer object").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
 
-  char *data = Buffer::Data(geojson_obj);
-  size_t length = Buffer::Length(geojson_obj);
+  unsigned char *data = (unsigned char *)geojson_obj.As<Napi::Buffer<uint8_t>>().Data();
+  size_t length = geojson_obj.As<Napi::Buffer<uint8_t>>().Length();
 
   GDALAsyncableJob<OGRGeometry *> job(0);
   job.main = [data, length](const GDALExecutionProgress &) {
@@ -1797,8 +1784,7 @@ NAN_GETTER(Geometry::srsGetter) {
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 7)
   // This const_cast is ok because New with false makes a copy
   // TODO: Implement this with proper C++ overloading semantics
-  info.GetReturnValue().Set(
-    SpatialReference::New(const_cast<OGRSpatialReference *>(geom->this_->getSpatialReference()), false));
+  return SpatialReference::New(const_cast<OGRSpatialReference *>(geom->this_->getSpatialReference()), false);
 #else
   return SpatialReference::New(geom->this_->getSpatialReference(), false);
 #endif
@@ -1811,7 +1797,7 @@ NAN_SETTER(Geometry::srsSetter) {
   if (IS_WRAPPED(value, SpatialReference)) {
     SpatialReference *srs_obj = node_gdal::UnwrapWrapped<SpatialReference>(value.As<Napi::Object>());
     srs = srs_obj->get();
-  } else if (!value->IsNull() && !value->IsUndefined()) {
+  } else if (!value.IsNull() && !value.IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env(), "srs must be SpatialReference object").ThrowAsJavaScriptException();
     return;
   }
@@ -1897,7 +1883,7 @@ NAN_GETTER(Geometry::coordinateDimensionGetter) {
 NAN_SETTER(Geometry::coordinateDimensionSetter) {
   Geometry *geom = node_gdal::UnwrapWrapped<Geometry>(info.This().As<Napi::Object>());
 
-  if (!value->IsInt32()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "coordinateDimension must be an integer").ThrowAsJavaScriptException();
     return;
   }

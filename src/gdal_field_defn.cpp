@@ -217,7 +217,7 @@ NAN_SETTER(FieldDefn::justificationSetter) {
       Napi::Error::New(node_gdal::napi_env(), "Unrecognized justification").ThrowAsJavaScriptException();
       return;
     }
-  } else if (value->IsNull() || value->IsUndefined()) {
+  } else if (value.IsNull() || value.IsUndefined()) {
     justification = OJUndefined;
   } else {
     Napi::Error::New(node_gdal::napi_env(), "justification must be a string or undefined").ThrowAsJavaScriptException();

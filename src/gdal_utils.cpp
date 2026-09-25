@@ -454,19 +454,19 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
 
   std::shared_ptr<CPLStringList> aosSrcDs = nullptr;
   std::shared_ptr<GDALDatasetH[]> gdalSrcDs = nullptr;
-  if (src_ds.As<Napi::Object>().Get(0)->IsString()) {
+  if (src_ds.As<Napi::Object>().Get(static_cast<uint32_t>(0)).IsString()) {
     aosSrcDs = std::make_shared<CPLStringList>();
     for (unsigned i = 0; i < src_ds.Length(); ++i) {
       if (!src_ds.As<Napi::Object>().Get(i).IsString()) {
         Napi::Error::New(node_gdal::napi_env(), "All \"src_ds\" elements must have the same type").ThrowAsJavaScriptException();
         return node_gdal::napi_env().Undefined();
       }
-      aosSrcDs->AddString(src_ds.As<Napi::Object>().Get(i));
+      aosSrcDs->AddString(src_ds.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
     uids.push_back(0);
   } else {
-    gdalSrcDs = std::shared_ptr<GDALDatasetH[]>(new GDALDatasetH[src_ds->Length()]);
-    for (unsigned i = 0; i < src_ds->Length(); ++i) {
+    gdalSrcDs = std::shared_ptr<GDALDatasetH[]>(new GDALDatasetH[src_ds.Length()]);
+    for (unsigned i = 0; i < src_ds.Length(); ++i) {
       Napi::Value v = src_ds.As<Napi::Object>().Get(i);
       NODE_UNWRAP_CHECK(Dataset, v, ds);
       GDAL_RAW_CHECK(GDALDataset *, ds, raw);
@@ -478,7 +478,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
   Napi::Array args;
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
-    for (unsigned i = 0; i < args->Length(); ++i) {
+    for (unsigned i = 0; i < args.Length(); ++i) {
       aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
@@ -488,7 +488,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
   if (!options.IsEmpty()) NODE_CB_FROM_OBJ_OPT(options, "progress_cb", progress_cb);
 
   GDALAsyncableJob<GDALDataset *> job(uids);
-  int src_count = src_ds->Length();
+  int src_count = src_ds.Length();
   job.progress = progress_cb;
   job.main =
     [dst_path, src_count, gdalSrcDs, aosSrcDs, aosOptions, progress_cb](const GDALExecutionProgress &progress) {
@@ -588,7 +588,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::rasterize) {
   Napi::Array args;
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
-    for (unsigned i = 0; i < args->Length(); ++i) {
+    for (unsigned i = 0; i < args.Length(); ++i) {
       aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
 
@@ -679,7 +679,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::dem) {
   Napi::Array args;
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty()) {
-    for (unsigned i = 0; i < args->Length(); ++i) {
+    for (unsigned i = 0; i < args.Length(); ++i) {
       aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
     }
   }

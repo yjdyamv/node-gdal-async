@@ -139,6 +139,14 @@ RULES = [
     (r"\.FromJust\(\)", ""),
     # NAN had Value::IsInt32(); N-API only tells numbers apart
     (r"\.IsInt32\(\)", ".IsNumber()"),
+    # V8's MaybeLocal<Value> has no N-API counterpart (handles are never Maybe)
+    (r"MaybeNapi::Value", "Napi::Value"),
+    (r"MaybeNapi::Object", "Napi::Object"),
+    (r"MaybeNapi::String", "Napi::String"),
+    (r"Nan::JSON", "Napi::JSON"),
+    (r"(\w+)->IsNullOrUndefined\(\)", r"\1.IsNull() || \1.IsUndefined()"),
+    # Nan::TryCatch / Nan::Call are C++ exceptions here
+    (r"Nan::Utf8String \*(\w+);", r"std::string *\1;"),
 ]
 
 total = 0

@@ -190,8 +190,8 @@ NAN_METHOD(ColorTable::get) {
   NODE_UNWRAP_CHECK(ColorTable, info.This(), self);
   GDAL_RAW_CHECK(GDALColorTable *, self, raw);
 
-  MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
-  if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
+  Napi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
+  if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     Napi::Object parent = parentMaybe.As<Napi::Object>();
     NODE_UNWRAP_CHECK(RasterBand, parent, band);
   }
@@ -240,8 +240,8 @@ NAN_METHOD(ColorTable::set) {
   NODE_UNWRAP_CHECK(ColorTable, info.This(), self);
   GDAL_RAW_CHECK(GDALColorTable *, self, raw);
 
-  MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
-  if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
+  Napi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
+  if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env(), "RasterBand color tables are read-only, create a new one to modify it").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
@@ -288,8 +288,8 @@ NAN_METHOD(ColorTable::ramp) {
   NODE_COLOR_FROM_OBJ(start_color_obj, start_color);
   NODE_COLOR_FROM_OBJ(end_color_obj, end_color);
 
-  MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
-  if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
+  Napi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
+  if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     Napi::Error::New(node_gdal::napi_env(), "RasterBand color tables are read-only, create a new one to modify it").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
@@ -316,14 +316,14 @@ NAN_METHOD(ColorTable::count) {
   NODE_UNWRAP_CHECK(ColorTable, info.This(), self);
   GDAL_RAW_CHECK(GDALColorTable *, self, raw);
 
-  MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
-  if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
+  Napi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
+  if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     Napi::Object parent = parentMaybe.As<Napi::Object>();
     NODE_UNWRAP_CHECK(RasterBand, parent, band);
   }
 
   CPLErrorReset();
-  return raw->GetColorEntryCount();
+  return Napi::Number::New(node_gdal::napi_env(), raw->GetColorEntryCount());
 }
 
 /**
@@ -341,8 +341,8 @@ NAN_GETTER(ColorTable::interpretationGetter) {
   NODE_UNWRAP_CHECK(ColorTable, info.This(), self);
   GDAL_RAW_CHECK(GDALColorTable *, self, raw);
 
-  MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
-  if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
+  Napi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
+  if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     Napi::Object parent = parentMaybe.As<Napi::Object>();
     NODE_UNWRAP_CHECK(RasterBand, parent, band);
   }
@@ -371,8 +371,8 @@ NAN_GETTER(ColorTable::interpretationGetter) {
  * @type {RasterBand|undefined}
  */
 NAN_GETTER(ColorTable::bandGetter) {
-  MaybeNapi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
-  if (!parentMaybe.IsEmpty() && !parentMaybe->IsNullOrUndefined()) {
+  Napi::Value parentMaybe = GDAL_GET_PRIVATE(info.This(), "parent_");
+  if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     return parentMaybe;
   }
 }
