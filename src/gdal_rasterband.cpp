@@ -133,6 +133,9 @@ Napi::Value RasterBand::New(GDALRasterBand *raw, GDALDataset *raw_parent) {
   wrapped->parent_ds = raw_parent;
   wrapped->parent_uid = parent_uid;
 
+  // the band reads it back in dsGetter, and it also keeps the dataset alive
+  GDAL_SET_PRIVATE(obj, "ds_", ds);
+
   return obj;
 }
 
@@ -547,7 +550,7 @@ GDAL_ASYNCABLE_DEFINE(RasterBand::setMetadata) {
 
   auto options = make_shared<StringList>();
   if (info.Length() == 0 || options->parse(info[0])) {
-    Napi::Error::New(node_gdal::napi_env(), "Failed parsing metadata").ThrowAsJavaScriptException();
+    node_gdal::ThrowOverPending(node_gdal::napi_env(), "Failed parsing metadata");
     return node_gdal::napi_env().Undefined();
   }
 

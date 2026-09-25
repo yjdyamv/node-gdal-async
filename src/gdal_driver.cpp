@@ -190,7 +190,7 @@ GDAL_ASYNCABLE_DEFINE(Driver::create) {
 
   if (info.Length() < 3) {
     if (info.Length() > 1 && options->parse(info[1])) {
-      Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException();
+      node_gdal::ThrowOverPending(info.Env(), "Failed parsing options");
       return info.Env().Undefined(); // error parsing string list
     }
   } else {
@@ -199,7 +199,7 @@ GDAL_ASYNCABLE_DEFINE(Driver::create) {
     NODE_ARG_INT_OPT(3, "number of bands", n_bands);
     NODE_ARG_OPT_STR(4, "data type", type_name);
     if (info.Length() > 5 && options->parse(info[5])) {
-      Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException();
+      node_gdal::ThrowOverPending(info.Env(), "Failed parsing options");
       return info.Env().Undefined(); // error parsing string list
     }
     if (!type_name.empty()) { type = GDALGetDataTypeByName(type_name.c_str()); }
@@ -290,7 +290,7 @@ GDAL_ASYNCABLE_DEFINE(Driver::createCopy) {
 
   options = new StringList;
   if (info.Length() > 2 && options->parse(info[2])) {
-    Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException();
+    node_gdal::ThrowOverPending(info.Env(), "Failed parsing options");
     return info.Env().Undefined(); // error parsing string list
   }
 
@@ -445,7 +445,7 @@ GDAL_ASYNCABLE_DEFINE(Driver::open) {
 
   StringList *options = new StringList;
   if (info.Length() > 2 && options->parse(info[2])) {
-    Napi::Error::New(info.Env(), "Failed parsing options").ThrowAsJavaScriptException();
+    node_gdal::ThrowOverPending(info.Env(), "Failed parsing options");
     return info.Env().Undefined(); // error parsing string list
   }
 

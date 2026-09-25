@@ -22,7 +22,7 @@ int StringList::parse(Napi::Value value) {
     list = new char *[array.Length() + 1];
     strlist = new std::string[array.Length()];
     for (i = 0; i < array.Length(); ++i) {
-      strlist[i] = array.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value();
+      strlist[i] = Stringify(array.As<Napi::Object>().Get(i));
       list[i] = (char *)strlist[i].c_str();
     }
     list[i] = NULL;
@@ -34,8 +34,8 @@ int StringList::parse(Napi::Value value) {
     list = new char *[keys.Length() + 1];
     strlist = new std::string[keys.Length()];
     for (i = 0; i < keys.Length(); ++i) {
-      std::string key = keys.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value();
-      std::string val = obj.As<Napi::Object>().Get(keys.As<Napi::Object>().Get(i)).As<Napi::String>().Utf8Value();
+      std::string key = Stringify(keys.As<Napi::Object>().Get(i));
+      std::string val = Stringify(obj.As<Napi::Object>().Get(keys.As<Napi::Object>().Get(i)));
       strlist[i] = key + "=" + val;
       list[i] = (char *)strlist[i].c_str();
     }

@@ -175,7 +175,7 @@ NAN_SETTER(FeatureDefn::geomIgnoredSetter) {
     Napi::Error::New(node_gdal::napi_env(), "geomIgnored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetGeometryIgnored(value.As<Napi::Number>().Int64Value());
+  def->this_->SetGeometryIgnored(value.As<Napi::Boolean>().Value());
 }
 
 NAN_SETTER(FeatureDefn::styleIgnoredSetter) {
@@ -184,7 +184,7 @@ NAN_SETTER(FeatureDefn::styleIgnoredSetter) {
     Napi::Error::New(node_gdal::napi_env(), "styleIgnored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetStyleIgnored(value.As<Napi::Number>().Int64Value());
+  def->this_->SetStyleIgnored(value.As<Napi::Boolean>().Value());
 }
 
 } // namespace node_gdal

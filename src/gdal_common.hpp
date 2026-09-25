@@ -164,6 +164,23 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceMethodHiddenT(const char *na
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
+// Non-enumerable accessor, with a setter: the original ATTR_DONT_ENUM passed
+// one, and the read-only ones rely on it to produce their message rather than
+// the generic "has only a getter" thrown by V8
+template <
+  typename T,
+  Napi::Value (*GET)(const Napi::CallbackInfo &),
+  void (*SET)(const Napi::CallbackInfo &, const Napi::Value &)>
+inline Napi::ClassPropertyDescriptor<T> GDALInstanceAccessorHiddenT(const char *name) {
+  napi_property_descriptor d = {};
+  d.utf8name = name;
+  d.getter = &node_gdal::MethodTrampoline<GET>;
+  d.setter = &node_gdal::SetterTrampoline<SET>;
+  d.data = (void *)name;
+  d.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
+  return Napi::ClassPropertyDescriptor<T>(d);
+}
+
 //
 // Drop-in replacement for ObjectWrap<T>::DefineClass.
 //
@@ -284,6 +301,18 @@ inline Napi::Value ToNapi(Napi::Env, Napi::String v) {
 }
 inline Napi::Value ToNapi(Napi::Env, Napi::Number v) {
   return v;
+}
+
+// V8's ThrowException replaced an already pending exception, so a later, more
+// specific message used to win over an earlier generic one. N-API refuses to
+// touch a pending exception (node-addon-api's
+// NODE_API_SWALLOW_UNTHROWABLE_EXCEPTIONS path), which would leave the caller
+// that re-throws after StringList::parse with the parser's message instead of
+// its own.
+inline void ThrowOverPending(Napi::Env env, const char *message) {
+  napi_value pending = nullptr;
+  napi_get_and_clear_last_exception(env, &pending);
+  Napi::Error::New(env, message).ThrowAsJavaScriptException();
 }
 
 //
@@ -1554,10 +1583,10 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
   GDALInstanceMethodT<SELF, &SELF::method>(name), GDALInstanceMethodT<SELF, &SELF::method##Async>(name "Async"),
 
 #define ATTR(t, name, get, set) GDALInstanceAccessorT<SELF, &SELF::get, &set>(name),
-#define ATTR_DONT_ENUM(t, name, get, set) GDALInstanceAccessorHiddenT<SELF, &SELF::get>(name),
+#define ATTR_DONT_ENUM(t, name, get, set) GDALInstanceAccessorHiddenT<SELF, &SELF::get, &set>(name),
 #define ATTR_ASYNCABLE(t, name, get, set)                                                                              \
   GDALInstanceAccessorT<SELF, &SELF::get, &set>(name),                                                                 \
-    GDALInstanceAccessorHiddenT<SELF, &SELF::get##Async>(name "Async"),
+    GDALInstanceAccessorHiddenT<SELF, &SELF::get##Async, &READ_ONLY_SETTER>(name "Async"),
 
 NAN_SETTER(READ_ONLY_SETTER);
 

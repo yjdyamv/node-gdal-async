@@ -62,9 +62,15 @@ NAN_METHOD(FeatureFields::toString) {
 
 inline bool setField(OGRFeature *f, int field_index, Napi::Value val) {
   if (val.IsNumber()) {
-    f->SetField(field_index, val.As<Napi::Number>().Int32Value());
-  } else if (val.IsNumber()) {
-    f->SetField(field_index, val.As<Napi::Number>().DoubleValue());
+    // V8's IsInt32 (what the original used) is "the value survives a round trip
+    // through int32"; OGR keeps whatever precision the field type allows
+    const double d = val.As<Napi::Number>().DoubleValue();
+    const int32_t i = val.As<Napi::Number>().Int32Value();
+    if (static_cast<double>(i) == d) {
+      f->SetField(field_index, i);
+    } else {
+      f->SetField(field_index, d);
+    }
   } else if (val.IsString()) {
     std::string str = val.As<Napi::String>().Utf8Value();
     f->SetField(field_index, str.c_str());

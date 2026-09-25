@@ -116,6 +116,9 @@ Napi::Value Layer::New(OGRLayer *raw, GDALDataset *raw_parent, bool result_set) 
   wrapped->parent_ds = raw_parent;
   wrapped->parent_uid = parent_uid;
 
+  // the layer reads it back in dsGetter, and it also keeps the dataset alive
+  GDAL_SET_PRIVATE(obj, "ds_", ds);
+
   return obj;
 }
 

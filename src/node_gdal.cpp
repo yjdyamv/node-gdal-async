@@ -341,7 +341,7 @@ static NAN_METHOD(isAlive) {
   long uid;
   NODE_ARG_INT(0, "uid", uid);
 
-  return Napi::Number::New(info.Env(), object_store.isAlive(uid));
+  return Napi::Boolean::New(info.Env(), object_store.isAlive(uid));
 }
 
 void Cleanup(void *) {

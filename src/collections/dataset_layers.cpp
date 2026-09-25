@@ -312,7 +312,7 @@ GDAL_ASYNCABLE_DEFINE(DatasetLayers::copy) {
 
   NODE_ARG_WRAPPED(0, "layer to copy", Layer, layer_to_copy);
   NODE_ARG_STR(1, "new layer name", *new_name);
-  if (info.Length() > 2 && options->parse(info[2])) { Napi::Error::New(node_gdal::napi_env(), "Error parsing string list").ThrowAsJavaScriptException(); }
+  if (info.Length() > 2 && options->parse(info[2])) { node_gdal::ThrowOverPending(node_gdal::napi_env(), "Error parsing string list"); }
 
   OGRLayer *src = layer_to_copy->get();
   GDALAsyncableJob<OGRLayer *> job(ds->uid);

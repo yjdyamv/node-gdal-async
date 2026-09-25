@@ -205,8 +205,8 @@ NAN_SETTER(FieldDefn::justificationSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
 
   OGRJustification justification;
-  std::string str = value.As<Napi::String>().Utf8Value();
   if (value.IsString()) {
+    const std::string str = value.As<Napi::String>().Utf8Value();
     if (str == "Left") {
       justification = OJLeft;
     } else if (str == "Right") {
@@ -251,7 +251,7 @@ NAN_SETTER(FieldDefn::ignoredSetter) {
     Napi::Error::New(node_gdal::napi_env(), "ignored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
-  def->this_->SetIgnored(value.As<Napi::Number>().Int64Value());
+  def->this_->SetIgnored(value.As<Napi::Boolean>().Value());
 }
 
 } // namespace node_gdal

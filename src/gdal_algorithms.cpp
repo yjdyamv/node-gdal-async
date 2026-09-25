@@ -647,7 +647,9 @@ const char metadataTemplate[] =
 // This function is called by libuv on the main thread
 // The async_send in the function below is what triggers this call
 static void callJSpfn(uv_async_t *async) {
-  // Here V8 is accessible
+  // Here V8 is accessible, but a plain libuv callback does not come with a
+  // handle scope the way a napi callback does
+  Napi::HandleScope scope(node_gdal::napi_env());
 
   pixelFn *fn = reinterpret_cast<pixelFn *>(async->data);
   Napi::Array sources = Napi::Array::New(node_gdal::napi_env(), fn->call.num);

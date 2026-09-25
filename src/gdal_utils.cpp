@@ -2,6 +2,7 @@
 #include "gdal_common.hpp"
 #include "gdal_dataset.hpp"
 #include "gdal_spatial_reference.hpp"
+#include "utils/string_list.hpp"
 
 #if GDAL_VERSION_MAJOR > 2 || (GDAL_VERSION_MAJOR == 2 && GDAL_VERSION_MINOR >= 3)
 #define GDALDatasetToHandle(x) GDALDataset::ToHandle(x)
@@ -85,7 +86,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::translate) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
 
   Napi::Object options;
@@ -179,7 +180,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::vectorTranslate) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
 
   Napi::Object options;
@@ -256,7 +257,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::info) {
   NODE_ARG_ARRAY_OPT(1, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
 
   GDALAsyncableJob<std::string> job(ds->uid);
@@ -356,7 +357,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::warp) {
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
 
   Napi::Object options;
@@ -461,7 +462,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
         Napi::Error::New(node_gdal::napi_env(), "All \"src_ds\" elements must have the same type").ThrowAsJavaScriptException();
         return node_gdal::napi_env().Undefined();
       }
-      aosSrcDs->AddString(src_ds.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosSrcDs->AddString(node_gdal::Stringify(src_ds.As<Napi::Object>().Get(i)));
     }
     uids.push_back(0);
   } else {
@@ -479,7 +480,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::buildvrt) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
 
   Napi::Object options;
@@ -589,7 +590,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::rasterize) {
   NODE_ARG_ARRAY_OPT(2, "args", args);
   if (!args.IsEmpty())
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
 
   Napi::Object options;
@@ -680,7 +681,7 @@ GDAL_ASYNCABLE_DEFINE(Utils::dem) {
   NODE_ARG_ARRAY_OPT(3, "args", args);
   if (!args.IsEmpty()) {
     for (unsigned i = 0; i < args.Length(); ++i) {
-      aosOptions->AddString(args.As<Napi::Object>().Get(i).As<Napi::String>().Utf8Value());
+      aosOptions->AddString(node_gdal::Stringify(args.As<Napi::Object>().Get(i)));
     }
   }
 

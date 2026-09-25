@@ -204,7 +204,7 @@ GDAL_ASYNCABLE_DEFINE(Dataset::setMetadata) {
 
   auto options = make_shared<StringList>();
   if (info.Length() == 0 || options->parse(info[0])) {
-    Napi::Error::New(node_gdal::napi_env(), "Failed parsing metadata").ThrowAsJavaScriptException();
+    node_gdal::ThrowOverPending(node_gdal::napi_env(), "Failed parsing metadata");
     return node_gdal::napi_env().Undefined();
   }
 
