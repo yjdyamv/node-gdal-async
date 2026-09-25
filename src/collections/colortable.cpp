@@ -103,6 +103,7 @@ Napi::Value ColorTable::New(GDALColorTable *raw, Napi::Value parent) {
   std::vector<napi_value> args = {
     Napi::External<void>::New(node_gdal::napi_env(), raw), Napi::Number::New(node_gdal::napi_env(), band->parent_uid)};
   Napi::Object obj = ColorTable::constructor.Value().New(args);
+  GDAL_SET_PRIVATE(obj, "parent_", parent);
 
   return obj;
 }

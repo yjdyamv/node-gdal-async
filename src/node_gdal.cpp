@@ -4,6 +4,8 @@
 #include <node_version.h>
 
 // nan
+#include <execinfo.h>
+#include <signal.h>
 #include "gdal_common.hpp"
 
 // gdal
@@ -80,6 +82,11 @@ FILE *log_file = NULL;
 ObjectStore object_store;
 bool eventLoopWarn = true;
 ::napi_env napi_env_storage = nullptr;
+
+// Set by the env cleanup hook, see async.hpp. This definition has to stay outside
+// the `extern "C"` block below - async.hpp declares it with C++ linkage, and
+// `extern "C"` would give this definition C linkage instead.
+bool gdalShuttingDown = false;
 
 static NAN_GETTER(LastErrorGetter) {
 
@@ -338,9 +345,21 @@ static NAN_METHOD(isAlive) {
 }
 
 void Cleanup(void *) {
+  gdalShuttingDown = true;
   object_store.cleanup();
 }
 
+
+
+static void gdal_abort_handler(int) {
+  void *frames[64];
+  int n = backtrace(frames, 64);
+  const char *msg = "### SIGABRT backtrace\n";
+  ssize_t ignored = write(2, msg, strlen(msg));
+  (void)ignored;
+  backtrace_symbols_fd(frames, n, 2);
+  _exit(134);
+}
 
 Napi::Object Init(Napi::Env env, Napi::Object target) {
   // Note: the CJS and the ESM loader can both register the addon in the same
@@ -348,6 +367,7 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
   // has to run every time - a guard here would hand the second one back empty.
   // everything that goes through the ambient node_gdal::napi_env() needs this
   napi_env_storage = env;
+  signal(SIGABRT, gdal_abort_handler);
   mainV8ThreadId = std::this_thread::get_id();
 
   GDAL_SetAsyncableMethod(env, target, "open", gdal_open);

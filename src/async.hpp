@@ -13,6 +13,9 @@ namespace node_gdal {
 // The id of the main V8 thread
 extern std::thread::id mainV8ThreadId;
 
+// Set by the env cleanup hook: from then on the JS world may not be touched
+extern bool gdalShuttingDown;
+
 // This generates method definitions for 2 methods: sync and async version and a hidden common block
 #define GDAL_ASYNCABLE_DEFINE(method)                                                                                  \
   NAN_METHOD(method) {                                                                                                 \
@@ -286,6 +289,7 @@ GDALAsyncWorker<GDALType>::GDALAsyncWorker(
 }
 
 template <class GDALType> Napi::Value GDALAsyncWorker<GDALType>::ProduceRVal() {
+  if (gdalShuttingDown) return Napi::Value();
   return rval(raw, [this](const char *key) { return this->GetFromPersistent(key); });
 }
 
@@ -296,8 +300,15 @@ template <class GDALType> void GDALAsyncWorker<GDALType>::Execute(const Executio
     GDALExecutionProgress executionProgress(&progress);
     AsyncGuard lock(ds_uids);
     raw = doit(executionProgress);
-  } catch (const char *err) { this->SetError(err); } catch (const std::exception &err) {
-    this->SetError(err.what());
+  } catch (const char *err) {
+    // node-addon-api decides success from `_error.size() == 0`, so an empty
+    // message would be taken for a success and the uninitialized `raw` would be
+    // converted (the GDAL calls that fail without setting a CPL error report an
+    // empty message)
+    this->SetError(err != nullptr && *err != '\0' ? err : "Operation failed");
+  } catch (const std::exception &err) {
+    const char *what = err.what();
+    this->SetError(what != nullptr && *what != '\0' ? what : "Operation failed");
   }
 }
 
@@ -379,10 +390,12 @@ GDALPromiseWorker<GDALType>::GDALPromiseWorker(
 }
 
 template <class GDALType> void GDALPromiseWorker<GDALType>::OnOK() {
+  if (gdalShuttingDown) return;
   deferred.Resolve(this->ProduceRVal());
 }
 
 template <class GDALType> void GDALPromiseWorker<GDALType>::OnError(const Napi::Error &e) {
+  if (gdalShuttingDown) return;
   deferred.Reject(e.Value());
 }
 
@@ -444,7 +457,9 @@ template <class GDALType> class GDALAsyncableJob {
   }
 
   Napi::Value run(const Napi::CallbackInfo &info, bool async, int cb_arg) {
-    if (!info.This().IsEmpty() && info.This().IsObject()) persist(info.This().As<Napi::Object>());
+    // The rval lambdas look this up by name ("this"), so it cannot go through
+    // the auto-indexed overload
+    if (!info.This().IsEmpty() && info.This().IsObject()) persist("this", info.This());
     if (async) {
       if (progress) persist("progress_cb", progress->Value());
       Napi::FunctionReference *callback;
@@ -473,7 +488,8 @@ template <class GDALType> class GDALAsyncableJob {
   }
 
   Napi::Value run(const Napi::CallbackInfo &info, bool async) {
-    if (!info.This().IsEmpty() && info.This().IsObject()) persist(info.This().As<Napi::Object>());
+    // See the note in the callback overload above
+    if (!info.This().IsEmpty() && info.This().IsObject()) persist("this", info.This());
     if (async) {
       auto *worker = new GDALPromiseWorker<GDALType>(info.Env(), main, rval, persistent, ds_uids);
       Napi::Value promise = worker->Promise();
