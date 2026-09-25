@@ -43,9 +43,17 @@ Group::Group(const Napi::CallbackInfo &info) : GDALObject<Group>(info), uid(0), 
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_ = node_gdal::ImportShared<GDALGroup>(info);
     LOG("Created group [%p]", this_.get());
+  } else {
+    Napi::Error::New(info.Env(), "Cannot create Group directly").ThrowAsJavaScriptException();
     return;
   }
-  Napi::Error::New(info.Env(), "Cannot create Group directly").ThrowAsJavaScriptException();
+
+  // the parent dataset travels as the second argument, for the sub-collections
+  Napi::Value parent_ds = info.Length() > 1 ? info[1] : info.Env().Undefined();
+  GDAL_SET_PRIVATE(info.This(), "groups_", GroupGroups::New(info.This(), parent_ds));
+  GDAL_SET_PRIVATE(info.This(), "arrays_", GroupArrays::New(info.This(), parent_ds));
+  GDAL_SET_PRIVATE(info.This(), "dims_", GroupDimensions::New(info.This(), parent_ds));
+  GDAL_SET_PRIVATE(info.This(), "attrs_", GroupAttributes::New(info.This(), parent_ds));
 }
 
 Group::~Group() {

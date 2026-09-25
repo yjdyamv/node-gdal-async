@@ -53,9 +53,13 @@ Layer::Layer(const Napi::CallbackInfo &info) : GDALObject<Layer>(info), uid(0), 
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_ = static_cast<OGRLayer *>(info[0].As<Napi::External<void>>().Data());
     LOG("Created layer [%p]", this_);
+  } else {
+    Napi::Error::New(info.Env(), "Cannot create Layer directly").ThrowAsJavaScriptException();
     return;
   }
-  Napi::Error::New(info.Env(), "Cannot create Layer directly").ThrowAsJavaScriptException();
+
+  GDAL_SET_PRIVATE(info.This(), "features_", LayerFeatures::New(info.This()));
+  GDAL_SET_PRIVATE(info.This(), "fields_", LayerFields::New(info.This()));
 }
 
 Layer::~Layer() {

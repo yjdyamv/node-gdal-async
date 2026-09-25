@@ -51,9 +51,14 @@ MDArray::MDArray(const Napi::CallbackInfo &info) : GDALObject<MDArray>(info), ui
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_ = node_gdal::ImportShared<GDALMDArray>(info);
     LOG("Created MDArray [%p]", this_.get());
+  } else {
+    Napi::Error::New(info.Env(), "Cannot create MDArray directly").ThrowAsJavaScriptException();
     return;
   }
-  Napi::Error::New(info.Env(), "Cannot create MDArray directly").ThrowAsJavaScriptException();
+
+  Napi::Value parent_ds = info.Length() > 1 ? info[1] : info.Env().Undefined();
+  GDAL_SET_PRIVATE(info.This(), "dims_", ArrayDimensions::New(info.This(), parent_ds));
+  GDAL_SET_PRIVATE(info.This(), "attrs_", ArrayAttributes::New(info.This(), parent_ds));
 }
 
 MDArray::~MDArray() {

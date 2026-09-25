@@ -72,9 +72,13 @@ RasterBand::RasterBand(const Napi::CallbackInfo &info) : GDALObject<RasterBand>(
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_ = static_cast<GDALRasterBand *>(info[0].As<Napi::External<void>>().Data());
     LOG("Created band [%p] (dataset = %p)", this_, this_->GetDataset());
+  } else {
+    Napi::Error::New(info.Env(), "Cannot create RasterBand directly").ThrowAsJavaScriptException();
     return;
   }
-  Napi::Error::New(info.Env(), "Cannot create RasterBand directly").ThrowAsJavaScriptException();
+
+  GDAL_SET_PRIVATE(info.This(), "overviews_", RasterBandOverviews::New(info.This()));
+  GDAL_SET_PRIVATE(info.This(), "pixels_", RasterBandPixels::New(info.This()));
 }
 
 RasterBand::~RasterBand() {

@@ -101,6 +101,21 @@ void Feature::dispose() {
 
 // Currently read-only feature definitions are copied.
 
+Napi::Value Feature::New(OGRFeature *feature) {
+  return Feature::New(feature, true);
+}
+
+// Features are not tracked in the object store: the same OGRFeature can be
+// handed to JS more than once
+Napi::Value Feature::New(OGRFeature *feature, bool owned) {
+  if (!feature) { return node_gdal::napi_env().Null(); }
+
+  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), feature)};
+  Napi::Object obj = Feature::constructor.Value().New(args);
+  node_gdal::UnwrapWrapped<Feature>(obj)->owned_ = owned;
+  return obj;
+}
+
 NAN_METHOD(Feature::toString) {
   return Napi::String::New(node_gdal::napi_env(), "Feature");
 }

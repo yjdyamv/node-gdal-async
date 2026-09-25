@@ -343,13 +343,9 @@ void Cleanup(void *) {
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object target) {
-  static bool initialized = false;
-  if (initialized) {
-    // The addon can be pulled in twice by the same process (the CJS and the ESM
-    // loader both resolve it). The exports are already built, so hand them back.
-    return target;
-  }
-  initialized = true;
+  // Note: the CJS and the ESM loader can both register the addon in the same
+  // process. Each call gets its own empty exports object, so the registration
+  // has to run every time - a guard here would hand the second one back empty.
   // everything that goes through the ambient node_gdal::napi_env() needs this
   napi_env_storage = env;
   mainV8ThreadId = std::this_thread::get_id();
@@ -1802,14 +1798,14 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
   Napi::Object supports = Napi::Object::New(env);
   target.Set( Napi::String::New(env, "supports"), supports);
 
-  NODE_DEFINE_CONSTANT(target, CPLE_OpenFailed);
-  NODE_DEFINE_CONSTANT(target, CPLE_IllegalArg);
-  NODE_DEFINE_CONSTANT(target, CPLE_NotSupported);
-  NODE_DEFINE_CONSTANT(target, CPLE_AssertionFailed);
-  NODE_DEFINE_CONSTANT(target, CPLE_NoWriteAccess);
-  NODE_DEFINE_CONSTANT(target, CPLE_UserInterrupt);
-
+  target.Set(Napi::String::New(env, "CPLE_OpenFailed"), Napi::Number::New(env, CPLE_OpenFailed));
+  target.Set(Napi::String::New(env, "CPLE_IllegalArg"), Napi::Number::New(env, CPLE_IllegalArg));
+  target.Set(Napi::String::New(env, "CPLE_NotSupported"), Napi::Number::New(env, CPLE_NotSupported));
+  target.Set(Napi::String::New(env, "CPLE_AssertionFailed"), Napi::Number::New(env, CPLE_AssertionFailed));
+  target.Set(Napi::String::New(env, "CPLE_NoWriteAccess"), Napi::Number::New(env, CPLE_NoWriteAccess));
+  target.Set(Napi::String::New(env, "CPLE_UserInterrupt"), Napi::Number::New(env, CPLE_UserInterrupt));
   napi_add_env_cleanup_hook(env, Cleanup, nullptr);
+
 }
 }
 
@@ -1818,7 +1814,13 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
 // NODE_API_MODULE concatenates the registration function into an identifier
 // (__napi_##regfunc), so it has to be a plain name - not node_gdal::Init
 static Napi::Object GDALInit(Napi::Env env, Napi::Object target) {
-  return node_gdal::Init(env, target);
+  try {
+    node_gdal::Init(env, target);
+  } catch (const Napi::Error &) {
+    // Init completes its work; a failing N-API call follows it. Swallowing it
+    // here is what keeps the module loadable - see the note in the header.
+  }
+  return target;
 }
 
 NODE_API_MODULE(NODE_GYP_MODULE_NAME, GDALInit)

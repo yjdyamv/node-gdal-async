@@ -57,9 +57,29 @@ Dataset::Dataset(const Napi::CallbackInfo &info) : GDALObject<Dataset>(info), ui
   LOG("Created Dataset [%p]", this_dataset);
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_dataset = static_cast<GDALDataset *>(info[0].As<Napi::External<void>>().Data());
+  } else {
+    Napi::Error::New(node_gdal::napi_env(), "Cannot create dataset directly").ThrowAsJavaScriptException();
     return;
   }
-  Napi::Error::New(node_gdal::napi_env(), "Cannot create dataset directly").ThrowAsJavaScriptException();
+
+  // Every Dataset carries its collections and, when it is a dependent dataset,
+  // a reference on its parent so that the GC cannot collect it
+  GDAL_SET_PRIVATE(info.This(), "layers_", DatasetLayers::New(info.This()));
+
+  Napi::Value bandsObj;
+#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
+  GDALDataset *gdal_ds = get();
+  std::shared_ptr<GDALGroup> root = gdal_ds->GetRootGroup();
+  if (root == nullptr) {
+#endif
+    bandsObj = DatasetBands::New(info.This());
+#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
+  } else {
+    bandsObj = info.Env().Null();
+  }
+#endif
+  GDAL_SET_PRIVATE(info.This(), "bands_", bandsObj);
+  if (parent_ds) GDAL_SET_PRIVATE(info.This(), "parent_", object_store.get(parent_ds));
 }
 Dataset::~Dataset() {
   // Destroy at garbage collection time if not already explicitly destroyed
