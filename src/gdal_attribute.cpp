@@ -21,7 +21,7 @@ void Attribute::Initialize(Napi::Object target) {
   SELF_CLASS(Attribute);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Attribute",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Attribute",
     {
         METHOD(toString)
         ATTR_DONT_ENUM(lcons, "_uid", uidGetter, READ_ONLY_SETTER)

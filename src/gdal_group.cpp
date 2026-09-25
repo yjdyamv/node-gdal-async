@@ -22,7 +22,7 @@ void Group::Initialize(Napi::Object target) {
   SELF_CLASS(Group);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Group",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Group",
     {
         METHOD(toString)
         ATTR_DONT_ENUM(lcons, "_uid", uidGetter, READ_ONLY_SETTER)

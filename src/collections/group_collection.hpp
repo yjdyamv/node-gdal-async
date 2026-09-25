@@ -22,7 +22,7 @@ class GroupCollection : public GDALObject<SELF> {
     Napi::Env env = target.Env();
 
     // NOTE: the descriptor macros carry their own trailing comma
-    Napi::Function lcons = Napi::ObjectWrap<SELF>::DefineClass(env, SELF::_className,
+    Napi::Function lcons = GDALDefineClass<SELF>(env, SELF::_className,
       {
         METHOD(toString)
         METHOD_ASYNCABLE(count)

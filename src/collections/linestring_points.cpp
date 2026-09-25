@@ -13,7 +13,7 @@ void LineStringPoints::Initialize(Napi::Object target) {
   SELF_CLASS(LineStringPoints);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "LineStringPoints",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "LineStringPoints",
     {
         METHOD(toString)
         METHOD(count)

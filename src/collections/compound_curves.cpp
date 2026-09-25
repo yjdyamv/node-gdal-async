@@ -14,7 +14,7 @@ void CompoundCurveCurves::Initialize(Napi::Object target) {
   SELF_CLASS(CompoundCurveCurves);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "CompoundCurveCurves",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "CompoundCurveCurves",
     {
         METHOD(toString)
         METHOD(count)

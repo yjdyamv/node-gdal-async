@@ -21,7 +21,7 @@ void Dimension::Initialize(Napi::Object target) {
   SELF_CLASS(Dimension);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Dimension",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Dimension",
     {
         METHOD(toString)
         ATTR_DONT_ENUM(lcons, "_uid", uidGetter, READ_ONLY_SETTER)

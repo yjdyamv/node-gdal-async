@@ -15,7 +15,7 @@ void RasterBandPixels::Initialize(Napi::Object target) {
   SELF_CLASS(RasterBandPixels);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "RasterBandPixels",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "RasterBandPixels",
     {
         METHOD(toString)
         METHOD_ASYNCABLE(get)

@@ -16,7 +16,7 @@ void MultiPolygon::Initialize(Napi::Object target) {
   SELF_CLASS(MultiPolygon);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "MultiPolygon",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "MultiPolygon",
     {
         METHOD(toString)
         METHOD(unionCascaded)

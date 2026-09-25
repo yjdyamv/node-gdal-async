@@ -11,7 +11,7 @@ void GDALDrivers::Initialize(Napi::Object target) {
   SELF_CLASS(GDALDrivers);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "GDALDrivers",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "GDALDrivers",
     {
         METHOD(toString)
         METHOD(count)

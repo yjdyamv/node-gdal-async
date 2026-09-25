@@ -17,7 +17,7 @@ void LineString::Initialize(Napi::Object target) {
   SELF_CLASS(LineString);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "LineString",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "LineString",
     {
         METHOD(toString)
     });

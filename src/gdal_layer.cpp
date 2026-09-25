@@ -22,7 +22,7 @@ void Layer::Initialize(Napi::Object target) {
   SELF_CLASS(Layer);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Layer",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Layer",
     {
         METHOD(toString)
         METHOD(getExtent)

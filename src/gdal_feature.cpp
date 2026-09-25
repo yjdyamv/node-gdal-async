@@ -16,7 +16,7 @@ void Feature::Initialize(Napi::Object target) {
   SELF_CLASS(Feature);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Feature",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Feature",
     {
         METHOD(toString)
         METHOD(getGeometry)

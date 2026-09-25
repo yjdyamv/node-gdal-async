@@ -17,7 +17,7 @@ void MultiPoint::Initialize(Napi::Object target) {
   SELF_CLASS(MultiPoint);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "MultiPoint",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "MultiPoint",
     {
         METHOD(toString)
     });

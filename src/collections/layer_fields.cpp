@@ -12,7 +12,7 @@ void LayerFields::Initialize(Napi::Object target) {
   SELF_CLASS(LayerFields);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "LayerFields",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "LayerFields",
     {
         METHOD(toString)
         METHOD(count)

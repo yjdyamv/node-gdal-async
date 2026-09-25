@@ -20,7 +20,7 @@ void Dataset::Initialize(Napi::Object target) {
   SELF_CLASS(Dataset);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Dataset",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Dataset",
     {
         METHOD(toString)
         METHOD(setGCPs)

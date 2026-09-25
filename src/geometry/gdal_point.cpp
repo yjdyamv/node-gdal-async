@@ -13,7 +13,7 @@ void Point::Initialize(Napi::Object target) {
   SELF_CLASS(Point);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Point",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Point",
     {
         METHOD(toString)
         ATTR(lcons, "x", xGetter, xSetter)

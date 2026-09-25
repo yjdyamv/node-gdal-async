@@ -15,7 +15,7 @@ void Driver::Initialize(Napi::Object target) {
   SELF_CLASS(Driver);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Driver",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Driver",
     {
       METHOD(toString)
       METHOD_ASYNCABLE(open)

@@ -164,6 +164,55 @@ inline Napi::ClassPropertyDescriptor<T> GDALInstanceMethodHiddenT(const char *na
   return Napi::ClassPropertyDescriptor<T>(d);
 }
 
+//
+// Drop-in replacement for ObjectWrap<T>::DefineClass.
+//
+// The methods cannot go through napi_define_class: V8 gives a `method`
+// descriptor a signature tied to the class it is defined on, and calling one on
+// a subclass instance is rejected with `Illegal invocation`. N-API has no
+// counterpart of v8::FunctionTemplate::Inherit (node-addon-api has none either),
+// so the class hierarchy only exists as a JS prototype chain and V8 cannot tie
+// the two together - every inherited method would break, and there are many
+// (Geometry is the base of a dozen classes).
+//
+// Feeding the functions in as `value` descriptors is not an option either:
+// napi_define_class only accepts a primitive or a Template there and aborts the
+// process otherwise.
+//
+// So the methods are installed on the prototype after the class has been
+// defined, as ordinary functions - which is exactly what NAN's
+// SetPrototypeMethod produced. They carry no receiver check, and the prototype
+// chain is enough to make them inheritable. Accessors are unaffected and keep
+// going through napi_define_class.
+//
+template <typename T>
+inline Napi::Function GDALDefineClass(
+  Napi::Env env, const char *name, const std::initializer_list<Napi::ClassPropertyDescriptor<T>> &properties) {
+  std::vector<napi_property_descriptor> methods;
+  std::vector<Napi::ClassPropertyDescriptor<T>> accessors;
+  for (const auto &p : properties) {
+    napi_property_descriptor d = p;
+    if (d.method != nullptr) {
+      methods.push_back(d);
+    } else {
+      accessors.push_back(p);
+    }
+  }
+
+  Napi::Function lcons = Napi::ObjectWrap<T>::DefineClass(env, name, accessors);
+
+  Napi::Object prototype = lcons.Get("prototype").As<Napi::Object>();
+  for (const auto &d : methods) {
+    napi_value fn = nullptr;
+    // napi_create_function, not a `method` descriptor: no signature is attached
+    if (napi_create_function(env, d.utf8name, NAPI_AUTO_LENGTH, d.method, d.data, &fn) != napi_ok) continue;
+    prototype.DefineProperty(
+      Napi::PropertyDescriptor::Value(d.utf8name, fn, static_cast<napi_property_attributes>(d.attributes)));
+  }
+
+  return lcons;
+}
+
 template <typename T, Napi::Value (*GET)(const Napi::CallbackInfo &)>
 inline Napi::ClassPropertyDescriptor<T> GDALInstanceAccessorT(const char *name) {
   napi_property_descriptor d = {};
@@ -236,6 +285,32 @@ inline Napi::Value ToNapi(Napi::Env, Napi::String v) {
 inline Napi::Value ToNapi(Napi::Env, Napi::Number v) {
   return v;
 }
+
+//
+// The NODE_WRAPPED_*_WITH_RESULT macros name the JS type the result has to be
+// converted to. NAN spelled those with the v8 types (Nan::New<Boolean>(...)),
+// so the names are kept - but they cannot be resolved through ToNapi, which
+// dispatches on the C++ type: OGRBoolean is an int, and every method returning
+// one would hand JS a number where a boolean is expected.
+//
+struct Boolean {
+  static Napi::Value New(Napi::Env env, bool v) {
+    return Napi::Boolean::New(env, v);
+  }
+};
+
+struct Number {
+  static Napi::Value New(Napi::Env env, double v) {
+    return Napi::Number::New(env, v);
+  }
+};
+
+struct Integer {
+  static Napi::Value New(Napi::Env env, int32_t v) {
+    return Napi::Number::New(env, v);
+  }
+};
+
 } // namespace node_gdal
 
 
@@ -846,7 +921,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
       Napi::Error::New(info.Env(), #klass " object has already been destroyed").ThrowAsJavaScriptException();          \
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method());                                    \
+    return result_type::New(info.Env(), obj->this_->wrapped_method());                                    \
   }
 
 #define NODE_WRAPPED_METHOD_WITH_RESULT_1_ENUM_PARAM(                                                                  \
@@ -859,7 +934,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
       Napi::Error::New(info.Env(), #klass " object has already been destroyed").ThrowAsJavaScriptException();          \
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method(param));                               \
+    return result_type::New(info.Env(), obj->this_->wrapped_method(param));                               \
   }
 
 #define NODE_WRAPPED_METHOD_WITH_RESULT_1_INTEGER_PARAM(klass, method, result_type, wrapped_method, param_name)        \
@@ -871,7 +946,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
       Napi::Error::New(info.Env(), #klass " object has already been destroyed").ThrowAsJavaScriptException();          \
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method(param));                               \
+    return result_type::New(info.Env(), obj->this_->wrapped_method(param));                               \
   }
 
 #define NODE_WRAPPED_METHOD_WITH_RESULT_1_DOUBLE_PARAM(klass, method, result_type, wrapped_method, param_name)         \
@@ -883,7 +958,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
       Napi::Error::New(info.Env(), #klass " object has already been destroyed").ThrowAsJavaScriptException();          \
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method(param));                               \
+    return result_type::New(info.Env(), obj->this_->wrapped_method(param));                               \
   }
 
 // ----- wrapped methods w/ lock -------
@@ -896,7 +971,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
     GDAL_LOCK_PARENT(obj);                                                                                             \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method());                                    \
+    return result_type::New(info.Env(), obj->this_->wrapped_method());                                    \
   }
 
 #define NODE_WRAPPED_GETTER_WITH_STRING_LOCKED(klass, method, wrapped_method)                                          \
@@ -919,7 +994,7 @@ inline void Inherit(Napi::Function derived, Napi::Function base) {
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
     GDAL_LOCK_PARENT(obj);                                                                                             \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method());                                    \
+    return result_type::New(info.Env(), obj->this_->wrapped_method());                                    \
   }
 
 // ----- wrapped methods -------
@@ -1129,7 +1204,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
       Napi::Error::New(info.Env(), #klass " object has already been destroyed").ThrowAsJavaScriptException();          \
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method(param->get()));                                     \
+    return result_type::New(info.Env(), obj->this_->wrapped_method(param->get()));                                     \
   }
 
 #define NODE_WRAPPED_METHOD_WITH_RESULT_1_STRING_PARAM(klass, method, result_type, wrapped_method, param_name)         \
@@ -1141,7 +1216,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
       Napi::Error::New(info.Env(), #klass " object has already been destroyed").ThrowAsJavaScriptException();          \
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method(param.c_str()));                                    \
+    return result_type::New(info.Env(), obj->this_->wrapped_method(param.c_str()));                                    \
   }
 
 #define NODE_WRAPPED_METHOD_WITH_RESULT_1_STRING_PARAM_LOCKED(klass, method, result_type, wrapped_method, param_name)  \
@@ -1154,7 +1229,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
       return info.Env().Undefined();                                                                                    \
     }                                                                                                                  \
     GDAL_LOCK_PARENT(obj);                                                                                             \
-    return node_gdal::ToNapi(info.Env(), obj->this_->wrapped_method(param.c_str()));                                    \
+    return result_type::New(info.Env(), obj->this_->wrapped_method(param.c_str()));                                    \
   }
 
 #define NODE_WRAPPED_METHOD_WITH_1_WRAPPED_PARAM(klass, method, wrapped_method, param_type, param_name)                \
@@ -1367,7 +1442,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
     auto *gdal_obj = obj->this_;                                                                                       \
     GDALAsyncableJob<async_type> job(0);                                                                               \
     job.main = [gdal_obj](const GDALExecutionProgress &) { return gdal_obj->wrapped_method(); };                       \
-    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env(), r); };              \
+    job.rval = [](async_type r, const GetFromPersistentFunc &) { return result_type::New(node_gdal::napi_env(), r); };              \
     return job.run(info, async, 0);                                                                                    \
   }
 
@@ -1388,7 +1463,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
     job.main = [gdal_obj, gdal_param](const GDALExecutionProgress &) {                                                 \
       return gdal_obj->wrapped_method(gdal_param);                                                                     \
     };                                                                                                                 \
-    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env(), r); };              \
+    job.rval = [](async_type r, const GetFromPersistentFunc &) { return result_type::New(node_gdal::napi_env(), r); };              \
     return job.run(info, async, 1);                                                                                    \
   }
 
@@ -1405,7 +1480,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
     auto *gdal_obj = obj->this_;                                                                                       \
     GDALAsyncableJob<async_type> job(0);                                                                               \
     job.main = [gdal_obj, param](const GDALExecutionProgress &) { return gdal_obj->wrapped_method(param); };           \
-    job.rval = [](async_type r, const GetFromPersistentFunc &) { return node_gdal::ToNapi(node_gdal::napi_env(), r); };              \
+    job.rval = [](async_type r, const GetFromPersistentFunc &) { return result_type::New(node_gdal::napi_env(), r); };              \
     return job.run(info, async, 1);                                                                                    \
   }
 
@@ -1460,7 +1535,7 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count
 //
 // Used inside a class' `Initialize`, where `SELF` must name the class:
 //
-//   Napi::Function func = DefineClass(env, "Driver", {
+//   Napi::Function func = GDALDefineClass<SELF>(env, "Driver", {
 //     METHOD(toString), METHOD_ASYNCABLE(open), ATTR(lcons, "description", descriptionGetter, READ_ONLY_SETTER),
 //   });
 //

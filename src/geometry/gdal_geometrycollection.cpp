@@ -22,7 +22,7 @@ void GeometryCollection::Initialize(Napi::Object target) {
   SELF_CLASS(GeometryCollection);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "GeometryCollection",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "GeometryCollection",
     {
         METHOD(toString)
         METHOD(getArea)

@@ -16,7 +16,7 @@ void CoordinateTransformation::Initialize(Napi::Object target) {
   SELF_CLASS(CoordinateTransformation);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "CoordinateTransformation",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "CoordinateTransformation",
     {
         METHOD(toString)
         METHOD(transformPoint)

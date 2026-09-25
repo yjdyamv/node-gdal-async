@@ -13,7 +13,7 @@ void PolygonRings::Initialize(Napi::Object target) {
   SELF_CLASS(PolygonRings);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "PolygonRings",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "PolygonRings",
     {
         METHOD(toString)
         METHOD(count)

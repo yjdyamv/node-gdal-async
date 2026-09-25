@@ -21,7 +21,7 @@ void MDArray::Initialize(Napi::Object target) {
   SELF_CLASS(MDArray);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "MDArray",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "MDArray",
     {
         METHOD(toString)
         METHOD_ASYNCABLE(read)

@@ -17,7 +17,7 @@ void MultiLineString::Initialize(Napi::Object target) {
   SELF_CLASS(MultiLineString);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "MultiLineString",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "MultiLineString",
     {
         METHOD(toString)
         METHOD(polygonize)

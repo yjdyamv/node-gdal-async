@@ -30,7 +30,7 @@ void Geometry::Initialize(Napi::Object target) {
   SELF_CLASS(Geometry);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "Geometry",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "Geometry",
     {
         METHOD(toString)
         METHOD_ASYNCABLE_AS("toKML", exportToKML)

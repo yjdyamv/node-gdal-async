@@ -17,7 +17,7 @@ void SimpleCurve::Initialize(Napi::Object target) {
   SELF_CLASS(SimpleCurve);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "SimpleCurve",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "SimpleCurve",
     {
         METHOD(toString)
         METHOD(getLength)

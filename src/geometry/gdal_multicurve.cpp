@@ -16,7 +16,7 @@ void MultiCurve::Initialize(Napi::Object target) {
   SELF_CLASS(MultiCurve);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "MultiCurve",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "MultiCurve",
     {
         METHOD(toString)
         METHOD(polygonize)

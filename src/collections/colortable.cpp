@@ -14,7 +14,7 @@ void ColorTable::Initialize(Napi::Object target) {
   SELF_CLASS(ColorTable);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "ColorTable",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "ColorTable",
     {
         METHOD(toString)
         METHOD(isSame)

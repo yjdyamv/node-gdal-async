@@ -12,7 +12,7 @@ void FeatureDefnFields::Initialize(Napi::Object target) {
   SELF_CLASS(FeatureDefnFields);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "FeatureDefnFields",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "FeatureDefnFields",
     {
         METHOD(toString)
         METHOD(count)

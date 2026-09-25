@@ -12,7 +12,7 @@ void GeometryCollectionChildren::Initialize(Napi::Object target) {
   SELF_CLASS(GeometryCollectionChildren);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "GeometryCollectionChildren",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "GeometryCollectionChildren",
     {
         METHOD(toString)
         METHOD(count)

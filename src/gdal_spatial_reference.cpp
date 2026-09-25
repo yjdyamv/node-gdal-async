@@ -13,7 +13,7 @@ void SpatialReference::Initialize(Napi::Object target) {
   SELF_CLASS(SpatialReference);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "SpatialReference",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "SpatialReference",
     {
         METHOD(toString)
         METHOD_AS("toWKT", exportToWKT)

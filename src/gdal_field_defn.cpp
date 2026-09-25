@@ -12,7 +12,7 @@ void FieldDefn::Initialize(Napi::Object target) {
   SELF_CLASS(FieldDefn);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "FieldDefn",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "FieldDefn",
     {
         ATTR(lcons, "name", nameGetter, nameSetter)
         ATTR(lcons, "type", typeGetter, typeSetter)

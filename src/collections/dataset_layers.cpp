@@ -15,7 +15,7 @@ void DatasetLayers::Initialize(Napi::Object target) {
   SELF_CLASS(DatasetLayers);
 
   // NOTE: the descriptor macros carry their own trailing comma
-  Napi::Function lcons = DefineClass(env, "DatasetLayers",
+  Napi::Function lcons = GDALDefineClass<SELF>(env, "DatasetLayers",
     {
         METHOD(toString)
         METHOD_ASYNCABLE(count)
