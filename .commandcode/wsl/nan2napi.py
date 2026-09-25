@@ -137,8 +137,8 @@ RULES = [
     (r"\.ToLocalChecked\(\)", ""),
     (r"\.ToChecked\(\)", ""),
     (r"\.FromJust\(\)", ""),
-    # NAN's Maybe API: HasOwnProperty() etc. return the value directly here
-    (r"\.FromMaybe\([^()]*\)", ""),
+    # NAN had Value::IsInt32(); N-API only tells numbers apart
+    (r"\.IsInt32\(\)", ".IsNumber()"),
 ]
 
 total = 0

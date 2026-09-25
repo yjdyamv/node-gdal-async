@@ -286,7 +286,7 @@ NAN_METHOD(Feature::setFrom) {
     for (unsigned index = 0; index < index_map.Length(); index++) {
       Napi::Value field_index(index_map.As<Napi::Object>().Get(Napi::Number::New(node_gdal::napi_env(), index)));
 
-      if (!field_index.IsInt32()) {
+      if (!field_index.IsNumber()) {
         delete[] index_map_ptr;
         Napi::Error::New(node_gdal::napi_env(), "index map must contain only integer values").ThrowAsJavaScriptException();
         return node_gdal::napi_env().Undefined();
@@ -414,7 +414,7 @@ NAN_SETTER(Feature::fidSetter) {
     Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
     return;
   }
-  if (!value.IsInt32()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "fid must be an integer").ThrowAsJavaScriptException();
     return;
   }

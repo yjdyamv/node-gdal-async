@@ -34,12 +34,35 @@ void ColorTable::Initialize(Napi::Object target) {
 }
 
 
-ColorTable::ColorTable(const Napi::CallbackInfo &info) : GDALObject<ColorTable>(info), parent_uid(parent_uid), this_(nullptr) {
+ColorTable::ColorTable(const Napi::CallbackInfo &info) : GDALObject<ColorTable>(info), parent_uid(0), this_(nullptr) {
   if (info.Length() > 0 && info[0].IsExternal()) {
     this_ = static_cast<GDALColorTable *>(info[0].As<Napi::External<void>>().Data());
-    return;
+    // the factory passes the owning dataset's uid as the second argument
+    if (info.Length() > 1 && info[1].IsNumber()) parent_uid = info[1].As<Napi::Number>().Int64Value();
+  } else {
+    // Constructed from JS: ColorTable(palette interpretation)
+    if (info.Length() < 1 || !info[0].IsString()) {
+      Napi::Error::New(info.Env(), "palette interpretation must be given").ThrowAsJavaScriptException();
+      return;
+    }
+    std::string pi = info[0].As<Napi::String>().Utf8Value();
+    GDALPaletteInterp gpi;
+    if (pi == "Gray")
+      gpi = GPI_Gray;
+    else if (pi == "RGB")
+      gpi = GPI_RGB;
+    else if (pi == "CMYK")
+      gpi = GPI_CMYK;
+    else if (pi == "HLS")
+      gpi = GPI_HLS;
+    else {
+      Napi::RangeError::New(info.Env(), "Invalid palette interpretation").ThrowAsJavaScriptException();
+      return;
+    }
+    this_ = new GDALColorTable(gpi);
   }
-  Napi::Error::New(info.Env(), "Cannot create ColorTable directly").ThrowAsJavaScriptException();
+
+  uid = object_store.add(this_, *this, parent_uid);
 }
 
 ColorTable::~ColorTable() {
@@ -77,12 +100,9 @@ Napi::Value ColorTable::New(GDALColorTable *raw, Napi::Value parent) {
 
   RasterBand *band = node_gdal::UnwrapWrapped<RasterBand>(parent.As<Napi::Object>());
 
-  ColorTable *wrapped = new ColorTable(raw, band->parent_uid);
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(ColorTable::constructor.Value(), 1, &ext);
-
+  std::vector<napi_value> args = {
+    Napi::External<void>::New(node_gdal::napi_env(), raw), Napi::Number::New(node_gdal::napi_env(), band->parent_uid)};
+  Napi::Object obj = ColorTable::constructor.Value().New(args);
 
   return obj;
 }
@@ -95,11 +115,9 @@ Napi::Value ColorTable::New(GDALColorTable *raw) {
   if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  ColorTable *wrapped = new ColorTable(raw, 0);
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Object obj =
-    Nan::NewInstance(ColorTable::constructor.Value(), 1, &ext);
+  std::vector<napi_value> args = {
+    Napi::External<void>::New(node_gdal::napi_env(), raw), Napi::Number::New(node_gdal::napi_env(), 0)};
+  Napi::Object obj = ColorTable::constructor.Value().New(args);
 
   return obj;
 }

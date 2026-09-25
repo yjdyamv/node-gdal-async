@@ -229,7 +229,7 @@ NAN_SETTER(FieldDefn::justificationSetter) {
 
 NAN_SETTER(FieldDefn::widthSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value.IsInt32()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "width must be an integer").ThrowAsJavaScriptException();
     return;
   }
@@ -238,7 +238,7 @@ NAN_SETTER(FieldDefn::widthSetter) {
 
 NAN_SETTER(FieldDefn::precisionSetter) {
   FieldDefn *def = node_gdal::UnwrapWrapped<FieldDefn>(info.This().As<Napi::Object>());
-  if (!value.IsInt32()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "precision must be an integer").ThrowAsJavaScriptException();
     return;
   }

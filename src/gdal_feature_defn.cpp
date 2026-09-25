@@ -162,7 +162,7 @@ NAN_GETTER(FeatureDefn::fieldsGetter) {
 
 NAN_SETTER(FeatureDefn::geomTypeSetter) {
   FeatureDefn *def = node_gdal::UnwrapWrapped<FeatureDefn>(info.This().As<Napi::Object>());
-  if (!value.IsInt32()) {
+  if (!value.IsNumber()) {
     Napi::Error::New(node_gdal::napi_env(), "geomType must be an integer").ThrowAsJavaScriptException();
     return;
   }

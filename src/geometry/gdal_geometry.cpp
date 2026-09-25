@@ -88,7 +88,7 @@ void Geometry::Initialize(Napi::Object target) {
   GDAL_SetAsyncableMethod(env, lcons, "fromGeoJson", Geometry::createFromGeoJson);
   GDAL_SetAsyncableMethod(env, lcons, "fromGeoJsonBuffer", Geometry::createFromGeoJsonBuffer);
   GDAL_SetMethod(env, lcons, "getName", Geometry::getName);
-  GDAL_SetMethod(env, lcons, "getConstructor", Geometry::getConstructor);
+  GDAL_SetMethod(env, lcons, "getConstructor", static_cast<Napi::Value (*)(const Napi::CallbackInfo &)>(Geometry::getConstructor));
 
   target.Set("Geometry", lcons);
 

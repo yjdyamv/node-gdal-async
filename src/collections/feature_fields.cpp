@@ -61,7 +61,7 @@ NAN_METHOD(FeatureFields::toString) {
 }
 
 inline bool setField(OGRFeature *f, int field_index, Napi::Value val) {
-  if (val.IsInt32()) {
+  if (val.IsNumber()) {
     f->SetField(field_index, val.As<Napi::Number>().Int32Value());
   } else if (val.IsNumber()) {
     f->SetField(field_index, val.As<Napi::Number>().DoubleValue());
