@@ -100,8 +100,8 @@ NAN_METHOD(CompoundCurveCurves::get) {
 
   if (i >= 0 && i < geom->get()->getNumCurves())
     return Geometry::New(geom->get()->getCurve(i), false);
-  else
-    Napi::RangeError::New(node_gdal::napi_env(), "Invalid curve requested").ThrowAsJavaScriptException();
+  Napi::RangeError::New(node_gdal::napi_env(), "Invalid curve requested").ThrowAsJavaScriptException();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**

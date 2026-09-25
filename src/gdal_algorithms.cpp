@@ -573,6 +573,7 @@ GDAL_ASYNCABLE_DEFINE(Algorithms::_acquireLocks) {
  * @param {PixelFunction} pixelFn
  */
 NAN_METHOD(Algorithms::addPixelFunc) {
+
   std::string name;
   NODE_ARG_STR(0, "name", name);
 
@@ -590,11 +591,21 @@ NAN_METHOD(Algorithms::addPixelFunc) {
 
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 5)
   pixel_func *desc = reinterpret_cast<pixel_func *>(data.Data());
+
   CPLErr err = GDALAddDerivedBandPixelFuncWithArgs(name.c_str(), desc->fn, desc->metadata);
-  if (err != CE_None) { NODE_THROW_LAST_CPLERR; }
+
+  if (err != CE_None) {
+
+    NODE_THROW_LAST_CPLERR;
+
+  } else {
+
+  }
+
 #else
   Napi::Error::New(node_gdal::napi_env(), "Custom pixel functions require GDAL >= 3.5").ThrowAsJavaScriptException();
 #endif
+  return node_gdal::napi_env().Undefined();
 }
 
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 5)
@@ -819,11 +830,20 @@ NAN_METHOD(Algorithms::toPixelFunc) {
   }
   uv_unref(reinterpret_cast<uv_handle_t *>(pixelFuncs[uid].async));
 
+  // `reserve` leaves the string empty, so `c_str()` terminates it at [0]: the
+  // length below and the copy would both be zero, while desc->metadata still
+  // pointed at the uninitialized tail of the array (GDAL then parsed garbage as
+  // XML). The size has to be real before anything reads the string.
   std::string metadata;
-  metadata.reserve(strlen(metadataTemplate) + 32);
-  snprintf(&metadata[0], metadata.capacity(), metadataTemplate, static_cast<unsigned>(uid));
+  metadata.resize(strlen(metadataTemplate) + 32);
+  int metadata_len = snprintf(&metadata[0], metadata.size(), metadataTemplate, static_cast<unsigned>(uid));
+  if (metadata_len < 0 || static_cast<size_t>(metadata_len) >= metadata.size()) {
+    Napi::Error::New(node_gdal::napi_env(), "Failed formatting the pixel function metadata").ThrowAsJavaScriptException();
+    return node_gdal::napi_env().Undefined();
+  }
+  metadata.resize(metadata_len);
 
-  Napi::Value r = node_gdal::TypedArray::New(GDT_Byte, sizeof(node_gdal::pixel_func) + strlen(metadata.c_str()) + 1);
+  Napi::Value r = node_gdal::TypedArray::New(GDT_Byte, sizeof(node_gdal::pixel_func) + metadata.size() + 1);
   if (r.IsEmpty() || !r.IsObject()) {
     Napi::Error::New(node_gdal::napi_env(), "Failed creating TypedArray").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
@@ -834,7 +854,7 @@ NAN_METHOD(Algorithms::toPixelFunc) {
   desc->magic = NODE_GDAL_CAPI_MAGIC;
   desc->fn = pixelFunc;
   char *md = reinterpret_cast<char *>(desc) + sizeof(node_gdal::pixel_func);
-  memcpy(md, metadata.data(), strlen(metadata.c_str()));
+  memcpy(md, metadata.data(), metadata.size());
   desc->metadata = md;
 
   return r;

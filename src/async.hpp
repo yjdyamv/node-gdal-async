@@ -2,6 +2,7 @@
 #define __NODE_GDAL_ASYNC_WORKER_H__
 
 #include <thread>
+#include <cstdint>
 #include <functional>
 #include <chrono>
 #include "napi-wrapper.h"

@@ -76,7 +76,6 @@
 
 namespace node_gdal {
 
-
 FILE *log_file = NULL;
 ObjectStore object_store;
 bool eventLoopWarn = true;
@@ -341,6 +340,7 @@ static NAN_METHOD(isAlive) {
 void Cleanup(void *) {
   object_store.cleanup();
 }
+
 
 Napi::Object Init(Napi::Env env, Napi::Object target) {
   // Note: the CJS and the ESM loader can both register the addon in the same
@@ -1806,6 +1806,7 @@ Napi::Object Init(Napi::Env env, Napi::Object target) {
   target.Set(Napi::String::New(env, "CPLE_UserInterrupt"), Napi::Number::New(env, CPLE_UserInterrupt));
   napi_add_env_cleanup_hook(env, Cleanup, nullptr);
 
+  return target;
 }
 }
 

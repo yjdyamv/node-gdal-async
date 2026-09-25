@@ -109,6 +109,7 @@ NAN_METHOD(GDALDrivers::get) {
   }
 
   NODE_THROW_LAST_CPLERR;
+  return node_gdal::napi_env().Undefined();
 }
 
 /**

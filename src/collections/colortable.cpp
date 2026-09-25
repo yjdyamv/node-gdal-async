@@ -251,6 +251,7 @@ NAN_METHOD(ColorTable::set) {
 
   CPLErrorReset();
   raw->SetColorEntry(index, &color);
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -375,6 +376,7 @@ NAN_GETTER(ColorTable::bandGetter) {
   if (!parentMaybe.IsEmpty() && !parentMaybe.IsNull() || parentMaybe.IsUndefined()) {
     return parentMaybe;
   }
+  return node_gdal::napi_env().Undefined();
 }
 
 } // namespace node_gdal

@@ -449,6 +449,7 @@ NAN_METHOD(FeatureFields::get) {
     Napi::Value result = FeatureFields::get(f->get(), field_index);
     return result;
   } catch (const char *err) { Napi::Error::New(node_gdal::napi_env(), err).ThrowAsJavaScriptException(); }
+  return node_gdal::napi_env().Undefined();
 }
 
 /**

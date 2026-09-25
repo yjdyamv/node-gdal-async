@@ -97,15 +97,45 @@ inline const char *getOGRErrMsg(int err) {
 //
 namespace node_gdal {
 
+// `napi_define_class` takes plain C function pointers, so a C++ exception
+// unwinding out of one aborts the process instead of raising a JS error.
+// node-addon-api wraps its own callbacks for exactly this reason
+// (`details::WrapCallback`); these trampolines have to do the same, because
+// every failed `napi_*` call inside the node-addon-api helpers throws.
+// Must be called from a catch block.
+inline napi_value RethrowAsJavaScriptException(Napi::Env env) noexcept {
+  try {
+    throw;
+  } catch (const Napi::Error &e) {
+    e.ThrowAsJavaScriptException();
+  } catch (const std::exception &e) {
+    Napi::Error::New(env, e.what()).ThrowAsJavaScriptException();
+  } catch (const char *err) {
+    Napi::Error::New(env, err).ThrowAsJavaScriptException();
+  } catch (...) {
+    Napi::Error::New(env, "Unknown error").ThrowAsJavaScriptException();
+  }
+  return nullptr;
+}
+
 template <Napi::Value (*FN)(const Napi::CallbackInfo &)> napi_value MethodTrampoline(::napi_env env, napi_callback_info info) {
   Napi::CallbackInfo ci(env, info);
-  return FN(ci);
+  try {
+    return FN(ci);
+  } catch (...) {
+    return RethrowAsJavaScriptException(ci.Env());
+  }
 }
 
 template <void (*FN)(const Napi::CallbackInfo &, const Napi::Value &)>
 napi_value SetterTrampoline(::napi_env env, napi_callback_info info) {
   Napi::CallbackInfo ci(env, info);
-  FN(ci, ci.Length() > 0 ? ci[0] : ci.Env().Undefined());
+  Napi::Value value = ci.Length() > 0 ? ci[0] : ci.Env().Undefined();
+  try {
+    FN(ci, value);
+  } catch (...) {
+    return RethrowAsJavaScriptException(ci.Env());
+  }
   return nullptr;
 }
 

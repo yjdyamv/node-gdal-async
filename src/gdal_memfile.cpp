@@ -154,6 +154,7 @@ NAN_METHOD(Memfile::vsimemSet) {
 
   Memfile *memfile = Memfile::get(buffer, filename);
   if (memfile == nullptr) Napi::Error::New(node_gdal::napi_env(), "Failed creating in-memory file").ThrowAsJavaScriptException();
+  return node_gdal::napi_env().Undefined();
 }
 
 /**
@@ -179,6 +180,7 @@ NAN_METHOD(Memfile::vsimemCopy) {
   NODE_ARG_STR(1, "filename", filename);
 
   if (!Memfile::copy(buffer, filename)) Napi::Error::New(node_gdal::napi_env(), "Failed creating in-memory file").ThrowAsJavaScriptException();
+  return node_gdal::napi_env().Undefined();
 }
 
 /*
@@ -196,6 +198,7 @@ NAN_METHOD(Memfile::vsimemAnonymous) {
     Napi::Error::New(node_gdal::napi_env(), "Failed creating in-memory file").ThrowAsJavaScriptException();
   else
     return Napi::String::New(node_gdal::napi_env(), memfile->filename);
+  return node_gdal::napi_env().Undefined();
 }
 
 /**

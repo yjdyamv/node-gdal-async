@@ -421,6 +421,7 @@ NAN_METHOD(Feature::setStyleString) {
 
   std::string utf8 = info[0].As<Napi::String>().Utf8Value();
   feature->this_->SetStyleString(utf8.c_str());
+  return node_gdal::napi_env().Undefined();
 }
 
 NAN_SETTER(Feature::fidSetter) {
