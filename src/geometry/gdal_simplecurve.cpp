@@ -42,9 +42,12 @@ void SimpleCurve::Initialize(Napi::Object target) {
  * @class SimpleCurve
  * @extends Geometry
  */
-NAN_METHOD(SimpleCurve::New) {
-  Napi::Error::New(node_gdal::napi_env(), "SimpleCurve is an abstract class and cannot be instantiated").ThrowAsJavaScriptException();
+SimpleCurve::SimpleCurve(const Napi::CallbackInfo &info)
+  : CurveBase<SimpleCurve, OGRSimpleCurve, LineStringPoints>(info) {
+  Napi::Error::New(info.Env(), "SimpleCurve is an abstract class and cannot be instantiated")
+    .ThrowAsJavaScriptException();
 }
+
 
 NAN_METHOD(SimpleCurve::toString) {
   return Napi::String::New(node_gdal::napi_env(), "SimpleCurve");

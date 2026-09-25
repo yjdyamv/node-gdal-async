@@ -42,43 +42,24 @@ void Point::Initialize(Napi::Object target) {
  * @param {number} y
  * @param {number} [z]
  */
-NAN_METHOD(Point::New) {
-  Point *f;
-  OGRPoint *geom;
-  double x = 0, y = 0, z = 0;
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
+Point::Point(const Napi::CallbackInfo &info) : GeometryBase<Point, OGRPoint>(info) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<OGRPoint *>(info[0].As<Napi::External<void>>().Data());
+    return;
   }
 
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    f = static_cast<Point *>(ptr);
-
-  } else {
-    NODE_ARG_DOUBLE_OPT(0, "x", x);
-    NODE_ARG_DOUBLE_OPT(1, "y", y);
-    NODE_ARG_DOUBLE_OPT(2, "z", z);
-
-    if (info.Length() == 1) {
-      Napi::Error::New(node_gdal::napi_env(), "Point constructor must be given 0, 2, or 3 arguments").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-
-    if (info.Length() == 3) {
-      geom = new OGRPoint(x, y, z);
-    } else {
-      geom = new OGRPoint(x, y);
-    }
-
-    f = new Point(geom);
+  if (info.Length() == 1) {
+    Napi::Error::New(info.Env(), "Point constructor must be given 0, 2, or 3 arguments").ThrowAsJavaScriptException();
+    return;
   }
 
-  f->Wrap(info.This());
-  return info.This();
+  // GeometryBase<Point, OGRPoint>() has already created an empty OGRPoint,
+  // which is (0, 0) - apply the arguments to it
+  if (info.Length() > 0) this_->setX(info[0].As<Napi::Number>().DoubleValue());
+  if (info.Length() > 1) this_->setY(info[1].As<Napi::Number>().DoubleValue());
+  if (info.Length() > 2) this_->setZ(info[2].As<Napi::Number>().DoubleValue());
 }
+
 
 NAN_METHOD(Point::toString) {
   return Napi::String::New(node_gdal::napi_env(), "Point");

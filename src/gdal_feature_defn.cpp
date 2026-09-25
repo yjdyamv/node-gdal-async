@@ -162,7 +162,7 @@ NAN_GETTER(FeatureDefn::fieldsGetter) {
 
 NAN_SETTER(FeatureDefn::geomTypeSetter) {
   FeatureDefn *def = node_gdal::UnwrapWrapped<FeatureDefn>(info.This().As<Napi::Object>());
-  if (!value->IsInt32()) {
+  if (!value.IsInt32()) {
     Napi::Error::New(node_gdal::napi_env(), "geomType must be an integer").ThrowAsJavaScriptException();
     return;
   }
@@ -171,7 +171,7 @@ NAN_SETTER(FeatureDefn::geomTypeSetter) {
 
 NAN_SETTER(FeatureDefn::geomIgnoredSetter) {
   FeatureDefn *def = node_gdal::UnwrapWrapped<FeatureDefn>(info.This().As<Napi::Object>());
-  if (!value->IsBoolean()) {
+  if (!value.IsBoolean()) {
     Napi::Error::New(node_gdal::napi_env(), "geomIgnored must be a boolean").ThrowAsJavaScriptException();
     return;
   }
@@ -180,7 +180,7 @@ NAN_SETTER(FeatureDefn::geomIgnoredSetter) {
 
 NAN_SETTER(FeatureDefn::styleIgnoredSetter) {
   FeatureDefn *def = node_gdal::UnwrapWrapped<FeatureDefn>(info.This().As<Napi::Object>());
-  if (!value->IsBoolean()) {
+  if (!value.IsBoolean()) {
     Napi::Error::New(node_gdal::napi_env(), "styleIgnored must be a boolean").ThrowAsJavaScriptException();
     return;
   }

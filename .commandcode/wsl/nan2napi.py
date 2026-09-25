@@ -96,6 +96,8 @@ RULES = [
     (r"Nan::To<int>\((.*?)\)", r"\1.As<Napi::Number>().Int32Value()"),
     (r"\*Nan::Utf8String\((.*?)\)", r"\1.As<Napi::String>().Utf8Value()"),
     (r"Nan::Utf8String\((.*?)\)", r"\1.As<Napi::String>().Utf8Value()"),
+    # `Nan::Utf8String name(arg);` is a local holding the string
+    (r"Nan::Utf8String (\w+)\(([^)]*)\);", r"std::string \1 = \2.As<Napi::String>().Utf8Value();"),
     # typed errors
     (r"Nan::ThrowTypeError\((.*?)\);", "Napi::TypeError::New(%s, \\1).ThrowAsJavaScriptException();" % E),
     (r"Nan::ThrowRangeError\((.*?)\);", "Napi::RangeError::New(%s, \\1).ThrowAsJavaScriptException();" % E),

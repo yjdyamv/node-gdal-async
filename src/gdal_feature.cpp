@@ -46,11 +46,44 @@ void Feature::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-Feature::Feature(OGRFeature *feature) : Nan::ObjectWrap(), this_(feature), owned_(true) {
-  LOG("Created Feature[%p]", feature);
-}
+Feature::Feature(const Napi::CallbackInfo &info) : GDALObject<Feature>(info), this_(nullptr), owned_(true) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = static_cast<OGRFeature *>(info[0].As<Napi::External<void>>().Data());
+    LOG("Created Feature[%p]", this_);
+  } else {
 
-Feature::Feature(const Napi::CallbackInfo &info) : GDALObject<Feature>(info), this_(0), owned_(true) {
+    if (info.Length() < 1) {
+      Napi::Error::New(info.Env(), "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
+      return;
+    }
+
+    OGRFeatureDefn *def;
+
+    if (IS_WRAPPED(info[0], Layer)) {
+      Layer *layer = node_gdal::UnwrapWrapped<Layer>(info[0].As<Napi::Object>());
+      if (!layer->isAlive()) {
+        Napi::Error::New(info.Env(), "Layer object already destroyed").ThrowAsJavaScriptException();
+        return;
+      }
+      def = layer->get()->GetLayerDefn();
+    } else if (IS_WRAPPED(info[0], FeatureDefn)) {
+      FeatureDefn *feature_def = node_gdal::UnwrapWrapped<FeatureDefn>(info[0].As<Napi::Object>());
+      if (!feature_def->isAlive()) {
+        Napi::Error::New(info.Env(), "FeatureDefn object already destroyed").ThrowAsJavaScriptException();
+        return;
+      }
+      def = feature_def->get();
+    } else {
+      Napi::Error::New(info.Env(), "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
+      return;
+    }
+
+    this_ = new OGRFeature(def);
+    LOG("Created Feature[%p]", this_);
+  }
+
+  Napi::Value fields = FeatureFields::New(info.This());
+  GDAL_SET_PRIVATE(info.This(), "fields_", fields);
 }
 
 Feature::~Feature() {
@@ -66,94 +99,7 @@ void Feature::dispose() {
   }
 }
 
-/**
- * A simple feature, including geometry and attributes. Its fields and geometry
- * type is defined by the given definition.
- *
- * @example
- * //create layer and specify geometry type
- * var layer = dataset.layers.create('mylayer', null, gdal.Point);
- *
- * //setup fields for the given layer
- * layer.fields.add(new gdal.FieldDefn('elevation', gdal.OFTInteger));
- * layer.fields.add(new gdal.FieldDefn('name', gdal.OFTString));
- *
- * //create feature using layer definition and then add it to the layer
- * var feature = new gdal.Feature(layer);
- * feature.fields.set('elevation', 13775);
- * feature.fields.set('name', 'Grand Teton');
- * feature.setGeometry(new gdal.Point(43.741208, -110.802414));
- * layer.features.add(feature);
- *
- * @constructor
- * @class Feature
- * @param {Layer|FeatureDefn} definition
- */
-NAN_METHOD(Feature::New) {
-  Feature *f;
-
-  if (!info.IsConstructCall()) {
-    Napi::Error::New(node_gdal::napi_env(), "Cannot call constructor as function, you need to use 'new' keyword").ThrowAsJavaScriptException();
-    return node_gdal::napi_env().Undefined();
-  }
-
-  if (info[0].IsExternal()) {
-    Local<External> ext = info[0].As<Napi::External<void>>();
-    void *ptr = ext->Value();
-    f = static_cast<Feature *>(ptr);
-
-  } else {
-
-    if (info.Length() < 1) {
-      Napi::Error::New(node_gdal::napi_env(), "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-
-    OGRFeatureDefn *def;
-
-    if (IS_WRAPPED(info[0], Layer)) {
-      Layer *layer = node_gdal::UnwrapWrapped<Layer>(info[0].As<Napi::Object>());
-      if (!layer->isAlive()) {
-        Napi::Error::New(node_gdal::napi_env(), "Layer object already destroyed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env().Undefined();
-      }
-      def = layer->get()->GetLayerDefn();
-    } else if (IS_WRAPPED(info[0], FeatureDefn)) {
-      FeatureDefn *feature_def = node_gdal::UnwrapWrapped<FeatureDefn>(info[0].As<Napi::Object>());
-      if (!feature_def->isAlive()) {
-        Napi::Error::New(node_gdal::napi_env(), "FeatureDefn object already destroyed").ThrowAsJavaScriptException();
-        return node_gdal::napi_env().Undefined();
-      }
-      def = feature_def->get();
-    } else {
-      Napi::Error::New(node_gdal::napi_env(), "Constructor expects Layer or FeatureDefn object").ThrowAsJavaScriptException();
-      return node_gdal::napi_env().Undefined();
-    }
-
-    OGRFeature *ogr_f = new OGRFeature(def);
-    f = new Feature(ogr_f);
-  }
-
-  Napi::Value fields = FeatureFields::New(info.This());
-  GDAL_SET_PRIVATE(info.This(), "fields_", fields);
-
-  f->Wrap(info.This());
-  return info.This();
-}
-
-Napi::Value Feature::New(OGRFeature *feature) {
-  return Feature::New(feature, true);
-}
-
-Napi::Value Feature::New(OGRFeature *feature, bool owned) {
-
-  if (!feature) { return node_gdal::napi_env().Null(); }
-
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), feature)};
-  Napi::Object obj = Feature::constructor.Value().New(args);
-  Feature *wrapped = node_gdal::UnwrapWrapped<Feature>(obj);
-  return obj;
-}
+// Currently read-only feature definitions are copied.
 
 NAN_METHOD(Feature::toString) {
   return Napi::String::New(node_gdal::napi_env(), "Feature");
@@ -330,17 +276,17 @@ NAN_METHOD(Feature::setFrom) {
     NODE_ARG_ARRAY(1, "index map", index_map);
     NODE_ARG_BOOL_OPT(2, "forgiving", forgiving);
 
-    if (index_map->Length() < 1) {
+    if (index_map.Length() < 1) {
       Napi::Error::New(node_gdal::napi_env(), "index map must contain at least 1 index").ThrowAsJavaScriptException();
       return node_gdal::napi_env().Undefined();
     }
 
-    int *index_map_ptr = new int[index_map->Length()];
+    int *index_map_ptr = new int[index_map.Length()];
 
-    for (unsigned index = 0; index < index_map->Length(); index++) {
+    for (unsigned index = 0; index < index_map.Length(); index++) {
       Napi::Value field_index(index_map.As<Napi::Object>().Get(Napi::Number::New(node_gdal::napi_env(), index)));
 
-      if (!field_index->IsInt32()) {
+      if (!field_index.IsInt32()) {
         delete[] index_map_ptr;
         Napi::Error::New(node_gdal::napi_env(), "index map must contain only integer values").ThrowAsJavaScriptException();
         return node_gdal::napi_env().Undefined();
@@ -458,8 +404,8 @@ NAN_METHOD(Feature::setStyleString) {
     return node_gdal::napi_env().Undefined();
   }
 
-  Nan::Utf8String utf8(info[0]);
-  feature->this_->SetStyleString(*utf8);
+  std::string utf8 = info[0].As<Napi::String>().Utf8Value();
+  feature->this_->SetStyleString(utf8.c_str());
 }
 
 NAN_SETTER(Feature::fidSetter) {
@@ -468,7 +414,7 @@ NAN_SETTER(Feature::fidSetter) {
     Napi::Error::New(node_gdal::napi_env(), "Feature object already destroyed").ThrowAsJavaScriptException();
     return;
   }
-  if (!value->IsInt32()) {
+  if (!value.IsInt32()) {
     Napi::Error::New(node_gdal::napi_env(), "fid must be an integer").ThrowAsJavaScriptException();
     return;
   }
