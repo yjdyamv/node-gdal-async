@@ -321,6 +321,29 @@ inline Napi::Symbol PrivateKey(Napi::Env env, const char *name) {
   (obj).As<Napi::Object>().Set(node_gdal::PrivateKey((obj).Env(), name), value)
 #define GDAL_GET_PRIVATE(obj, name) (obj).As<Napi::Object>().Get(node_gdal::PrivateKey((obj).Env(), name))
 
+// ----- shared_ptr payloads -------
+
+//
+// Several classes (Group, MDArray, Attribute, Dimension) hold a
+// std::shared_ptr to their GDAL object rather than a raw pointer. A shared_ptr
+// cannot travel through Napi::External<void> by value, so the factory hands
+// over an owning copy and the constructor takes it.
+//
+namespace node_gdal {
+
+template <typename T> inline void *ExportShared(const std::shared_ptr<T> &p) {
+  return new std::shared_ptr<T>(p);
+}
+
+template <typename T> inline std::shared_ptr<T> ImportShared(const Napi::CallbackInfo &info) {
+  auto *p = static_cast<std::shared_ptr<T> *>(info[0].As<Napi::External<void>>().Data());
+  std::shared_ptr<T> r = *p;
+  delete p;
+  return r;
+}
+
+} // namespace node_gdal
+
 // ----- inheritance -------
 
 //
@@ -981,6 +1004,12 @@ std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Env env, Napi::Array arra
     ptr.get()[i] = static_cast<RETURN>(val.As<Napi::Number>().DoubleValue());
   }
   return ptr;
+}
+
+// the original call sites do not thread the environment through
+template <typename INPUT, typename RETURN>
+std::shared_ptr<RETURN[]> NumberArrayToSharedPtr(Napi::Array array, size_t count = 0) {
+  return NumberArrayToSharedPtr<INPUT, RETURN>(node_gdal::napi_env(), array, count);
 }
 
 // ----- throwing / rejecting -------

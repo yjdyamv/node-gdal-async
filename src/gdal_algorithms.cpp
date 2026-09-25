@@ -579,17 +579,17 @@ NAN_METHOD(Algorithms::addPixelFunc) {
   Napi::Object arg;
   NODE_ARG_OBJECT(1, "pixelFn", arg);
 
-  Nan::TypedArrayContents<uint64_t> magic(arg);
+  Napi::TypedArrayOf<uint64_t> magic = arg.As<Napi::TypedArrayOf<uint64_t>>();
 
-  if (magic.length() < 1 || **magic != NODE_GDAL_CAPI_MAGIC) {
+  if (magic.ElementLength() < 1 || *magic.Data() != NODE_GDAL_CAPI_MAGIC) {
     Napi::TypeError::New(node_gdal::napi_env(), "pixelFn must be a native code pixel function").ThrowAsJavaScriptException();
     return node_gdal::napi_env().Undefined();
   }
 
-  Nan::TypedArrayContents<uint8_t> data(arg);
+  Napi::TypedArrayOf<uint8_t> data = arg.As<Napi::TypedArrayOf<uint8_t>>();
 
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 5)
-  pixel_func *desc = reinterpret_cast<pixel_func *>(*data);
+  pixel_func *desc = reinterpret_cast<pixel_func *>(data.Data());
   CPLErr err = GDALAddDerivedBandPixelFuncWithArgs(name.c_str(), desc->fn, desc->metadata);
   if (err != CE_None) { NODE_THROW_LAST_CPLERR; }
 #else

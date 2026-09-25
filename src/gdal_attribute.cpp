@@ -35,12 +35,13 @@ void Attribute::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-Attribute::Attribute(std::shared_ptr<GDALAttribute> attribute)
-  : Nan::ObjectWrap(), uid(0), this_(attribute), parent_ds(0) {
-  LOG("Created attribute [%p]", attribute.get());
-}
-
-Attribute::Attribute(const Napi::CallbackInfo &info) : GDALObject<Attribute>(info), uid(0), this_(0), parent_ds(0) {
+Attribute::Attribute(const Napi::CallbackInfo &info) : GDALObject<Attribute>(info), uid(0), this_(nullptr), parent_ds(0) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = node_gdal::ImportShared<GDALAttribute>(info);
+    LOG("Created attribute [%p]", this_.get());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create Attribute directly").ThrowAsJavaScriptException();
 }
 
 Attribute::~Attribute() {
@@ -69,11 +70,12 @@ Napi::Value Attribute::New(std::shared_ptr<GDALAttribute> raw, GDALDataset *pare
   if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), raw)};
+  std::vector<napi_value> args = {
+    Napi::External<void>::New(node_gdal::napi_env(), node_gdal::ExportShared(raw))};
   Napi::Object obj = Attribute::constructor.Value().New(args);
   Attribute *wrapped = node_gdal::UnwrapWrapped<Attribute>(obj);
 
-  Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(ds);
+  Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(object_store.get(parent_ds));
   long parent_uid = unwrapped_ds->uid;
 
   wrapped->uid = object_store.add(raw, *wrapped, parent_uid);

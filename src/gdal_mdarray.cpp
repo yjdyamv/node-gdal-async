@@ -47,8 +47,13 @@ void MDArray::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-MDArray::MDArray(std::shared_ptr<GDALMDArray> md) : Nan::ObjectWrap(), uid(0), this_(md) {
-  LOG("Created MDArray [%p]", md.get());
+MDArray::MDArray(const Napi::CallbackInfo &info) : GDALObject<MDArray>(info), uid(0), this_(nullptr) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = node_gdal::ImportShared<GDALMDArray>(info);
+    LOG("Created MDArray [%p]", this_.get());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create MDArray directly").ThrowAsJavaScriptException();
 }
 
 MDArray::~MDArray() {
@@ -77,8 +82,6 @@ Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_d
   if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  MDArray *wrapped = new MDArray(raw);
-
   // add reference to datasource so datasource doesnt get GC'ed while group is
   // alive
   Napi::Object ds;
@@ -90,10 +93,10 @@ Napi::Value MDArray::New(std::shared_ptr<GDALMDArray> raw, GDALDataset *parent_d
     return node_gdal::napi_env().Undefined();
   }
 
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Value argv[] = {ext, ds};
-  Napi::Object obj =
-    Nan::NewInstance(MDArray::constructor.Value(), 2, argv);
+  std::vector<napi_value> args = {
+    Napi::External<void>::New(node_gdal::napi_env(), node_gdal::ExportShared(raw)), ds};
+  Napi::Object obj = MDArray::constructor.Value().New(args);
+  MDArray *wrapped = node_gdal::UnwrapWrapped<MDArray>(obj);
 
   size_t dim = raw->GetDimensionCount();
 
@@ -261,7 +264,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
   Napi::Object array;
   if (options.As<Napi::Object>().HasOwnProperty(sym)) {
     data = options.As<Napi::Object>().Get(sym);
-    if (!data->IsUndefined() && !data->IsNull()) {
+    if (!data.IsUndefined() && !data.IsNull()) {
       array = data.As<Napi::Object>();
       type = node_gdal::TypedArray::Identify(array);
       if (type == GDT_Unknown) {
@@ -284,7 +287,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
       type = exType.GetNumericDataType();
     }
     data = node_gdal::TypedArray::New(type, length);
-    if (data.IsEmpty() || !data->IsObject()) {
+    if (data.IsEmpty() || !data.IsObject()) {
       Napi::Error::New(node_gdal::napi_env(), "Failed to allocate array").ThrowAsJavaScriptException();
       return node_gdal::napi_env().Undefined(); // TypedArray::New threw an error
     }

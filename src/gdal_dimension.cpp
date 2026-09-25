@@ -37,12 +37,13 @@ void Dimension::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-Dimension::Dimension(std::shared_ptr<GDALDimension> dimension)
-  : Nan::ObjectWrap(), uid(0), this_(dimension), parent_ds(0) {
-  LOG("Created dimension [%p]", dimension.get());
-}
-
-Dimension::Dimension(const Napi::CallbackInfo &info) : GDALObject<Dimension>(info), uid(0), this_(0), parent_ds(0) {
+Dimension::Dimension(const Napi::CallbackInfo &info) : GDALObject<Dimension>(info), uid(0), this_(nullptr), parent_ds(0) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = node_gdal::ImportShared<GDALDimension>(info);
+    LOG("Created dimension [%p]", this_.get());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create Dimension directly").ThrowAsJavaScriptException();
 }
 
 Dimension::~Dimension() {
@@ -71,11 +72,12 @@ Napi::Value Dimension::New(std::shared_ptr<GDALDimension> raw, GDALDataset *pare
   if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  std::vector<napi_value> args = {Napi::External<void>::New(node_gdal::napi_env(), raw)};
+  std::vector<napi_value> args = {
+    Napi::External<void>::New(node_gdal::napi_env(), node_gdal::ExportShared(raw))};
   Napi::Object obj = Dimension::constructor.Value().New(args);
   Dimension *wrapped = node_gdal::UnwrapWrapped<Dimension>(obj);
 
-  Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(ds);
+  Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(object_store.get(parent_ds));
   long parent_uid = unwrapped_ds->uid;
 
   wrapped->uid = object_store.add(raw, *wrapped, parent_uid);

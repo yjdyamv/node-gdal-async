@@ -222,25 +222,25 @@ int WarpOptions::parse(Napi::Value value) {
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "dstAlphaBand"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "dstAlphaBand"));
-    if (prop->IsNumber()) {
+    if (prop.IsNumber()) {
       options->nDstAlphaBand = prop.As<Napi::Number>().Int32Value();
-    } else if (!prop->IsUndefined() && !prop->IsNull()) {
+    } else if (!prop.IsUndefined() && !prop.IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "dstAlphaBand property must be an integer").ThrowAsJavaScriptException();
       return 1;
     }
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "blend"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "blend"));
-    if (prop->IsNumber()) {
+    if (prop.IsNumber()) {
       options->dfCutlineBlendDist = prop.As<Napi::Number>().DoubleValue();
-    } else if (!prop->IsUndefined() && !prop->IsNull()) {
+    } else if (!prop.IsUndefined() && !prop.IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "cutline blend distance must be a number").ThrowAsJavaScriptException();
       return 1;
     }
   }
   if (obj.As<Napi::Object>().HasOwnProperty(Napi::String::New(node_gdal::napi_env(), "cutline"))) {
     prop = obj.As<Napi::Object>().Get(Napi::String::New(node_gdal::napi_env(), "cutline"));
-    if (prop->IsObject() && !prop->IsNull() && Napi::Number::New(node_gdal::napi_env(), Geometry::constructor)->HasInstance(prop)) {
+    if (prop.IsObject() && !prop.IsNull() && Napi::Number::New(node_gdal::napi_env(), Geometry::constructor)->HasInstance(prop)) {
       options->hCutline = node_gdal::UnwrapWrapped<Geometry>(prop.As<Napi::Object>())->get();
     } else if (!prop->IsUndefined() && !prop->IsNull()) {
       Napi::TypeError::New(node_gdal::napi_env(), "cutline property must be a Geometry object").ThrowAsJavaScriptException();

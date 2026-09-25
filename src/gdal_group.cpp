@@ -39,11 +39,13 @@ void Group::Initialize(Napi::Object target) {
   constructor.SuppressDestruct();
 }
 
-Group::Group(std::shared_ptr<GDALGroup> group) : Nan::ObjectWrap(), uid(0), this_(group), parent_ds(0) {
-  LOG("Created group [%p]", group.get());
-}
-
-Group::Group(const Napi::CallbackInfo &info) : GDALObject<Group>(info), uid(0), this_(0), parent_ds(0) {
+Group::Group(const Napi::CallbackInfo &info) : GDALObject<Group>(info), uid(0), this_(nullptr), parent_ds(0) {
+  if (info.Length() > 0 && info[0].IsExternal()) {
+    this_ = node_gdal::ImportShared<GDALGroup>(info);
+    LOG("Created group [%p]", this_.get());
+    return;
+  }
+  Napi::Error::New(info.Env(), "Cannot create Group directly").ThrowAsJavaScriptException();
 }
 
 Group::~Group() {
@@ -84,15 +86,13 @@ Napi::Value Group::New(std::shared_ptr<GDALGroup> raw, Napi::Object parent_ds) {
   if (!raw) { return node_gdal::napi_env().Null(); }
   if (object_store.has(raw)) { return object_store.get(raw); }
 
-  Group *wrapped = new Group(raw);
+  std::vector<napi_value> args = {
+    Napi::External<void>::New(node_gdal::napi_env(), node_gdal::ExportShared(raw)), parent_ds};
+  Napi::Object obj = Group::constructor.Value().New(args);
+  Group *wrapped = node_gdal::UnwrapWrapped<Group>(obj);
 
   long parent_group_uid = 0;
   Napi::Object parent;
-
-  Napi::Value ext = Nan::New<External>(wrapped);
-  Napi::Value argv[] = {ext, parent_ds};
-  Napi::Object obj =
-    Nan::NewInstance(Group::constructor.Value(), 2, argv);
 
   Dataset *unwrapped_ds = node_gdal::UnwrapWrapped<Dataset>(parent_ds);
   long parent_uid = unwrapped_ds->uid;
