@@ -112,7 +112,7 @@
 			"include_dirs": [
 				"include",
 				"<!(node -e \"require('nan')\")",
-				"<!(node -e \"require('node-addon-api').include\")",
+				"<!(node -e \"require('node-addon-api').include_dir\")",
 			],
 			"defines": [
 				"PLATFORM='<(OS)'",
