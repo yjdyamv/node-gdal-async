@@ -1,1 +1,0 @@
-. "/mnt/c/Users/yuan/node-gdal-async/conan/recipes/gdal-prebuilt/deactivate_conanrunenv-release-x86_64.sh"
