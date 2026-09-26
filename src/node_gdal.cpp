@@ -4,8 +4,6 @@
 #include <node_version.h>
 
 // nan
-#include <execinfo.h>
-#include <signal.h>
 #include "gdal_common.hpp"
 
 // gdal
@@ -349,25 +347,12 @@ void Cleanup(void *) {
   object_store.cleanup();
 }
 
-
-
-static void gdal_abort_handler(int) {
-  void *frames[64];
-  int n = backtrace(frames, 64);
-  const char *msg = "### SIGABRT backtrace\n";
-  ssize_t ignored = write(2, msg, strlen(msg));
-  (void)ignored;
-  backtrace_symbols_fd(frames, n, 2);
-  _exit(134);
-}
-
 Napi::Object Init(Napi::Env env, Napi::Object target) {
   // Note: the CJS and the ESM loader can both register the addon in the same
   // process. Each call gets its own empty exports object, so the registration
   // has to run every time - a guard here would hand the second one back empty.
   // everything that goes through the ambient node_gdal::napi_env() needs this
   napi_env_storage = env;
-  signal(SIGABRT, gdal_abort_handler);
   mainV8ThreadId = std::this_thread::get_id();
 
   GDAL_SetAsyncableMethod(env, target, "open", gdal_open);

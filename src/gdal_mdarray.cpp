@@ -293,7 +293,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
     }
     data = node_gdal::TypedArray::New(type, length);
     if (data.IsEmpty() || !data.IsObject()) {
-      Napi::Error::New(node_gdal::napi_env(), "Failed to allocate array").ThrowAsJavaScriptException();
+      node_gdal::ThrowOverPending(node_gdal::napi_env(), "Failed to allocate array");
       return node_gdal::napi_env().Undefined(); // TypedArray::New threw an error
     }
     array = data.As<Napi::Object>();
@@ -306,7 +306,7 @@ GDAL_ASYNCABLE_DEFINE(MDArray::read) {
 
   void *buffer = node_gdal::TypedArray::Validate(array, type, length);
   if (!buffer) {
-    Napi::Error::New(node_gdal::napi_env(), "Failed to allocate array").ThrowAsJavaScriptException();
+    node_gdal::ThrowOverPending(node_gdal::napi_env(), "Failed to allocate array");
     return node_gdal::napi_env().Undefined(); // TypedArray::Validate threw an error
   }
 

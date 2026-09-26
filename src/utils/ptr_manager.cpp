@@ -102,13 +102,27 @@ ObjectStore::~ObjectStore() {
   uv_cond_destroy(&master_sleep);
 }
 
+// The reference to the JS wrapper is weak. V8 clears it as part of the
+// collection, but the entry is only removed by the napi_wrap finalizer, which
+// node runs on a later turn - NAN's weak callback ran during the GC itself. In
+// between, the entry is stale: it must not be handed out (get would produce an
+// empty handle) and isAlive must not claim the object still exists.
+template <typename GDALPTR> static bool isDead(const shared_ptr<ObjectStoreItem<GDALPTR>> &item) {
+  return item == nullptr || item->obj.Value().IsEmpty();
+}
+
+template <typename GDALPTR> static bool isAliveIn(const UidMap<GDALPTR> &m, long uid) {
+  auto i = m.find(uid);
+  return i != m.end() && !isDead(i->second);
+}
+
 bool ObjectStore::isAlive(long uid) {
   if (uid == 0) return true;
-  return uidMap<GDALRasterBand *>.count(uid) > 0 || uidMap<OGRLayer *>.count(uid) > 0 ||
-    uidMap<GDALDataset *>.count(uid) > 0 || uidMap<GDALColorTable *>.count(uid)
+  return isAliveIn(uidMap<GDALRasterBand *>, uid) || isAliveIn(uidMap<OGRLayer *>, uid) ||
+    isAliveIn(uidMap<GDALDataset *>, uid) || isAliveIn(uidMap<GDALColorTable *>, uid)
 #if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 1)
-    || uidMap<shared_ptr<GDALGroup>>.count(uid) > 0 || uidMap<shared_ptr<GDALMDArray>>.count(uid) > 0 ||
-    uidMap<shared_ptr<GDALDimension>>.count(uid) > 0 || uidMap<shared_ptr<GDALAttribute>>.count(uid) > 0
+    || isAliveIn(uidMap<shared_ptr<GDALGroup>>, uid) || isAliveIn(uidMap<shared_ptr<GDALMDArray>>, uid) ||
+    isAliveIn(uidMap<shared_ptr<GDALDimension>>, uid) || isAliveIn(uidMap<shared_ptr<GDALAttribute>>, uid)
 #endif
     ;
 }
@@ -289,15 +303,20 @@ long ObjectStore::add(GDALDataset *ptr, Napi::Reference<Napi::Object> &obj, long
 
 template <typename GDALPTR> bool ObjectStore::has(GDALPTR ptr) {
   uv_scoped_mutex lock(&master_lock);
-  return ptrMap<GDALPTR>.count(ptr) > 0;
+  auto i = ptrMap<GDALPTR>.find(ptr);
+  return i != ptrMap<GDALPTR>.end() && !isDead(i->second);
 }
 template <typename GDALPTR> Napi::Object ObjectStore::get(GDALPTR ptr) {
   uv_scoped_mutex lock(&master_lock);
-  return ptrMap<GDALPTR>[ptr] -> obj.Value();
+  auto i = ptrMap<GDALPTR>.find(ptr);
+  if (i == ptrMap<GDALPTR>.end() || isDead(i->second)) return Napi::Object();
+  return i->second->obj.Value();
 }
 template <typename GDALPTR> Napi::Object ObjectStore::get(long uid) {
   uv_scoped_mutex lock(&master_lock);
-  return uidMap<GDALPTR>[uid] -> obj.Value();
+  auto i = uidMap<GDALPTR>.find(uid);
+  if (i == uidMap<GDALPTR>.end() || isDead(i->second)) return Napi::Object();
+  return i->second->obj.Value();
 }
 
 // Explicit instantiation:

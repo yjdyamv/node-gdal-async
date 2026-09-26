@@ -151,10 +151,38 @@ GDALDataType TypedArray::Identify(Napi::Object obj) {
   return (GDALDataType)val.As<Napi::Number>().Int32Value();
 }
 
+// NAN's Nan::TypedArrayContents took any ArrayBufferView, DataView included -
+// which is what the JS layer hands over for a Float16Array. Napi::TypedArrayOf
+// only accepts a real typed array, and asking a DataView for its element length
+// fails with napi_invalid_arg.
 template <typename T> static void *validate(Napi::Object obj, GDALDataType type, int64_t min_length) {
-  Napi::TypedArrayOf<T> contents = obj.As<Napi::TypedArrayOf<T>>();
-  if (TypedArray::ValidateLength(contents.ElementLength(), min_length)) return NULL;
-  return contents.Data();
+  // `::napi_env`: node_gdal::napi_env() (the function) otherwise hides the type
+  ::napi_env napiEnv = node_gdal::napi_env();
+  napi_value value = obj;
+
+  void *data = nullptr;
+  size_t byte_length = 0;
+
+  bool is_dataview = false;
+  if (napi_is_dataview(napiEnv, value, &is_dataview) != napi_ok) return NULL;
+
+  if (is_dataview) {
+    napi_value arraybuffer = nullptr;
+    size_t byte_offset = 0;
+    if (napi_get_dataview_info(napiEnv, value, &byte_length, &data, &arraybuffer, &byte_offset) != napi_ok) return NULL;
+  } else {
+    napi_typedarray_type array_type;
+    size_t element_length = 0;
+    size_t byte_offset = 0;
+    napi_value arraybuffer = nullptr;
+    if (napi_get_typedarray_info(napiEnv, value, &array_type, &element_length, &data, &arraybuffer, &byte_offset) !=
+      napi_ok)
+      return NULL;
+    byte_length = element_length * sizeof(T);
+  }
+
+  if (TypedArray::ValidateLength(byte_length / sizeof(T), min_length)) return NULL;
+  return data;
 }
 
 void *TypedArray::Validate(Napi::Object obj, GDALDataType type, int64_t min_length) {
