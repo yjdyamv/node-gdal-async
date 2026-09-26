@@ -97,5 +97,27 @@ if [ "$MODE" = "cmakejs" ]; then
   exit 0
 fi
 
-echo "usage: run.sh [build|syntax|cmakejs|test] [args]"
+if [ "$MODE" = "conanjs" ]; then
+  [ -d "$WS/node_modules/node-addon-api" ] || { echo "missing node_modules/node-addon-api in $WS"; exit 1; }
+  CONAN_BIN=${CONAN:-$HOME/conanenv/bin/conan}
+  CONAN_OUT="$WS/build-conan"
+  cp -f "$REPO/conanfile.py" "$WS/" 2>/dev/null || true
+  rm -rf "$CONAN_OUT"
+  ( cd "$WS" && "$CONAN_BIN" install . -of "$CONAN_OUT" -s build_type=Release ) || exit 1
+  rm -rf "$WS/build"
+  cd "$WS"
+  # deliberately no GDAL_INCLUDE_DIR/GDAL_LIBRARY: the Conan package has to win
+  #
+  # BUNDLED_GDAL is forced on here only because of the harness: test/api_base
+  # refuses to run with GDAL_DATA set, so the module has to configure the data
+  # paths itself, and test mode provisions them under $WS/deps. A real install
+  # from a Conan package leaves it at the default (off) and exports GDAL_DATA.
+  cmake-js build -G Ninja \
+    --CDCMAKE_TOOLCHAIN_FILE="$CONAN_OUT/conan_toolchain.cmake" \
+    --CDBUNDLED_GDAL=ON
+  echo "CONAN BUILD OK"
+  exit 0
+fi
+
+echo "usage: run.sh [build|syntax|cmakejs|conanjs|test] [args]"
 exit 1

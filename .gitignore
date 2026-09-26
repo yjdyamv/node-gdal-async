@@ -1,5 +1,8 @@
 .lock-wscript
 build/
+build-ninja*/
+build-conan/
+CMakeUserPresets.json
 find.exe
 node.exe
 msys-1.0.dll

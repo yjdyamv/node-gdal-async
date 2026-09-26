@@ -1,0 +1,1 @@
+. "/mnt/c/Users/yuan/node-gdal-async/conan/recipes/gdal-prebuilt/conanbuildenv-release-x86_64.sh"
