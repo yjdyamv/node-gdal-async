@@ -32,6 +32,7 @@ rsync -a --delete "$REPO/src/" "$WS/src/"
 rsync -a --delete "$REPO/include/" "$WS/include/"
 cp -f "$REPO/binding.gyp" "$REPO/package.json" "$REPO/tsconfig.json" "$WS/" 2>/dev/null || true
 cp -f "$REPO/.mocharc.json" "$WS/" 2>/dev/null || true
+cp -f "$REPO/CMakeLists.txt" "$WS/" 2>/dev/null || true
 mkdir -p "$WS/obj"
 
 SOURCES=$(grep -oE '"src/[^"]+\.cpp"' "$WS/binding.gyp" | tr -d '"')
@@ -78,5 +79,17 @@ if [ "$MODE" = "test" ]; then
   exec node_modules/.bin/mocha --reporter dot --timeout 20000 "$@"
 fi
 
-echo "usage: run.sh [build|syntax|test] [args]"
+if [ "$MODE" = "cmakejs" ]; then
+  [ -d "$WS/node_modules/node-addon-api" ] || { echo "missing node_modules/node-addon-api in $WS"; exit 1; }
+  cd "$WS"
+  # cmake-js parses these itself from argv and requires indexOf('=') >= 5, so the
+  # key has to be glued to --CD: --CD<KEY>=<VALUE> becomes -D<KEY>=<VALUE>.
+  cmake-js build \
+    --CDGDAL_INCLUDE_DIR="$GDAL_INC" \
+    --CDGDAL_LIBRARY="$GDAL_LIB/libgdal.so"
+  echo "CMAKE-JS BUILD OK"
+  exit 0
+fi
+
+echo "usage: run.sh [build|syntax|cmakejs|test] [args]"
 exit 1
