@@ -171,7 +171,13 @@
 			"conditions": [
 				["OS == 'win'", {
 					"defines": [
-						"_WIN64"
+						"_WIN64",
+						# MSVC >= 19.50 defines _CRT_NONSTANDARD_STATIC as empty, so UCRT's
+						# __inline `fstat` wrapper in <sys/stat.h> is emitted with external
+						# linkage. config.h renames fstat to _fstat64, which turns that into a
+						# definition of UCRT's own _fstat64 in ocdump.obj, and the link fails
+						# with LNK2005. 1 is the pre-19.50 behaviour: the wrappers stay static.
+						"_STATIC_INLINE_UCRT_FUNCTIONS=1"
 					]
 				}],
 				["OS == 'linux'", {
