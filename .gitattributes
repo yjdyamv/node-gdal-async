@@ -1,0 +1,6 @@
+# The build/test harness under .commandcode is run by bash. This machine's git
+# config sets core.autocrlf=true, which checks text files out with CRLF, and
+# neither bash nor a shebang line survives that - so the scripts are pinned to
+# LF regardless of that setting.
+.commandcode/**/*.sh text eol=lf
+.commandcode/**/*.py text eol=lf
