@@ -18,8 +18,8 @@ GDAL_INC="$TC/gdal-sys/usr/include/gdal"
 GDAL_LIB="$TC/gdal-sys/usr/lib/x86_64-linux-gnu"
 NODE_INC="$TC/node/include/node"
 
-INCS="-I$NODE_INC -I$GDAL_INC -I$TC/gdal-sys/usr/include -I$WS/include -I$WS/src -I$WS/src/utils -I$WS/node_modules/nan -I$WS/node_modules/node-addon-api"
-DEFS="-DNODE_GYP_MODULE_NAME=gdal -DBUILDING_NODE_EXTENSION -DPLATFORM=linux -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DNOGDI=1 -DHAVE_LIBZ=1 -DLINUX -DBUNDLED_GDAL=1"
+INCS="-I$NODE_INC -I$GDAL_INC -I$TC/gdal-sys/usr/include -I$WS/include -I$WS/src -I$WS/src/utils -I$WS/node_modules/node-addon-api"
+DEFS="-DNODE_GYP_MODULE_NAME=gdal -DBUILDING_NODE_EXTENSION -DPLATFORM=linux -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DNOGDI=1 -DHAVE_LIBZ=1 -DLINUX -DBUNDLED_GDAL=1 -DNAPI_VERSION=8"
 FLAGS="-std=gnu++20 -fPIC -O1 -g -w -frtti -fexceptions -fsanitize=address -fno-omit-frame-pointer"
 
 mkdir -p "$WS"
@@ -42,7 +42,7 @@ if [ "$MODE" = "build" ]; then
   export -f compile_one; export WS FLAGS DEFS INCS
   xargs -a "$WS/obj/sources.txt" -P "$(nproc)" -I{} bash -c 'compile_one "$@"' _ {}
   OBJS=$(sed 's#\.cpp$#.o#' "$WS/obj/sources.txt" | tr '/' '_' | sed "s#^#$WS/obj/#" | tr '\n' ' ')
-  BINDIR="$WS/lib/binding/node-v137-linux-x64"
+  BINDIR="$WS/lib/binding/napi-v8-linux-x64"
   mkdir -p "$BINDIR"
   g++ -shared -fsanitize=address -o "$BINDIR/gdal.node" $OBJS -L"$GDAL_LIB" -lgdal -Wl,-rpath,"$GDAL_LIB"
   echo "ASAN BUILD OK: $BINDIR/gdal.node"

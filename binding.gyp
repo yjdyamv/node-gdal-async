@@ -116,7 +116,9 @@
 			"defines": [
 				"PLATFORM='<(OS)'",
 				"_LARGEFILE_SOURCE",
-				"_FILE_OFFSET_BITS=64"
+				"_FILE_OFFSET_BITS=64",
+				# keep in sync with binary.napi_versions in package.json
+				"NAPI_VERSION=8"
 			],
 			"xcode_settings": {
 				"GCC_ENABLE_CPP_EXCEPTIONS": "YES",
