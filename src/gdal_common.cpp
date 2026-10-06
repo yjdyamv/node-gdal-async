@@ -1,6 +1,3 @@
-// node
-#include <node.h>
-
 #include "gdal_common.hpp"
 
 #include <string>

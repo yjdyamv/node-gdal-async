@@ -1,9 +1,4 @@
-// node
-#include <node.h>
-#include <node_buffer.h>
-#include <node_version.h>
-
-// nan
+// gdal-async
 #include "gdal_common.hpp"
 
 // gdal
@@ -132,16 +127,6 @@ static NAN_METHOD(VerboseOutput) {
   return info.Env().Undefined();
 }
 
-#ifdef ENABLE_LOGGING
-static NAN_GC_CALLBACK(beforeGC) {
-  LOG("%s", "Starting garbage collection");
-}
-
-static NAN_GC_CALLBACK(afterGC) {
-  LOG("%s", "Finished garbage collection");
-}
-#endif
-
 static NAN_METHOD(StartLogging) {
 
 #ifdef ENABLE_LOGGING
@@ -157,9 +142,6 @@ static NAN_METHOD(StartLogging) {
     Napi::Error::New(info.Env(), "Error creating log file").ThrowAsJavaScriptException();
     return info.Env().Undefined();
   }
-
-  Nan::AddGCPrologueCallback(beforeGC);
-  Nan::AddGCEpilogueCallback(afterGC);
 
 #else
   Napi::Error::New(info.Env(), "Logging requires node-gdal be compiled with --enable_logging=true").ThrowAsJavaScriptException();

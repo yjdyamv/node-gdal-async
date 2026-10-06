@@ -10,6 +10,7 @@ node_modules
 yuidocs
 /coverage
 .vscode
+.commandcode
 Attic
 
 scripts

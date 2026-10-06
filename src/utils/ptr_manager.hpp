@@ -2,8 +2,6 @@
 #ifndef __OBJ_STORE_H__
 #define __OBJ_STORE_H__
 
-// node
-#include <node.h>
 #include <uv.h>
 
 // napi

@@ -22,7 +22,7 @@ GDAL_INC="$TC/gdal-sys/usr/include/gdal"
 GDAL_LIB="$TC/gdal-sys/usr/lib/x86_64-linux-gnu"
 NODE_INC="$TC/node/include/node"
 
-INCS="-I$NODE_INC -I$GDAL_INC -I$TC/gdal-sys/usr/include -I$WS/include -I$WS/src -I$WS/src/utils -I$WS/node_modules/nan -I$WS/node_modules/node-addon-api"
+INCS="-I$NODE_INC -I$GDAL_INC -I$TC/gdal-sys/usr/include -I$WS/include -I$WS/src -I$WS/src/utils -I$WS/node_modules/node-addon-api"
 DEFS="-DNODE_GYP_MODULE_NAME=gdal -DBUILDING_NODE_EXTENSION -DPLATFORM=linux -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DNOGDI=1 -DHAVE_LIBZ=1 -DLINUX -DBUNDLED_GDAL=1"
 FLAGS="-std=gnu++20 -fPIC -O1 -w -frtti -fexceptions"
 

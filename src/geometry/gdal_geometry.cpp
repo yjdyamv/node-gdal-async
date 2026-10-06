@@ -15,7 +15,6 @@
 #include "gdal_polygon.hpp"
 #include "../gdal_spatial_reference.hpp"
 
-#include <node_buffer.h>
 #include <ogr_core.h>
 #include <memory>
 #include <sstream>
