@@ -53,7 +53,8 @@ if(NOT NODE_ADDON_API_INCLUDE_DIR)
 endif()
 
 # node-pre-gyp's directory name for the N-API build, e.g. napi-v8-linux-x64.
-# Keep NAPI_BUILD_VERSION in sync with binary.napi_versions in package.json.
+# Keep NAPI_BUILD_VERSION in sync with the napi-v8 in binary.module_path in
+# package.json and with NAPI_VERSION in binding.gyp.
 set(NAPI_BUILD_VERSION 8)
 execute_process(
   COMMAND ${NODE_EXECUTABLE} -p "process.platform + '-' + process.arch"

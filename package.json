@@ -24,11 +24,10 @@
   ],
   "binary": {
     "module_name": "gdal",
-    "module_path": "./lib/binding/napi-v{napi_build_version}-{platform}-{arch}",
+    "module_path": "./lib/binding/napi-v8-{platform}-{arch}",
     "remote_path": "v{version}",
     "host": "https://github.com/mmomtchev/node-gdal-async/releases/download/",
-    "package_name": "napi-v{napi_build_version}-{platform}-{arch}.tar.gz",
-    "napi_versions": [ 8 ],
+    "package_name": "napi-v8-{platform}-{arch}.tar.gz",
     "hosting": {
       "provider": "github",
       "repo": "mmomtchev/node-gdal-async"

@@ -116,7 +116,8 @@
 				"PLATFORM='<(OS)'",
 				"_LARGEFILE_SOURCE",
 				"_FILE_OFFSET_BITS=64",
-				# keep in sync with binary.napi_versions in package.json
+				# keep in sync with the napi-v8 in binary.module_path in
+				# package.json and with NAPI_BUILD_VERSION in CMakeLists.txt
 				"NAPI_VERSION=8"
 			],
 			"xcode_settings": {
