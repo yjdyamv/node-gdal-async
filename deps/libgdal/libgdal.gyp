@@ -238,12 +238,12 @@
 				"./gdal/ogr/ogrsf_frmts/generic/ogrlayerarrow.cpp",
         "./gdal/ogr/ogrsf_frmts/generic/ogrlayerwithtranslatefeature.cpp",
 
-				'<!@(<(python) ../glob-files.py "./gdal/alg/*.cpp")',
-				'<!@(<(python) ../glob-files.py "./gdal/alg/viewshed/*.cpp")',
-				'<!@(<(python) ../glob-files.py "./gdal/alg/*.c")',
-				'<!@(<(python) ../glob-files.py "./gdal/gcore/*.cpp")',
-				'<!@(<(python) ../glob-files.py "./gdal/gcore/multidim/*.cpp")',
-				'<!@(<(python) ../glob-files.py "./gdal/gcore/mdreader/*.cpp")',
+				'<!@("<(python)" ../glob-files.py "./gdal/alg/*.cpp")',
+				'<!@("<(python)" ../glob-files.py "./gdal/alg/viewshed/*.cpp")',
+				'<!@("<(python)" ../glob-files.py "./gdal/alg/*.c")',
+				'<!@("<(python)" ../glob-files.py "./gdal/gcore/*.cpp")',
+				'<!@("<(python)" ../glob-files.py "./gdal/gcore/multidim/*.cpp")',
+				'<!@("<(python)" ../glob-files.py "./gdal/gcore/mdreader/*.cpp")',
 
 				# "./gdal/port/vsipreload.cpp",
 				# "./gdal/port/cpl_vsil_simple.cpp",
@@ -329,8 +329,8 @@
         "./gdal/port/cpl_levenshtein.cpp",
         "./gdal/port/cplgetcurrentthreadcount.cpp",
 				"./gdal/port/cpl_json_streaming_writer.cpp",
-				'<!@(<(python) ../glob-files.py "./gdal/gnm/*.cpp")',
-				'<!@(<(python) ../glob-files.py "./gdal/frmts/jpeg/libjpeg/*.c" "./gdal/frmts/jpeg/libjpeg/jstdhuff.c")'
+				'<!@("<(python)" ../glob-files.py "./gdal/gnm/*.cpp")',
+				'<!@("<(python)" ../glob-files.py "./gdal/frmts/jpeg/libjpeg/*.c" "./gdal/frmts/jpeg/libjpeg/jstdhuff.c")'
 			],
 			"include_dirs": [
 				"./gdal/alg",
