@@ -74,8 +74,10 @@ export const buildFromSource = (debug = false, sharedGdal = false) => {
     // In the CI the pinned profiles of conan/profiles are used instead: they
     // name the compilers that conan-center has published the binaries with,
     // while the compilers of a runner are usually newer - Conan would then
-    // rebuild the whole dependency tree from source on every run.  Keep them
-    // in sync with the runners pinned by .github/workflows/test-dev.yml
+    // rebuild the whole dependency tree from source on every run.  They also
+    // select Ninja over the MSBuild generator that Conan picks by default on
+    // Windows.  Keep them in sync with the runners pinned by
+    // .github/workflows/test-dev.yml
     const pinnedPlatform = { darwin: 'macos', linux: 'linux', win32: 'windows' }[process.platform]
     const pinned = pinnedPlatform ? path.join(root, 'conan', 'profiles', pinnedPlatform) : null
     const profiles = process.env.CI && pinned && existsSync(pinned) ? [ `-pr:h=${pinned}`, `-pr:b=${pinned}` ] : []
