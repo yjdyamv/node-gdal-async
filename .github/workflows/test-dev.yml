@@ -115,3 +115,52 @@ jobs:
           fi
         done
         exit 1
+
+  musl:
+
+    # The C library is the one thing the other jobs never vary: they all link
+    # against the glibc of their runner, and the binaries of conan-center are
+    # glibc too, so nothing would notice a build that only works there.  Alpine
+    # has to be its own job because it is a container, not a runner image.
+
+    name: Alpine ${{ matrix.arch }}, musl
+
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Use Node.js 24.x
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24.x
+    - name: Cache the compiler output
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ccache-musl-${{ matrix.arch }}
+        max-size: 500M
+    - name: Build and test in the Alpine container
+      id: container
+      continue-on-error: true
+      shell: bash
+      run: npm run container dev alpine:3.22 24 2>&1 | tee musl.log
+      env:
+        MOCHA_TEST_NETWORK: ${{ github.event.inputs.testNetwork }}
+    - name: Report the failure
+      # The log of a job is only visible to the owner of the repository, but
+      # the annotations of a check run are public: send the tail of the log
+      # there so that a failure can be diagnosed without that access
+      if: steps.container.outcome == 'failure'
+      shell: bash
+      run: |
+        # awk, GNU and BSD sed disagree on the ':a;N;$!ba;' idiom
+        echo "::error title=musl.log::$(tail -c 6000 musl.log | awk '{gsub(/\r/,""); gsub(/%/,"%25"); printf "%s%%0A", $0}')"
+        exit 1
