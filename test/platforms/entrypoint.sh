@@ -39,6 +39,24 @@ echo -e "${SEP}Preparing Conan${SEP}"
 # out of the way, the build itself keeps going through ccache with them
 env -u CC -u CXX conan profile detect --force
 
+# conan-center builds its tools for glibc: the cmake, m4 and pkgconf packages
+# that Conan would download cannot run on musl.  The recipes that use cmake
+# through the CMake helper have to be pointed at the cmake of the distribution,
+# which build.mjs forces the other two to be rebuilt for
+CONFS=""
+if [ -x /usr/bin/cmake ]; then
+  CONFS="${CONFS}tools.cmake:cmake_program=/usr/bin/cmake\n"
+fi
+if [ -x /usr/bin/make ]; then
+  CONFS="${CONFS}tools.gnu:make_program=/usr/bin/make\n"
+fi
+if [ -x /usr/bin/pkg-config ]; then
+  CONFS="${CONFS}tools.gnu:pkg_config=/usr/bin/pkg-config\n"
+fi
+if [ -n "${CONFS}" ]; then
+  printf '[conf]\n%b' "${CONFS}" >> ${HOME}/.conan2/profiles/default
+fi
+
 case ${1} in
   DEV)
     echo -e "${SEP}Testing the current version against the bundled GDAL${SEP}"

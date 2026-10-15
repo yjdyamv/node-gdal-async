@@ -86,9 +86,16 @@ export const buildFromSource = (debug = false) => {
   const profiles = process.env.CI && pinned && existsSync(pinned) ? [ `-pr:h=${pinned}`, `-pr:b=${pinned}` ] : []
   // Everything instead of only what is missing when the binaries of
   // conan-center are unusable: they are glibc, and a musl build links them
-  // without complaining, then fails much later, inside the addon
-  const buildMode = musl ? '--build=*' : '--build=missing'
-  if (!run('conan', [ 'install', '.', '-of', 'build-conan', buildMode,
+  // without complaining, then fails much later, inside the addon.  'missing'
+  // rather than 'all' keeps the packages of the previous runs of the CI
+  // reusable - the profile pins a compiler version that conan-center has
+  // published no Linux binary with - while the tools that must run here are
+  // rebuilt from source: their binaries of conan-center are glibc programs,
+  // while cmake comes from the distribution through the CMake helper
+  const buildMode = musl
+    ? [ '--build=missing', '--build=m4/*', '--build=pkgconf/*' ]
+    : [ '--build=missing' ]
+  if (!run('conan', [ 'install', '.', '-of', 'build-conan', ...buildMode,
     '-s', `build_type=${debug ? 'Debug' : 'Release'}`, '-s', 'compiler.cppstd=20',
     ...profiles ])) {
     log('install Conan from https://conan.io/downloads and try again')

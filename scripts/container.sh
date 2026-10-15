@@ -34,6 +34,13 @@ docker build \
 PTRACE_ARGS="--cap-add=SYS_PTRACE --security-opt seccomp=unconfined"
 COMMON_ARGS="${PTRACE_ARGS} --user `id -u`:`id -g` --env MOCHA_TEST_NETWORK -v `pwd`:/src:ro"
 
+# The Conan cache of the containers lives in the source tree, so that the
+# container can see it and the CI can keep it between the runs: on musl every
+# dependency has to be built from source and that takes an hour
+CONAN_CACHE="`pwd`/.conan2-cache"
+mkdir -p ${CONAN_CACHE}
+COMMON_ARGS="${COMMON_ARGS} -v ${CONAN_CACHE}:/target/.conan2"
+
 echo "Checking for ccache"
 if which ccache && test "${OP}" != "publish"; then
   CCACHE_DIR=`ccache --get-config=cache_dir`

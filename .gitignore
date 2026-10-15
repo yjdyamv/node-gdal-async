@@ -2,6 +2,9 @@
 build/
 build-ninja*/
 build-conan/
+# The Conan cache of the build containers: it lives in the source tree so that
+# the containers can see it, and the CI keeps it between the runs
+.conan2-cache/
 CMakeUserPresets.json
 # Conan's generated environment scripts
 conanbuild*.sh
