@@ -31,23 +31,13 @@ rm -rf lib/binding package-lock.json
 git checkout test/data
 npm install --ignore-scripts
 
-if [ "${GDAL}" == "shared" ]; then
-  GDAL_OPT="--shared-gdal"
-  GDAL_NAME="system-installed"
-else
-  GDAL_OPT=""
-  GDAL_NAME="bundled"
-fi
-
-if [ "${GDAL}" != "shared" ]; then
-  echo -e "${SEP}Preparing Conan${SEP}"
-  conan profile detect --force
-fi
+echo -e "${SEP}Preparing Conan${SEP}"
+conan profile detect --force
 
 case ${1} in
   DEV)
-    echo -e "${SEP}Testing current version against ${GDAL_NAME} GDAL${SEP}"
-    node scripts/build.mjs ${GDAL_OPT}
+    echo -e "${SEP}Testing the current version against the bundled GDAL${SEP}"
+    node scripts/build.mjs
     npm test
     R=0
     ;;
@@ -71,10 +61,10 @@ case ${1} in
     ;;
 
   ASAN)
-    echo -e "${SEP}Testing w/ASAN current version against ${GDAL_NAME} GDAL${SEP}"
+    echo -e "${SEP}Testing the current version with ASAN${SEP}"
     export CXXFLAGS="-fsanitize=address -fno-omit-frame-pointer -g"
     export LDFLAGS="-fsanitize=address"
-    node scripts/build.mjs ${GDAL_OPT} --debug
+    node scripts/build.mjs --debug
     LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5.0.0 npm test 2> asan.output
     if egrep -q "node_gdal|GDAL" asan.output; then
       echo ${SEP}${SEP}Memory leaks detected${SEP}${SEP}
