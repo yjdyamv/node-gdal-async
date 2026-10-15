@@ -189,6 +189,12 @@ endif()
 
 target_link_libraries(gdal PRIVATE ${GDAL_TARGET})
 
+# cmake-js passes the Node.js import library (node.lib on Windows) in
+# CMAKE_JS_LIB; without it the napi_* and uv_* symbols stay unresolved.
+if(CMAKE_JS_LIB)
+  target_link_libraries(gdal PRIVATE ${CMAKE_JS_LIB})
+endif()
+
 # ---------------------------------------------------------------------------
 # node-pre-gyp layout: lib/gdal.js -> binary.find() ->
 # lib/binding/napi-v8-<platform>-<arch>/gdal.node
