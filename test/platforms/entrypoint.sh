@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# A failing step aborts the test run: a failed build must never be followed
+# by the test suite, which would then only report the confusing secondary
+# errors caused by the missing binding
+set -e
+
 export HOME=/target
 SEP="\n=======================================================\n"
 echo -e "${SEP}Preparing source tree${SEP}"
@@ -41,7 +46,7 @@ case ${1} in
     npx @mapbox/node-pre-gyp configure ${GDAL_OPT}
     npx @mapbox/node-pre-gyp build -j max
     npm test
-    R=$?
+    R=0
     ;;
 
   RELEASE)
@@ -50,7 +55,7 @@ case ${1} in
     npx @mapbox/node-pre-gyp install
     npx yatag
     npm test
-    R=$?
+    R=0
     ;;
 
   PUBLISH)
@@ -60,7 +65,7 @@ case ${1} in
     npm test
     npx @mapbox/node-pre-gyp package
     npx node-pre-gyp-github publish
-    R=$?
+    R=0
     ;;
 
   ASAN)
@@ -69,12 +74,12 @@ case ${1} in
     npx @mapbox/node-pre-gyp configure ${GDAL_OPT} --enable-asan --debug
     npx @mapbox/node-pre-gyp build -j max
     LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5.0.0 npm test 2> asan.output
-    ! egrep -q "node_gdal|GDAL" asan.output
-    R=$?
-    if [ "$R" -ne 0 ]; then
+    if egrep -q "node_gdal|GDAL" asan.output; then
       echo ${SEP}${SEP}Memory leaks detected${SEP}${SEP}
       cat asan.output
+      exit 1
     fi
+    R=0
     ;;
 esac
 
@@ -84,4 +89,4 @@ if [ ! -z "${2}" ]; then
   exec $@
 fi
 
-exit $R
+exit ${R:-0}
