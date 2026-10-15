@@ -13,6 +13,22 @@ RUN \
 
 RUN pip3 install --break-system-packages conan || pip3 install conan
 
+# Alpine has no execinfo.h, unlike glibc and the BSDs.  netcdf 4.8.1 includes it
+# unconditionally and uses backtrace() only when H5CATCH is defined, which
+# nothing does: these no-ops keep the include working while the HDF5 debugging
+# of netcdf stays disabled
+RUN printf '%s\n' \
+  '/* Alpine has no execinfo.h.  netcdf 4.8.1 includes it unconditionally and' \
+  '   calls backtrace() only when H5CATCH is defined, which nothing does */' \
+  '#ifndef _EXECINFO_H' \
+  '#define _EXECINFO_H' \
+  '#include <stddef.h>' \
+  'static inline int backtrace(void **buffer, int size) { (void) buffer; (void) size; return 0; }' \
+  'static inline char **backtrace_symbols(void *const *buffer, int size) { (void) buffer; (void) size; return NULL; }' \
+  'static inline void backtrace_symbols_fd(void *const *buffer, int size, int fd) { (void) buffer; (void) size; (void) fd; }' \
+  '#endif' \
+  > /usr/local/include/execinfo.h
+
 COPY entrypoint.sh /
 
 ENTRYPOINT ["/entrypoint.sh"]
