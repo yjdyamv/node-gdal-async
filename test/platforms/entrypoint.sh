@@ -35,17 +35,27 @@ echo -e "${SEP}Preparing Conan${SEP}"
 # Conan takes CC and CXX for the name of the compiler executable: the two-word
 # "ccache gcc" of the masquerade above ends up detected as no compiler at all,
 # and the profile it writes then rejects the compiler.cppstd=20 of the install
-# with "'settings.compiler' value not defined".  Only the detection needs them
-# out of the way, the build itself keeps going through ccache with them
+# with "'settings.compiler' value not defined"
 env -u CC -u CXX conan profile detect --force
 
-# conan-center builds its tools for glibc: the cmake, m4 and pkgconf packages
-# that Conan would download cannot run on musl.  The recipes that use cmake
-# through the CMake helper have to be pointed at the cmake of the distribution,
-# which build.mjs forces the other two to be rebuilt for
+# The confs below matter on musl, where conan-center has nothing and every
+# dependency is built from source, and cost nothing where its binaries are
+# reused.  It builds its own tools for glibc: the cmake and m4 packages that
+# Conan would download cannot run here, so the recipes that use them through the
+# CMake helper are pointed at the tools of the distribution - build.mjs forces
+# m4, and cmake comes from the image
 CONFS=""
 if [ -x /usr/bin/cmake ]; then
   CONFS="${CONFS}tools.cmake:cmake_program=/usr/bin/cmake\n"
+fi
+if [ -x /usr/bin/gcc ] && which ccache >/dev/null; then
+  # "ccache gcc" is not a compiler CMake can use: CMake keeps ccache as the
+  # compiler and gcc as its first, permanent argument, and a recipe that calls
+  # the compiler itself - libpng preprocesses its configuration with it - ends
+  # up running "ccache -E".  A real compiler with ccache as its launcher is the
+  # way CMake expects both the compiler and ccache to be given
+  CONFS="${CONFS}tools.build:compiler_executables={\"c\": \"gcc\", \"cpp\": \"g++\"}\n"
+  CONFS="${CONFS}tools.cmake.cmaketoolchain:extra_variables={\"CMAKE_C_COMPILER_LAUNCHER\": \"ccache\", \"CMAKE_CXX_COMPILER_LAUNCHER\": \"ccache\"}\n"
 fi
 if [ -x /usr/bin/make ]; then
   CONFS="${CONFS}tools.gnu:make_program=/usr/bin/make\n"

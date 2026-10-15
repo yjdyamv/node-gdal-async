@@ -14,6 +14,12 @@ on:
         required: false
         default: '0'
 
+# A push supersedes the run it interrupts: without this, every push leaves the
+# jobs of the previous runs running, and this workflow takes half an hour
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
 
