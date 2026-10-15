@@ -32,7 +32,12 @@ git checkout test/data
 npm install --ignore-scripts
 
 echo -e "${SEP}Preparing Conan${SEP}"
-conan profile detect --force
+# Conan takes CC and CXX for the name of the compiler executable: the two-word
+# "ccache gcc" of the masquerade above ends up detected as no compiler at all,
+# and the profile it writes then rejects the compiler.cppstd=20 of the install
+# with "'settings.compiler' value not defined".  Only the detection needs them
+# out of the way, the build itself keeps going through ccache with them
+env -u CC -u CXX conan profile detect --force
 
 case ${1} in
   DEV)
