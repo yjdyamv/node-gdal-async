@@ -105,12 +105,13 @@ else()
   endif()
 endif()
 
-# A GDAL coming from a package carries its own data files, so the module must not
-# claim to be self-contained: lib/gdal.js would point GDAL_DATA/PROJ_LIB at deps/.
+# The npm package always ships the GDAL/PROJ data files from deps/ - the prune
+# script in package.json keeps them - no matter where the GDAL library itself
+# comes from: lib/gdal.js points GDAL_DATA/PROJ_LIB at deps/ whenever the module
+# reports itself as bundled.  Pass -DBUNDLED_GDAL=OFF to build against a GDAL
+# that provides its own data.
 if(DEFINED BUNDLED_GDAL)
   set(BUNDLED_GDAL_DEFAULT ${BUNDLED_GDAL})
-elseif(GDAL_FROM_PACKAGE)
-  set(BUNDLED_GDAL_DEFAULT OFF)
 else()
   set(BUNDLED_GDAL_DEFAULT ON)
 endif()
