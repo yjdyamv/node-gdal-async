@@ -110,7 +110,10 @@
 			"sources": [ "<@(sources_node_gdal)" ],
 			"include_dirs": [
 				"include",
-				"<!(node -e \"require('node-addon-api').include_dir\")",
+				# node-addon-api exports a path relative to the current directory,
+				# which gyp resolves against the build directory; .include is
+				# the absolute one (gyp strips the quotes when expanding it)
+				"<!@(node -p \"require('node-addon-api').include\")",
 			],
 			"defines": [
 				"PLATFORM='<(OS)'",
