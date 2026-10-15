@@ -62,15 +62,16 @@ namespace node_gdal {
 // these two must be here and must have file scope
 // MSVC throws an Internal Compiler Error when specializing templated variables
 // and the linker doesn't use the right address when processing exported symbols
+//
+// The maps are thread_local: every V8 environment (the main thread and each
+// worker_thread) has its own set and they hold JS references that belong to
+// that single environment. Being per-thread, they are not accessible from the
+// libuv worker threads - those use the semaphores already resolved on the JS
+// thread by .resolveLocks()/.lockDatasets()
 template <typename GDALPTR> using UidMap = map<long, shared_ptr<ObjectStoreItem<GDALPTR>>>;
 template <typename GDALPTR> using PtrMap = map<GDALPTR, shared_ptr<ObjectStoreItem<GDALPTR>>>;
-template <typename GDALPTR> static UidMap<GDALPTR> uidMap;
-template <typename GDALPTR> static PtrMap<GDALPTR> ptrMap;
-
-void uv_sem_deleter::operator()(uv_sem_t *p) {
-  uv_sem_destroy(p);
-  delete p;
-}
+template <typename GDALPTR> static thread_local UidMap<GDALPTR> uidMap;
+template <typename GDALPTR> static thread_local PtrMap<GDALPTR> ptrMap;
 
 class uv_scoped_mutex {
     public:
@@ -150,7 +151,7 @@ AsyncLock ObjectStore::lockDataset(long uid) {
     // Do not lock thread-safe datasets
     if (parent->second->ptr->IsThreadSafe(GDAL_OF_RASTER)) { return nullptr; }
 #endif
-    int r = uv_sem_trywait(parent->second->async_lock.get());
+    int r = uv_sem_trywait(&parent->second->async_lock->sem);
     if (r == 0) { return parent->second->async_lock; }
     uv_cond_wait(&master_sleep, &master_lock);
   }
@@ -191,7 +192,7 @@ AsyncLock ObjectStore::tryLockDataset(long uid, bool &result) {
     return nullptr;
   }
 #endif
-  int r = uv_sem_trywait(parent->second->async_lock.get());
+  int r = uv_sem_trywait(&parent->second->async_lock->sem);
   if (r == 0) {
     result = true;
     return parent->second->async_lock;
@@ -214,13 +215,13 @@ vector<AsyncLock> ObjectStore::_tryLockDatasets(vector<long> uids, bool &result)
   vector<AsyncLock> locked;
   int r = 0;
   for (AsyncLock &async_lock : locks) {
-    r = uv_sem_trywait(async_lock.get());
+    r = uv_sem_trywait(&async_lock->sem);
     if (r == 0) {
       locked.push_back(async_lock);
     } else {
       // We failed acquiring one of the locks =>
       // free all acquired locks and start a new cycle
-      for (AsyncLock &lock : locked) { uv_sem_post(lock.get()); }
+      for (AsyncLock &lock : locked) { uv_sem_post(&lock->sem); }
       uv_cond_broadcast(&master_sleep);
       break;
     }
@@ -242,6 +243,58 @@ vector<AsyncLock> ObjectStore::tryLockDatasets(vector<long> uids, bool &result) 
   if (uids.size() == 0) return {};
   uv_scoped_mutex lock(&master_lock);
   return _tryLockDatasets(uids, result);
+}
+
+/*
+ * Resolve the locks of a list of Datasets so that they can be acquired later
+ * from another thread with lockLocks(). Must be called from the thread of the
+ * environment that owns the Datasets. Throws when a Dataset has been destroyed.
+ * The locks are returned in the order of the uids (deadlock avoidance).
+ */
+vector<AsyncLock> ObjectStore::resolveLocks(vector<long> uids) {
+  vector<AsyncLock> locks;
+  if (uids.size() == 0) return locks;
+  sortUnique(uids);
+  if (uids.size() == 0) return locks;
+  uv_scoped_mutex lock(&master_lock);
+  for (long uid : uids) {
+    auto parent = uidMap<GDALDataset *>.find(uid);
+    if (parent == uidMap<GDALDataset *>.end()) { throw "Parent Dataset object has already been destroyed"; }
+#if GDAL_VERSION_MAJOR > 3 || (GDAL_VERSION_MAJOR == 3 && GDAL_VERSION_MINOR >= 10)
+    // Do not lock thread-safe datasets
+    if (parent->second->ptr->IsThreadSafe(GDAL_OF_RASTER)) { continue; }
+#endif
+    locks.push_back(parent->second->async_lock);
+  }
+  return locks;
+}
+
+/*
+ * Acquire the locks previously resolved with resolveLocks(). Can be called from
+ * any thread. The caller must keep the locks sorted by uid (resolveLocks()
+ * returns them in this order) to avoid deadlocks between operations locking
+ * several Datasets.
+ */
+void ObjectStore::lockLocks(const vector<AsyncLock> &locks) {
+  if (locks.size() == 0) return;
+  uv_scoped_mutex lock(&master_lock);
+  while (true) {
+    size_t acquired = 0;
+    for (const AsyncLock &async_lock : locks) {
+      // The Dataset has been destroyed while this operation was waiting for
+      // its lock: the semaphore has been posted by dispose() and the operation
+      // must fail instead of accessing the closed Dataset
+      if (!async_lock->alive) { throw "Parent Dataset object has already been destroyed"; }
+      if (uv_sem_trywait(&async_lock->sem) != 0) break;
+      acquired++;
+    }
+    if (acquired == locks.size()) return;
+    // We failed acquiring one of the locks =>
+    // free all acquired locks and start a new cycle
+    for (size_t i = 0; i < acquired; i++) uv_sem_post(&locks[i]->sem);
+    uv_cond_broadcast(&master_sleep);
+    uv_cond_wait(&master_sleep, &master_lock);
+  }
 }
 
 // The basic unit of the ObjectStore is the ObjectStoreItem<GDALPTR>
@@ -291,8 +344,7 @@ long ObjectStore::add(OGRLayer *ptr, Napi::Reference<Napi::Object> &obj, long pa
 long ObjectStore::add(GDALDataset *ptr, Napi::Reference<Napi::Object> &obj, long parent_uid, bool close) {
   long uid = ObjectStore::add<GDALDataset *>(ptr, obj, parent_uid);
   if (parent_uid == 0) {
-    uidMap<GDALDataset *>[uid] -> async_lock = shared_ptr<uv_sem_t>(new uv_sem_t(), uv_sem_deleter());
-    uv_sem_init(uidMap<GDALDataset *>[uid] -> async_lock.get(), 1);
+    uidMap<GDALDataset *>[uid] -> async_lock = make_shared<AsyncLockState>();
   } else {
     uidMap<GDALDataset *>[uid] -> async_lock = uidMap<GDALDataset *>[parent_uid] -> async_lock;
   }
@@ -370,15 +422,16 @@ static inline void uv_sem_wait_with_warning(uv_sem_t *sem, const char *warning) 
 // Disposing a Dataset is a special case - it has children (called with the master lock held)
 template <> void ObjectStore::dispose(shared_ptr<ObjectStoreItem<GDALDataset *>> item, bool manual) {
   uv_sem_wait_with_warning(
-    item->async_lock.get(), manual ? (eventLoopWarn ? warningManualClose : nullptr) : warningGCBug);
+    &item->async_lock->sem, manual ? (eventLoopWarn ? warningManualClose : nullptr) : warningGCBug);
   uidMap<GDALDataset *>.erase(item->uid);
   ptrMap<GDALDataset *>.erase(item->ptr);
   if (item->parent != nullptr) item->parent->children.remove(item->uid);
 
-  uv_sem_post(item->async_lock.get());
+  item->async_lock->alive = false;
+  uv_sem_post(&item->async_lock->sem);
   uv_cond_broadcast(&master_sleep);
   // Beyond this point the Dataset is not alive anymore ->
-  // anyone who was waiting for this semaphore should fail
+  // anyone who was waiting for this semaphore should fail (the alive flag has been cleared)
 
   // All the children are removed from the ObjectStore
   // but the Node/V8 objects still exist
@@ -411,10 +464,10 @@ template <> void ObjectStore::dispose(shared_ptr<ObjectStoreItem<OGRLayer *>> it
   if (item->is_result_set) {
     LOG("Closing OGRLayer with SQL results [%ld] [%p]", uid, item->ptr);
     if (item->parent) {
-      uv_sem_wait_with_warning(item->parent->async_lock.get(), warningSQL);
+      uv_sem_wait_with_warning(&item->parent->async_lock->sem, warningSQL);
       GDALDataset *parent_ds = item->parent->ptr;
       parent_ds->ReleaseResultSet(item->ptr);
-      uv_sem_post(item->parent->async_lock.get());
+      uv_sem_post(&item->parent->async_lock->sem);
       uv_cond_broadcast(&object_store.master_sleep);
     }
   }
