@@ -78,10 +78,22 @@ export const buildFromSource = (debug = false, sharedGdal = false) => {
     // select Ninja over the MSBuild generator that Conan picks by default on
     // Windows.  Keep them in sync with the runners pinned by
     // .github/workflows/test-dev.yml
-    const pinnedPlatform = { darwin: 'macos', linux: 'linux', win32: 'windows' }[process.platform]
+    const arm64 = process.arch === 'arm64'
+    // Conan has no setting for the C library: a musl (Alpine) build looks like
+    // any other Linux one, and every Linux binary of conan-center is glibc
+    const musl = process.platform === 'linux' && !process.report?.getReport?.().header.glibcVersionRuntime
+    const pinnedPlatform = {
+      darwin: 'macos',
+      linux: `linux${arm64 ? '-arm64' : ''}${musl ? '-musl' : ''}`,
+      win32: `windows${arm64 ? '-arm64' : ''}`
+    }[process.platform]
     const pinned = pinnedPlatform ? path.join(root, 'conan', 'profiles', pinnedPlatform) : null
     const profiles = process.env.CI && pinned && existsSync(pinned) ? [ `-pr:h=${pinned}`, `-pr:b=${pinned}` ] : []
-    if (!run('conan', [ 'install', '.', '-of', 'build-conan', '--build=missing',
+    // Everything instead of only what is missing when the binaries of
+    // conan-center are unusable: they are glibc, and a musl build links them
+    // without complaining, then fails much later, inside the addon
+    const buildMode = musl ? '--build=*' : '--build=missing'
+    if (!run('conan', [ 'install', '.', '-of', 'build-conan', buildMode,
       '-s', `build_type=${debug ? 'Debug' : 'Release'}`, '-s', 'compiler.cppstd=20',
       ...profiles ])) {
       log('install Conan from https://conan.io/downloads and try again')

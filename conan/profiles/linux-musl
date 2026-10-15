@@ -1,0 +1,32 @@
+# The profile the CI uses on Linux x86_64 with musl, inside an alpine container.
+#
+# Conan has no setting for the C library: musl and glibc are both a plain
+# "Linux", and every Linux binary of conan-center is glibc.  A package built
+# for glibc therefore looks like a perfect match for this profile, although it
+# cannot be linked into a musl build, so scripts/build.mjs passes --build=*
+# here and nothing is ever taken from the remote.  Keep the compiler in sync
+# with the gcc of the alpine image of the workflow (alpine 3.22 ships gcc
+# 14.2.0).
+[settings]
+os=Linux
+arch=x86_64
+compiler=gcc
+compiler.version=14
+compiler.libcxx=libstdc++11
+compiler.cppstd=20
+build_type=Release
+
+[conf]
+# Without this Conan keeps the platform default generator of CMake
+# (Unix Makefiles, or Xcode on macOS), which is slower on a build as large as
+# the ~1300 translation units of GDAL.  GDAL is always built from source here:
+# the recipe of conan/recipes/gdal carries the ExprTk and muparser options of
+# the addon, so no binary of it exists on conan-center.  Ninja is installed by
+# the workflow; when using this profile by hand, install it first.
+tools.cmake.cmaketoolchain:generator=Ninja
+
+[buildenv]
+# Several dependencies still declare compatibility with CMake < 3.5, which
+# CMake 4 rejects outright when it has to build them from source.  Only the
+# environment variable is honored by those projects.
+CMAKE_POLICY_VERSION_MINIMUM=3.5

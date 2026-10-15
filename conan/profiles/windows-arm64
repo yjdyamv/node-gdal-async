@@ -1,0 +1,32 @@
+# The profile the CI uses on Windows arm64 (windows-11-arm).
+#
+# It is not detected, but pinned: Conan reuses the binaries published by
+# conan-center only for the exact compiler that built them, and conan-center
+# has published Windows arm64 binaries with the MSVC of Visual Studio 2022,
+# the "194" of Conan, since October 2025.  Keep the compiler in sync with the
+# runner image of the workflow: it must carry the ARM64 build tools of that
+# Visual Studio, Conan activates them by itself, there is no need for a
+# Developer Command Prompt.
+[settings]
+os=Windows
+arch=armv8
+compiler=msvc
+compiler.version=194
+compiler.cppstd=20
+compiler.runtime=dynamic
+build_type=Release
+
+[conf]
+# Without this Conan uses the MSBuild generator, which is visibly slower on a
+# build as large as the ~1300 translation units of GDAL.  GDAL is always built
+# from source here: the recipe of conan/recipes/gdal carries the ExprTk and
+# muparser options of the addon, so no binary of it exists on conan-center.
+# Ninja is part of the runner image; when using this profile by hand, install
+# it first.
+tools.cmake.cmaketoolchain:generator=Ninja
+
+[buildenv]
+# Several dependencies still declare compatibility with CMake < 3.5, which
+# CMake 4 rejects outright when it has to build them from source.  Only the
+# environment variable is honored by those projects.
+CMAKE_POLICY_VERSION_MINIMUM=3.5
