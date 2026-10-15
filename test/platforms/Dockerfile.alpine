@@ -3,9 +3,12 @@ FROM alpine:${VERSION}
 
 ARG NODEJS=lts
 
+# perl is needed by the autoconf that Conan builds from source on musl: the
+# binaries of conan-center are glibc ones and cannot run here
 RUN \
   apk add --no-cache bash build-base ca-certificates ccache cmake git \
-                    linux-headers ninja nodejs npm python3 py3-pip rsync && \
+                    linux-headers m4 ninja nodejs npm perl python3 py3-pip \
+                    rsync && \
   mkdir -p /target && chmod 777 /target
 
 RUN pip3 install --break-system-packages conan || pip3 install conan
