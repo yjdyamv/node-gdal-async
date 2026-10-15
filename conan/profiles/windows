@@ -1,0 +1,21 @@
+# The profile the CI uses on Windows.
+#
+# It is not detected, but pinned: Conan reuses the binaries published by
+# conan-center only for the exact compiler that built them.
+# Keep the compiler in sync with the runner image of the workflow: the
+# windows-2022 image ships Visual Studio 2022 17.14 (MSVC 19.44), which is
+# the "194" of Conan.
+[settings]
+os=Windows
+arch=x86_64
+compiler=msvc
+compiler.version=194
+compiler.cppstd=20
+compiler.runtime=dynamic
+build_type=Release
+
+[buildenv]
+# Several dependencies still declare compatibility with CMake < 3.5, which
+# CMake 4 rejects outright when it has to build them from source.  Only the
+# environment variable is honored by those projects.
+CMAKE_POLICY_VERSION_MINIMUM=3.5

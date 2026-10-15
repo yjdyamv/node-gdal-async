@@ -1,0 +1,20 @@
+# The profile the CI uses on macOS.
+#
+# It is not detected, but pinned to the compiler of the binaries published by
+# conan-center: the Xcode of the runner is much newer and Conan would rebuild
+# the whole dependency tree from source on every run.
+# Keep in sync with conan-center and with the Xcode that the workflow selects.
+[settings]
+os=Macos
+arch=armv8
+compiler=apple-clang
+compiler.version=17
+compiler.libcxx=libc++
+compiler.cppstd=20
+build_type=Release
+
+[buildenv]
+# Several dependencies still declare compatibility with CMake < 3.5, which
+# CMake 4 rejects outright when it has to build them from source.  Only the
+# environment variable is honored by those projects.
+CMAKE_POLICY_VERSION_MINIMUM=3.5
