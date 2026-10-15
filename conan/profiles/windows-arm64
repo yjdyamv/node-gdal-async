@@ -3,10 +3,13 @@
 # It is not detected, but pinned: Conan reuses the binaries published by
 # conan-center only for the exact compiler that built them, and conan-center
 # has published Windows arm64 binaries with the MSVC of Visual Studio 2022,
-# the "194" of Conan, since October 2025.  Keep the compiler in sync with the
-# runner image of the workflow: it must carry the ARM64 build tools of that
-# Visual Studio, Conan activates them by itself, there is no need for a
-# Developer Command Prompt.
+# the "194" of Conan, since October 2025.  Do not bump it to the toolset of
+# the runner image: the windows-11-arm image has moved to the MSVC 14.50 of
+# Visual Studio 2026, which has no binaries on conan-center, and the 14.x
+# toolsets are ABI compatible - Microsoft guarantees it back to Visual Studio
+# 2015 - so the 14.50 compiler links against the 194 binaries without
+# rebuilding anything.  Conan activates the arm64 build tools by itself,
+# there is no need for a Developer Command Prompt.
 [settings]
 os=Windows
 arch=armv8
