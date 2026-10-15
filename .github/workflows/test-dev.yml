@@ -104,14 +104,16 @@ jobs:
     - name: Report the failure
       # The log of a job is only visible to the owner of the repository, but
       # the annotations of a check run are public: send the tail of the log
-      # there so that a failure can be diagnosed without that access
+      # there so that a failure can be diagnosed without that access.  GitHub
+      # keeps only the first 4096 characters of an annotation, so the tail has
+      # to stay well below that after the escaping of the newlines
       if: steps.build.outcome == 'failure' || steps.test.outcome == 'failure'
       shell: bash
       run: |
         for f in build.log test.log; do
           if [ -f "${f}" ]; then
             # awk, GNU and BSD sed disagree on the ':a;N;$!ba;' idiom
-            echo "::error title=${f}::$(tail -c 6000 "${f}" | awk '{gsub(/\r/,""); gsub(/%/,"%25"); printf "%s%%0A", $0}')"
+            echo "::error title=${f}::$(tail -c 3000 "${f}" | awk '{gsub(/\r/,""); gsub(/%/,"%25"); printf "%s%%0A", $0}')"
           fi
         done
         exit 1
@@ -162,5 +164,5 @@ jobs:
       shell: bash
       run: |
         # awk, GNU and BSD sed disagree on the ':a;N;$!ba;' idiom
-        echo "::error title=musl.log::$(tail -c 6000 musl.log | awk '{gsub(/\r/,""); gsub(/%/,"%25"); printf "%s%%0A", $0}')"
+        echo "::error title=musl.log::$(tail -c 3000 musl.log | awk '{gsub(/\r/,""); gsub(/%/,"%25"); printf "%s%%0A", $0}')"
         exit 1

@@ -28,6 +28,14 @@ build_type=Release
 # it first.
 tools.cmake.cmaketoolchain:generator=Ninja
 
+# Conan looks for the installation of the Visual Studio that the compiler
+# version of the profile belongs to - the 17 of the 194 - and there is none on
+# the runner anymore: the windows-11-arm image has moved to Visual Studio 2026.
+# Point Conan at the installation that exists, the 14.4x arm64 toolset of the
+# 2022 is installed next to the 2026 and will be the one selected, so the
+# binaries are still those of the conan-center MSVC 194.
+tools.microsoft.msbuild:vs_version=18
+
 [buildenv]
 # Several dependencies still declare compatibility with CMake < 3.5, which
 # CMake 4 rejects outright when it has to build them from source.  Only the
