@@ -32,19 +32,22 @@ git checkout test/data
 npm install --ignore-scripts
 
 if [ "${GDAL}" == "shared" ]; then
-  GDAL_OPT="--shared_gdal"
+  GDAL_OPT="--shared-gdal"
   GDAL_NAME="system-installed"
 else
   GDAL_OPT=""
   GDAL_NAME="bundled"
 fi
 
+if [ "${GDAL}" != "shared" ]; then
+  echo -e "${SEP}Preparing Conan${SEP}"
+  conan profile detect --force
+fi
+
 case ${1} in
   DEV)
     echo -e "${SEP}Testing current version against ${GDAL_NAME} GDAL${SEP}"
-    echo npx @mapbox/node-pre-gyp configure ${GDAL_OPT}
-    npx @mapbox/node-pre-gyp configure ${GDAL_OPT}
-    npx @mapbox/node-pre-gyp build -j max
+    node scripts/build.mjs ${GDAL_OPT}
     npm test
     R=0
     ;;
@@ -52,7 +55,7 @@ case ${1} in
   RELEASE)
     echo -e "${SEP}Testing pre-built binary${SEP}"
     npm install --ignore-scripts
-    npx @mapbox/node-pre-gyp install
+    node scripts/install.mjs
     npx yatag
     npm test
     R=0
@@ -60,19 +63,18 @@ case ${1} in
 
   PUBLISH)
     echo -e "${SEP}Publishing pre-built binary${SEP}"
-    npx @mapbox/node-pre-gyp configure
-    npx @mapbox/node-pre-gyp build -j max
+    node scripts/build.mjs
     npm test
-    npx @mapbox/node-pre-gyp package
+    npm run package
     npx node-pre-gyp-github publish
     R=0
     ;;
 
   ASAN)
     echo -e "${SEP}Testing w/ASAN current version against ${GDAL_NAME} GDAL${SEP}"
-    echo npx @mapbox/node-pre-gyp configure ${GDAL_OPT} --enable-asan --debug
-    npx @mapbox/node-pre-gyp configure ${GDAL_OPT} --enable-asan --debug
-    npx @mapbox/node-pre-gyp build -j max
+    export CXXFLAGS="-fsanitize=address -fno-omit-frame-pointer -g"
+    export LDFLAGS="-fsanitize=address"
+    node scripts/build.mjs ${GDAL_OPT} --debug
     LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5.0.0 npm test 2> asan.output
     if egrep -q "node_gdal|GDAL" asan.output; then
       echo ${SEP}${SEP}Memory leaks detected${SEP}${SEP}
